@@ -5,16 +5,15 @@
 
 // Configurações do Firebase
 // LEMBRE-SE de usar suas próprias chaves de API
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyBXrIshTVFOD30XPKku_Trk6VKbXv_7Gkg",
-  authDomain: "good-vibes-8a13d.firebaseapp.com",
-  databaseURL: "https://good-vibes-8a13d-default-rtdb.firebaseio.com",
-  projectId: "good-vibes-8a13d",
-  storageBucket: "good-vibes-8a13d.firebasestorage.app",
-  messagingSenderId: "310185051492",
-  appId: "1:310185051492:web:c47435ce7842af9386e671",
-  measurementId: "G-215VPTXGN8"
+    apiKey: "AIzaSyBXrIshTVFOD30XPKku_Trk6VKbXv_7Gkg",
+    authDomain: "good-vibes-8a13d.firebaseapp.com",
+    databaseURL: "https://good-vibes-8a13d-default-rtdb.firebaseio.com",
+    projectId: "good-vibes-8a13d",
+    storageBucket: "good-vibes-8a13d.firebasestorage.app",
+    messagingSenderId: "310185051492",
+    appId: "1:310185051492:web:c47435ce7842af9386e671",
+    measurementId: "G-215VPTXGN8"
 };
 
 // Inicializa o Firebase
@@ -30,7 +29,7 @@ const showLoginLink = document.getElementById('show-login');
 const authContainer = document.getElementById('auth-container');
 
 // Referências dos layouts e menu
-const receitasLayout = document.getElementById('receitas-layout');
+const feedLayout = document.getElementById('feed-layout');
 const createPostLayout = document.getElementById('create-post-layout');
 const profileLayout = document.getElementById('profile-layout');
 const sideMenu = document.getElementById('side-menu');
@@ -55,6 +54,11 @@ const profilePhoto = document.getElementById('profile-photo');
 const profileName = document.getElementById('profile-name');
 const myPostsContainer = document.getElementById('my-posts-container');
 const editProfileBtn = document.getElementById('edit-profile-btn');
+const editProfileModal = document.getElementById('edit-profile-modal');
+const closeEditModalBtn = document.querySelector('.close-modal-btn');
+const editProfileNameInput = document.getElementById('edit-profile-name');
+const editProfilePhotoInput = document.getElementById('edit-profile-photo');
+const saveProfileBtn = document.getElementById('save-profile-btn');
 
 
 // === Lógica de Autenticação e Layout de Login/Cadastro ===
@@ -63,39 +67,31 @@ auth.onAuthStateChanged((user) => {
     if (user) {
         // Usuário logado: esconde o formulário de login e mostra o feed
         if (authContainer) authContainer.classList.add('hidden');
-        if (receitasLayout) receitasLayout.classList.remove('hidden');
+        if (feedLayout) feedLayout.classList.remove('hidden');
         if (createPostLayout) createPostLayout.classList.add('hidden');
         if (profileLayout) profileLayout.classList.add('hidden');
         
-        const userName = document.getElementById('user-name');
-        const userPhoto = document.getElementById('user-photo');
+        const userNameElements = document.querySelectorAll('.user-info span');
+        const userPhotoElements = document.querySelectorAll('.user-info img');
         const menuUserName = document.getElementById('menu-user-name');
         const menuUserPhoto = document.getElementById('menu-user-photo');
-        const userNameCreate = document.getElementById('user-name-create');
-        const userPhotoCreate = document.getElementById('user-photo-create');
-        const userNameProfile = document.getElementById('user-name-profile');
-        const userPhotoProfile = document.getElementById('user-photo-profile');
 
-        if (userName) userName.textContent = user.displayName || 'Usuário';
-        if (userPhoto) userPhoto.src = user.photoURL || 'https://via.placeholder.com/40';
+        userNameElements.forEach(el => el.textContent = user.displayName || 'Usuário');
+        userPhotoElements.forEach(el => el.src = user.photoURL || 'https://via.placeholder.com/40');
         if (menuUserName) menuUserName.textContent = user.displayName || 'Usuário';
         if (menuUserPhoto) menuUserPhoto.src = user.photoURL || 'https://via.placeholder.com/80';
-        if (userNameCreate) userNameCreate.textContent = user.displayName || 'Usuário';
-        if (userPhotoCreate) userPhotoCreate.src = user.photoURL || 'https://via.placeholder.com/40';
-        if (userNameProfile) userNameProfile.textContent = user.displayName || 'Usuário';
-        if (userPhotoProfile) userPhotoProfile.src = user.photoURL || 'https://via.placeholder.com/40';
 
         loadPosts();
     } else {
         // Usuário deslogado: mostra o formulário de login e esconde os outros layouts
         if (authContainer) authContainer.classList.remove('hidden');
-        if (receitasLayout) receitasLayout.classList.add('hidden');
+        if (feedLayout) feedLayout.classList.add('hidden');
         if (createPostLayout) createPostLayout.classList.add('hidden');
         if (profileLayout) profileLayout.classList.add('hidden');
     }
 });
 
-
+// Eventos de clique para alternar entre Login e Cadastro
 if (showRegisterLink) {
     showRegisterLink.addEventListener('click', (e) => {
         e.preventDefault();
@@ -112,6 +108,7 @@ if (showLoginLink) {
     });
 }
 
+// Lógica de Cadastro
 const registerUsername = document.getElementById('register-username');
 const registerEmail = document.getElementById('register-email');
 const registerPassword = document.getElementById('register-password');
@@ -131,7 +128,7 @@ if (registerBtn) {
                 const user = userCredential.user;
                 return user.updateProfile({
                     displayName: username,
-                    photoURL: photoUrl
+                    photoURL: photoUrl || 'https://via.placeholder.com/80'
                 });
             })
             .then(() => {
@@ -143,6 +140,7 @@ if (registerBtn) {
     });
 }
 
+// Lógica de Login
 const loginEmail = document.getElementById('login-email');
 const loginPassword = document.getElementById('login-password');
 const loginBtn = document.getElementById('login-btn');
@@ -163,6 +161,7 @@ if (loginBtn) {
     });
 }
 
+// Lógica de alternar visibilidade de senha
 if (loginToggle) {
     loginToggle.addEventListener('click', () => {
         const type = loginPassword.getAttribute('type') === 'password' ? 'text' : 'password';
@@ -197,33 +196,40 @@ if (closeMenuBtn) {
     closeMenuBtn.addEventListener('click', toggleMenu);
 }
 
+// Funções para exibir os layouts
+function showFeedLayout() {
+    feedLayout.classList.remove('hidden');
+    createPostLayout.classList.add('hidden');
+    profileLayout.classList.add('hidden');
+    toggleMenu();
+    loadPosts();
+}
+
+function showCreatePostLayout() {
+    feedLayout.classList.add('hidden');
+    createPostLayout.classList.remove('hidden');
+    profileLayout.classList.add('hidden');
+    toggleMenu();
+}
+
+function showProfileLayout() {
+    feedLayout.classList.add('hidden');
+    createPostLayout.classList.add('hidden');
+    profileLayout.classList.remove('hidden');
+    toggleMenu();
+    loadUserPosts();
+}
+
 if (showFeedBtn) {
-    showFeedBtn.addEventListener('click', () => {
-        if (receitasLayout) receitasLayout.classList.remove('hidden');
-        if (createPostLayout) createPostLayout.classList.add('hidden');
-        if (profileLayout) profileLayout.classList.add('hidden');
-        toggleMenu();
-        loadPosts();
-    });
+    showFeedBtn.addEventListener('click', showFeedLayout);
 }
 
 if (showCreatePostBtn) {
-    showCreatePostBtn.addEventListener('click', () => {
-        if (receitasLayout) receitasLayout.classList.add('hidden');
-        if (createPostLayout) createPostLayout.classList.remove('hidden');
-        if (profileLayout) profileLayout.classList.add('hidden');
-        toggleMenu();
-    });
+    showCreatePostBtn.addEventListener('click', showCreatePostLayout);
 }
 
 if (showProfileBtn) {
-    showProfileBtn.addEventListener('click', () => {
-        if (receitasLayout) receitasLayout.classList.add('hidden');
-        if (createPostLayout) createPostLayout.classList.add('hidden');
-        if (profileLayout) profileLayout.classList.remove('hidden');
-        toggleMenu();
-        loadUserPosts();
-    });
+    showProfileBtn.addEventListener('click', showProfileLayout);
 }
 
 if (logoutBtnMenu) {
@@ -236,13 +242,6 @@ if (logoutBtnMenu) {
         });
     });
 }
-
-if (editProfileBtn) {
-    editProfileBtn.addEventListener('click', () => {
-        alert('Funcionalidade de edição de perfil ainda não implementada.');
-    });
-}
-
 
 // === Lógica para a criação e exibição de posts ===
 
@@ -302,12 +301,13 @@ function renderPost(post, container) {
         }
     }
 
-   let likeCount = post.likeCount || 0;
+    let likeCount = post.likeCount || 0;
     let likedBy = post.likedBy || [];
     const currentUser = auth.currentUser;
     let isLiked = currentUser && likedBy.includes(currentUser.uid);
     let likeButtonClass = isLiked ? 'like-btn liked' : 'like-btn';
 
+    // Conteúdo do post, incluindo a seção de comentários
     postElement.innerHTML = `
         <div class="post-header">
             <img class="post-user-photo" src="${post.authorPhotoURL || 'https://via.placeholder.com/40'}" alt="Foto de perfil de ${post.authorName}">
@@ -320,113 +320,145 @@ function renderPost(post, container) {
             <button class="comment-btn">Comentar</button>
             <button class="share-btn">Compartilhar</button>
         </div>
+        <div class="comments-section">
+            <div class="comments-list"></div>
+            <div class="add-comment-form">
+                <input type="text" placeholder="Adicionar um comentário..." class="comment-input">
+                <button class="submit-comment-btn">Enviar</button>
+            </div>
+        </div>
     `;
 
     const likeButton = postElement.querySelector('.like-btn');
+    const commentInput = postElement.querySelector('.comment-input');
+    const submitCommentBtn = postElement.querySelector('.submit-comment-btn');
+    const commentsList = postElement.querySelector('.comments-list');
+
+    // Lógica para curtir/descurtir o post
     if (likeButton && currentUser) {
         likeButton.addEventListener('click', async () => {
             const postRef = db.collection('posts').doc(post.id);
-
-            // Se o usuário já curtiu, remove a curtida
             if (isLiked) {
-                likedBy = likedBy.filter(uid => uid !== currentUser.uid);
-                likeCount--;
+                await postRef.update({
+                    likedBy: firebase.firestore.FieldValue.arrayRemove(currentUser.uid),
+                    likeCount: firebase.firestore.FieldValue.increment(-1)
+                });
             } else {
-                // Se o usuário não curtiu, adiciona a curtida
-                likedBy.push(currentUser.uid);
-                likeCount++;
+                await postRef.update({
+                    likedBy: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
+                    likeCount: firebase.firestore.FieldValue.increment(1)
+                });
             }
-
-            await postRef.update({
-                likedBy: likedBy,
-                likeCount: likeCount
-            });
-
-            // Atualiza a interface do usuário localmente
-            isLiked = !isLiked;
-            likeButton.textContent = `Curtir (${likeCount})`;
-            likeButton.classList.toggle('liked', isLiked);
         });
-            
-            // Recarrega os posts para atualizar a interface
-            if (container === postsFeed) {
-                loadPosts();
-            } else if (container === myPostsContainer) {
-                loadUserPosts();
-            }
     }
 
-    // Event listeners para os botões de comentar e compartilhar
-    const commentButton = postElement.querySelector('.comment-btn');
+    // Lógica para enviar comentários
+    if (submitCommentBtn && currentUser) {
+        submitCommentBtn.addEventListener('click', async () => {
+            const commentText = commentInput.value.trim();
+            if (commentText) {
+                await db.collection("posts").doc(post.id).collection("comments").add({
+                    text: commentText,
+                    authorId: currentUser.uid,
+                    authorName: currentUser.displayName || 'Usuário',
+                    authorPhoto: currentUser.photoURL || 'https://via.placeholder.com/40',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                commentInput.value = '';
+            }
+        });
+    }
+
+    // Lógica para carregar e exibir comentários em tempo real
+    db.collection("posts").doc(post.id).collection("comments").orderBy("timestamp").onSnapshot(snapshot => {
+        commentsList.innerHTML = '';
+        snapshot.forEach(doc => {
+            const comment = doc.data();
+            const commentElement = document.createElement('div');
+            commentElement.classList.add('comment');
+            commentElement.innerHTML = `
+                <img src="${comment.authorPhoto}" alt="Foto de perfil">
+                <p><strong>${comment.authorName}</strong> ${comment.text}</p>
+            `;
+            commentsList.appendChild(commentElement);
+        });
+    });
+
+    // Lógica de compartilhamento de post
     const shareButton = postElement.querySelector('.share-btn');
-    
-    // Implementação da funcionalidade de comentários (exibe um prompt para o exemplo)
-    commentButton.addEventListener('click', () => {
-        const commentText = prompt('Digite seu comentário:');
-        if (commentText && commentText.trim() !== '') {
-            // Lógica para salvar o comentário no Firestore
-            db.collection("posts").doc(post.id).collection("comments").add({
-                text: commentText,
-                authorId: auth.currentUser.uid,
-                authorName: auth.currentUser.displayName || 'Usuário',
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
-                alert("Comentário adicionado!");
-                // Aqui você pode adicionar lógica para mostrar o comentário no DOM
-            }).catch((error) => {
-                alert("Erro ao adicionar comentário: " + error.message);
-            });
-        }
-    });
-    
-    // Implementação da funcionalidade de compartilhamento
-    shareButton.addEventListener('click', () => {
-        if (navigator.share) {
-            navigator.share({
-                title: 'GOOD-VIBES Post',
-                text: post.text,
-                url: window.location.href // URL da página atual
-            }).then(() => {
-                console.log('Post compartilhado com sucesso!');
-            }).catch((error) => {
-                console.error('Erro ao compartilhar:', error);
-            });
-        } else {
-            // Fallback para navegadores sem a API de compartilhamento
-            alert('A funcionalidade de compartilhamento não está disponível neste navegador.');
-        }
-    });
+    if (shareButton) {
+        shareButton.addEventListener('click', () => {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'GOOD-VIBES Post',
+                    text: post.text,
+                    url: window.location.href // URL da página atual
+                }).then(() => {
+                    console.log('Post compartilhado com sucesso!');
+                }).catch((error) => {
+                    console.error('Erro ao compartilhar:', error);
+                });
+            } else {
+                alert('A funcionalidade de compartilhamento não está disponível neste navegador.');
+            }
+        });
+    }
 
     container.appendChild(postElement);
 }
 
-// Implementação básica para o botão Editar Perfil
+// === Implementação da funcionalidade de Edição de Perfil ===
 if (editProfileBtn) {
     editProfileBtn.addEventListener('click', () => {
         const user = auth.currentUser;
         if (user) {
-            const newName = prompt('Digite seu novo nome:', user.displayName);
-            const newPhotoUrl = prompt('Digite o novo URL da sua foto:', user.photoURL);
-
-            if (newName || newPhotoUrl) {
-                user.updateProfile({
-                    displayName: newName || user.displayName,
-                    photoURL: newPhotoUrl || user.photoURL
-                }).then(() => {
-                    alert('Perfil atualizado com sucesso!');
-                    // Atualiza a interface do usuário após a atualização
-                    loadUserPosts(); 
-                }).catch((error) => {
-                    alert('Erro ao atualizar perfil: ' + error.message);
-                });
-            }
+            editProfileNameInput.value = user.displayName || '';
+            editProfilePhotoInput.value = user.photoURL || '';
+            editProfileModal.classList.remove('hidden');
         }
     });
 }
 
+if (closeEditModalBtn) {
+    closeEditModalBtn.addEventListener('click', () => {
+        editProfileModal.classList.add('hidden');
+    });
+}
+
+if (saveProfileBtn) {
+    saveProfileBtn.addEventListener('click', () => {
+        const user = auth.currentUser;
+        const newName = editProfileNameInput.value.trim();
+        const newPhotoUrl = editProfilePhotoInput.value.trim();
+
+        if (user) {
+            user.updateProfile({
+                displayName: newName || user.displayName,
+                photoURL: newPhotoUrl || user.photoURL
+            }).then(() => {
+                alert('Perfil atualizado com sucesso!');
+                editProfileModal.classList.add('hidden');
+                // Recarrega os dados do perfil após a atualização
+                loadUserPosts();
+                // Atualiza o nome e a foto nos layouts
+                const userNameElements = document.querySelectorAll('.user-info span, #menu-user-name, #profile-name');
+                const userPhotoElements = document.querySelectorAll('.user-info img, #menu-user-photo, #profile-photo');
+                userNameElements.forEach(el => el.textContent = newName || user.displayName);
+                userPhotoElements.forEach(el => el.src = newPhotoUrl || user.photoURL);
+            }).catch((error) => {
+                alert('Erro ao atualizar perfil: ' + error.message);
+            });
+        }
+    });
+}
+
+
+// === Funções para carregar posts ===
+
 function loadPosts() {
-    if (postsFeed) postsFeed.innerHTML = '';
-    db.collection("posts").orderBy("timestamp", "desc").get().then((querySnapshot) => {
+    if (postsFeed) postsFeed.innerHTML = '<h2>Carregando posts...</h2>';
+    db.collection("posts").orderBy("timestamp", "desc").onSnapshot((querySnapshot) => {
+        if (postsFeed) postsFeed.innerHTML = '';
         querySnapshot.forEach((doc) => {
             renderPost({ ...doc.data(), id: doc.id }, postsFeed);
         });
@@ -439,7 +471,8 @@ function loadUserPosts() {
         profilePhoto.src = user.photoURL || 'https://via.placeholder.com/100';
         profileName.textContent = user.displayName || 'Usuário';
         myPostsContainer.innerHTML = '<h4>Suas postagens:</h4>';
-        db.collection("posts").where("authorId", "==", user.uid).orderBy("timestamp", "desc").get().then((querySnapshot) => {
+        db.collection("posts").where("authorId", "==", user.uid).orderBy("timestamp", "desc").onSnapshot((querySnapshot) => {
+            if (myPostsContainer) myPostsContainer.innerHTML = '<h4>Suas postagens:</h4>';
             querySnapshot.forEach((doc) => {
                 renderPost({ ...doc.data(), id: doc.id }, myPostsContainer);
             });
@@ -481,12 +514,10 @@ if (publishPostBtn) {
             linkPreviewContainer.innerHTML = '';
             linkPreviewContainer.classList.add('hidden');
             // Redireciona para o feed após a publicação
-            if (receitasLayout) receitasLayout.classList.remove('hidden');
-            if (createPostLayout) createPostLayout.classList.add('hidden');
-            loadPosts();
+            showFeedLayout();
         })
         .catch((error) => {
             alert("Erro ao publicar post: " + error.message);
         });
     });
-            }
+}
