@@ -1,0 +1,77 @@
+/* Estilos do Feed */
+
+.post {
+    background-color: var(--secondary-bg);
+    border-radius: 0.8rem;
+    padding: 1.6rem;
+    margin-bottom: 1.6rem;
+}
+
+.post-header {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    margin-bottom: 1.6rem;
+}
+
+.post-author-img {
+    width: 4.8rem;
+    height: 4.8rem;
+    border-radius: 50%;
+}
+
+.post-author {
+    font-size: 1.8rem;
+    font-weight: 500;
+}
+
+.post-content p {
+    font-size: 1.6rem;
+    line-height: 1.5;
+    margin-bottom: 1.6rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.post-media-container img,
+.post-media-container iframe {
+    width: 100%;
+    height: auto;
+    display: block;
+    margin-top: 1.6rem;
+    border-radius: 0.8rem;
+}
+
+.post-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.like-btn img {
+    width: 2.4rem;
+    height: 2.4rem;
+    filter: invert(var(--icon-invert));
+}
+
+.like-btn.active img {
+    filter: brightness(0) saturate(100%) invert(45%) sepia(87%) saturate(1633%) hue-rotate(186deg) brightness(101%) contrast(101%);
+}
+
+.like-count {
+    font-size: 1.6rem;
+    color: var(--secondary-text);
+}
+
+.link-preview-container {
+    width: 100%;
+    margin-top: 1.6rem;
+}
+
+.link-preview-container img,
+.link-preview-container iframe {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 0.8rem;
+}

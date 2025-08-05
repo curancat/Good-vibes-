@@ -1,0 +1,61 @@
+/* Estilos específicos para o layout do feed */
+
+/* Para o container principal do feed */
+#receitas-layout, #create-post-layout, #profile-layout {
+    padding-top: 80px; /* Garante que o conteúdo não fique atrás do header fixo */
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* Estilos do cabeçalho do aplicativo */
+.app-header {
+    background-color: var(--container-bg-color);
+    padding: 10px 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between; /* Alinha os itens para as extremidades */
+    align-items: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    box-sizing: border-box;
+    transition: background-color 0.3s, box-shadow 0.3s;
+    z-index: 1000;
+}
+
+.app-header .layout-title {
+    margin: 0;
+    font-size: 1.5em;
+    color: var(--text-color);
+}
+
+/* Estilo do botão do menu */
+/* Alterado o seletor de ID para classe para corresponder ao HTML */
+.menu-toggle-btn, #create-post-menu-btn, #profile-menu-btn {
+    font-size: 24px;
+    background: none;
+    border: none;
+    color: var(--text-color);
+    cursor: pointer;
+    margin-right: 15px;
+}
+
+/* Estilos para a foto e nome do usuário */
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#user-photo {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--primary-color);
+}
+
+#user-name {
+    font-weight: bold;
+    color: var(--text-color);
+}

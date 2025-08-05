@@ -1,0 +1,103 @@
+/* Reset CSS */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary-bg: #EAEAEA;
+    --secondary-bg: #D9D9D9;
+    --primary-text: #212121;
+    --secondary-text: #535353;
+    --tertiary-text: #828282;
+    --primary-color: #0077B6;
+    --secondary-color: #00B4D8;
+    --icon-invert: 0;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    font-size: 1.6rem;
+    background-color: var(--primary-bg);
+    color: var(--primary-text);
+}
+
+body.dark {
+    --primary-bg: #212121;
+    --secondary-bg: #323232;
+    --primary-text: #EAEAEA;
+    --secondary-text: #D9D9D9;
+    --tertiary-text: #828282;
+    --primary-color: #0077B6;
+    --secondary-color: #00B4D8;
+    --icon-invert: 1;
+}
+
+html {
+    font-size: 62.5%;
+}
+
+a {
+    text-decoration: none;
+}
+
+button {
+    cursor: pointer;
+    border: none;
+    background: transparent;
+}
+
+/* Layouts */
+.main {
+    height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+}
+
+.main > div {
+    grid-area: 1 / 1 / 2 / 2;
+}
+
+body:not(.logged) .user-layout,
+body:not(.logged) .profile-layout,
+body:not(.logged) .feed-layout,
+body:not(.logged) .new-post-layout {
+    display: none;
+}
+
+/* Header */
+.header-layout {
+    display: flex;
+    align-items: center;
+    gap: 1.6rem;
+    padding: 1.6rem;
+    background-color: var(--secondary-bg);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    gap: 1.6rem;
+    flex-grow: 1;
+}
+
+.header-logo img {
+    height: 3.2rem;
+}
+
+.header-title {
+    font-size: 2.4rem;
+    font-weight: 500;
+    margin-right: 1.6rem;
+}
+
+.menu-toggle-btn img {
+    width: 2.4rem;
+    height: 2.4rem;
+    filter: invert(var(--icon-invert));
+}
