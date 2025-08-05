@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="styles/menu.css">
     <link rel="stylesheet" href="styles/feed.css">
     <link rel="stylesheet" href="styles/posts.css">
+    <link rel="stylesheet" href="styles/auth.css">
+    <link rel="stylesheet" href="styles/profile.css">
 </head>
 <body>
 
@@ -15,7 +17,7 @@
         <div class="login-page">
             <h1 class="logo">GOOD-VIBES</h1>
             <div id="login-form">
-                <h2>login</h2>
+                <h2>Login</h2>
                 <div class="input-container">
                     <input type="email" id="login-email" placeholder="E-mail" required>
                 </div>
@@ -57,33 +59,31 @@
             </div>
         </div>
         <ul class="menu-nav">
-            <li><button id="show-feed-btn">Feed de Receitas</button></li>
+            <li><button id="show-feed-btn">Feed</button></li>
             <li><button id="show-create-post-btn">Criar Post</button></li>
             <li><button id="show-profile-btn">Meu Perfil</button></li>
             <li><button id="logout-btn-menu">Sair</button></li>
         </ul>
         <div class="menu-footer">
-            <div class="header-controls">
-                <div class="theme-selector-container">
-                    <span>Tema de Cores:</span>
-                    <select id="theme-selector">
-                        <option value="padrao">Padrão (Lavanda)</option>
-                        <option value="red">Vermelho</option>
-                        <option value="blue">Azul</option>
-                        <option value="green">Verde</option>
-                        <option value="yellow">Amarelo</option>
-                        <option value="pink">Rosa</option>
-                        <option value="purple">Roxo</option>
-                        <option value="black">Escuro</option>
-                        <option value="white">Claro</option>
-                    </select>
-                </div>
-                <button id="dark-mode-toggle">Modo Escuro</button>
+            <div class="theme-selector-container">
+                <span>Tema de Cores:</span>
+                <select id="theme-selector">
+                    <option value="padrao">Padrão</option>
+                    <option value="red">Vermelho</option>
+                    <option value="blue">Azul</option>
+                    <option value="green">Verde</option>
+                    <option value="yellow">Amarelo</option>
+                    <option value="pink">Rosa</option>
+                    <option value="purple">Roxo</option>
+                    <option value="black">Escuro</option>
+                    <option value="white">Claro</option>
+                </select>
             </div>
+            <button id="dark-mode-toggle">Modo Escuro</button>
         </div>
     </nav>
     
-    <main id="receitas-layout" class="hidden">
+    <main id="feed-layout" class="hidden">
         <header class="app-header">
             <button class="menu-toggle-btn">☰</button>
             <h1 class="layout-title">GOOD-VIBES</h1>
@@ -94,7 +94,6 @@
         </header>
         <div id="posts-feed" class="container">
             <h2>Bem-vindo ao GOOD-VIBES!</h2>
-            <p>Seja o primeiro a criar um post!</p>
         </div>
     </main>
 
@@ -109,7 +108,7 @@
         </header>
         <div class="container create-post-container">
             <h2>No que você está pensando?</h2>
-            <textarea id="post-text" placeholder="Compartilhe uma receita ou uma ideia!"></textarea>
+            <textarea id="post-text" placeholder="Compartilhe algo legal!"></textarea>
             <input type="text" id="post-link" placeholder="Link de imagem ou vídeo (Opcional)">
             <div id="link-preview-container" class="link-preview-container hidden"></div>
             <button id="publish-post-btn">Publicar</button>
@@ -125,16 +124,30 @@
                 <img id="user-photo-profile" src="https://via.placeholder.com/40" alt="Foto de perfil">
             </div>
         </header>
-        <div class="container profile-info">
-            <img id="profile-photo" src="https://via.placeholder.com/100" alt="Foto de perfil">
-            <h2 id="profile-name">Nome do Usuário</h2>
-            <button id="edit-profile-btn">Editar Perfil</button>
+        <div class="container profile-info-container">
+            <div class="profile-header-info">
+                <img id="profile-photo" src="https://via.placeholder.com/100" alt="Foto de perfil">
+                <h2 id="profile-name">Nome do Usuário</h2>
+                <button id="edit-profile-btn">Editar Perfil</button>
+            </div>
             <div id="my-posts-container" class="posts-container">
                 <h4>Suas postagens:</h4>
                 <p>Você ainda não publicou nada.</p>
             </div>
         </div>
     </main>
+
+    <div id="edit-profile-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal-btn">&times;</span>
+            <h3>Editar Perfil</h3>
+            <label for="edit-profile-name">Novo nome:</label>
+            <input type="text" id="edit-profile-name">
+            <label for="edit-profile-photo">Nova URL da foto:</label>
+            <input type="text" id="edit-profile-photo">
+            <button id="save-profile-btn">Salvar</button>
+        </div>
+    </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
