@@ -1,99 +1,83 @@
-/* Estilos do menu */
-
-.menu-wrapper {
+/* Estilos para o menu de navegação lateral */
+#side-menu {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
+    width: 250px;
     height: 100%;
-    background-color: var(--primary-bg);
-    z-index: 10;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease-in-out;
-}
-
-.menu-wrapper.active {
+    background-color: var(--container-bg-color);
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
     transform: translateX(0);
+    transition: transform 0.3s ease-in-out;
+    padding: 20px;
+    box-sizing: border-box;
+    z-index: 2000;
 }
 
-.menu-content {
-    padding: 3.2rem;
-    padding-top: 10rem;
-    height: 100%;
+#side-menu.hidden {
+    transform: translateX(-100%);
+}
+
+/* Estilo para o botão de fechar o menu */
+#close-menu-btn {
+    font-size: 24px;
+    background: none;
+    border: none;
+    color: var(--text-color);
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    cursor: pointer;
+}
+
+/* Estilo para a foto e nome do usuário no menu */
+.menu-user-info {
     display: flex;
     flex-direction: column;
-    gap: 3.2rem;
-}
-
-.user-link {
-    display: flex;
     align-items: center;
-    gap: 1.6rem;
-    padding: 1rem 0;
-    font-size: 1.8rem;
-    font-weight: 500;
-    color: var(--primary-text);
-    text-decoration: none;
-    transition: color 0.3s ease-in-out;
+    margin-bottom: 20px;
+    text-align: center;
 }
 
-.user-link:hover,
-.user-link.active {
-    color: var(--primary-color);
-}
-
-.user-link img {
-    filter: invert(var(--icon-invert));
-    transition: filter 0.3s ease-in-out;
-}
-
-.user-link:hover img,
-.user-link.active img {
-    filter: brightness(0) saturate(100%) invert(45%) sepia(87%) saturate(1633%) hue-rotate(186deg) brightness(101%) contrast(101%);
-}
-
-.theme-wrapper {
-    margin-top: auto;
-    display: flex;
-    align-items: center;
-    gap: 1.6rem;
-    font-size: 1.8rem;
-    color: var(--primary-text);
-    font-weight: 500;
-}
-
-.theme-wrapper img {
-    filter: invert(var(--icon-invert));
-}
-
-#theme-btn {
-    display: none;
-}
-
-.theme-wrapper label {
-    width: 4.8rem;
-    height: 2.4rem;
-    background-color: var(--secondary-bg);
-    border-radius: 999px;
-    display: block;
-    cursor: pointer;
-    position: relative;
-    transition: background-color 0.3s ease-in-out;
-}
-
-.theme-wrapper label::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 0.3rem;
-    transform: translateY(-50%);
-    width: 1.8rem;
-    height: 1.8rem;
-    background-color: var(--primary-color);
+.menu-user-info img {
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
-    transition: left 0.3s ease-in-out;
+    object-fit: cover;
+    margin-bottom: 10px;
+    border: 2px solid var(--primary-color);
 }
 
-#theme-btn:checked+label::after {
-    left: calc(100% - 2.1rem);
+.menu-user-info span {
+    font-weight: bold;
+    color: var(--text-color);
+    font-size: 1.2em;
+}
+
+/* Estilo para os itens do menu */
+#side-menu nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#side-menu nav li {
+    margin-bottom: 10px;
+}
+
+#side-menu nav button {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    color: var(--text-color);
+    padding: 15px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#side-menu nav button:hover {
+    background-color: var(--hover-color);
 }
