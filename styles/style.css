@@ -1,100 +1,214 @@
-/* Reset e estilos globais */
 :root {
-    --primary-bg: #EAEAEA;
-    --secondary-bg: #D9D9D9;
-    --primary-text: #212121;
-    --secondary-text: #535353;
-    --tertiary-text: #828282;
-    --primary-color: #0077B6;
-    --secondary-color: #00B4D8;
-    --icon-invert: 0;
+    --primary-color: #C7B8EA; /* Roxo Lavanda */
+    --secondary-color: #ADD8E6; /* Azul Claro */
+    --background-color: #FFFFFF;
+    --container-bg-color: #F7F7F7;
+    --text-color: #333333;
+    --border-color: #E0E0E0;
+    --hover-color: rgba(0, 0, 0, 0.1);
 }
 
+/* Temas de cores */
+.red-theme {
+    --primary-color: #E57373;
+    --secondary-color: #FFCDD2;
+    --background-color: #FFF3E0;
+    --container-bg-color: #FBE9E7;
+    --text-color: #3E2723;
+}
+
+.blue-theme {
+    --primary-color: #64B5F6;
+    --secondary-color: #BBDEFB;
+    --background-color: #E3F2FD;
+    --container-bg-color: #F0F4C3;
+    --text-color: #1A237E;
+}
+
+.green-theme {
+    --primary-color: #81C784;
+    --secondary-color: #C8E6C9;
+    --background-color: #E8F5E9;
+    --container-bg-color: #F1F8E9;
+    --text-color: #1B5E20;
+}
+
+.yellow-theme {
+    --primary-color: #FFD54F;
+    --secondary-color: #FFF9C4;
+    --background-color: #FFFDE7;
+    --container-bg-color: #FFF8E1;
+    --text-color: #FF6F00;
+}
+
+.pink-theme {
+    --primary-color: #F06292;
+    --secondary-color: #F8BBD0;
+    --background-color: #FCE4EC;
+    --container-bg-color: #FCE4EC;
+    --text-color: #4A148C;
+}
+
+.purple-theme {
+    --primary-color: #9575CD;
+    --secondary-color: #D1C4E9;
+    --background-color: #EDE7F6;
+    --container-bg-color: #EDE7F6;
+    --text-color: #311B92;
+}
+
+.black-theme {
+    --primary-color: #BDBDBD;
+    --secondary-color: #757575;
+    --background-color: #212121;
+    --container-bg-color: #424242;
+    --text-color: #E0E0E0;
+    --border-color: #616161;
+}
+
+.white-theme {
+    --primary-color: #212121;
+    --secondary-color: #616161;
+    --background-color: #FFFFFF;
+    --container-bg-color: #F5F5F5;
+    --text-color: #333333;
+    --border-color: #BDBDBD;
+}
+
+/* Estilos para o modo escuro */
+.dark-mode {
+    --background-color: #2c2c2c;
+    --container-bg-color: #3a3a3a;
+    --text-color: #e0e0e0;
+    --border-color: #555555;
+    --hover-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Estilos de fonte globais */
+body, button, input, textarea, select {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Estilos básicos para o corpo da página */
 body {
-    font-family: 'Roboto', sans-serif;
-    font-size: 1.6rem;
-    background-color: var(--primary-bg);
-    color: var(--primary-text);
-}
-
-body.dark {
-    --primary-bg: #212121;
-    --secondary-bg: #323232;
-    --primary-text: #EAEAEA;
-    --secondary-text: #D9D9D9;
-    --tertiary-text: #828282;
-    --primary-color: #0077B6;
-    --secondary-color: #00B4D8;
-    --icon-invert: 1;
-}
-
-html {
-    font-size: 62.5%;
-}
-
-* {
+    background-color: var(--background-color);
+    color: var(--text-color);
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
+    transition: background-color 0.3s, color 0.3s;
+    font-family: Arial, sans-serif;
 }
 
-a {
-    text-decoration: none;
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.input-container {
+    position: relative;
+}
+
+input, textarea, select {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    box-sizing: border-box;
+    background-color: var(--container-bg-color);
+    color: var(--text-color);
+    transition: border-color 0.3s, background-color 0.3s;
+}
+
+input:focus, textarea:focus {
+    border-color: var(--primary-color);
+    outline: none;
 }
 
 button {
-    cursor: pointer;
+    background-color: var(--primary-color);
+    color: #FFFFFF;
+    padding: 12px;
     border: none;
-    background: transparent;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: var(--secondary-color);
+}
+
+a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+a:hover {
+    color: var(--secondary-color);
+    text-decoration: underline;
 }
 
 .hidden {
     display: none !important;
 }
 
-/* Layouts principais */
-main {
-    padding: 1rem;
+.password-toggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: var(--text-color);
 }
 
-.app-header {
+.header-controls {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem;
-    background-color: var(--secondary-bg);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 0;
 }
 
-.layout-title {
-    font-size: 2rem;
-    font-weight: bold;
-}
-
-.menu-toggle-btn {
-    font-size: 2rem;
-    padding: 0.5rem;
-}
-
-.user-info {
+/* Estilos para a página de login e cadastro */
+#auth-container {
     display: flex;
+    justify-content: center;
     align-items: center;
-    gap: 1rem;
+    min-height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
+    text-align: center;
 }
 
-.user-info img {
-    width: 4rem;
-    height: 4rem;
-    border-radius: 50%;
+.login-page {
+    width: 100%;
+    max-width: 400px;
+    background-color: var(--container-bg-color);
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.container {
-    max-width: 800px;
-    margin: 2rem auto;
-    padding: 1rem;
+.login-page .logo {
+    font-family: 'Dancing Script', cursive;
+    font-size: 3em;
+    color: var(--primary-color);
+    margin-bottom: 20px;
 }
 
-/* Modal */
+.login-page h2 {
+    color: var(--text-color);
+    font-size: 1.5em;
+    margin-bottom: 20px;
+}
+
+/* Modal de edição de perfil */
 .modal {
     position: fixed;
     z-index: 1000;
@@ -109,12 +223,19 @@ main {
 }
 
 .modal-content {
-    background-color: var(--primary-bg);
+    background-color: var(--container-bg-color);
     padding: 2rem;
     border-radius: 8px;
     width: 90%;
     max-width: 400px;
     position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.modal-content input, .modal-content button {
+    width: 100%;
 }
 
 .close-modal-btn {
