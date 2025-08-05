@@ -5,15 +5,16 @@
 
 // Configurações do Firebase
 // LEMBRE-SE de usar suas próprias chaves de API
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-    apiKey: "AIzaSyBXrIshTVFOD30XPKku_Trk6VKbXv_7Gkg",
-    authDomain: "good-vibes-8a13d.firebaseapp.com",
-    databaseURL: "https://good-vibes-8a13d-default-rtdb.firebaseio.com",
-    projectId: "good-vibes-8a13d",
-    storageBucket: "good-vibes-8a13d.firebasestorage.app",
-    messagingSenderId: "310185051492",
-    appId: "1:310185051492:web:c47435ce7842af9386e671",
-    measurementId: "G-215VPTXGN8"
+  apiKey: "AIzaSyBXrIshTVFOD30XPKku_Trk6VKbXv_7Gkg",
+  authDomain: "good-vibes-8a13d.firebaseapp.com",
+  databaseURL: "https://good-vibes-8a13d-default-rtdb.firebaseio.com",
+  projectId: "good-vibes-8a13d",
+  storageBucket: "good-vibes-8a13d.firebasestorage.app",
+  messagingSenderId: "310185051492",
+  appId: "1:310185051492:web:c47435ce7842af9386e671",
+  measurementId: "G-215VPTXGN8"
 };
 
 // Inicializa o Firebase
