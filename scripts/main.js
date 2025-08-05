@@ -183,40 +183,42 @@ if (registerToggle) {
 
 
 // === Lógica do Menu ===
+// Função única para alternar a visibilidade do menu
 function toggleMenu() {
     if (sideMenu) {
         sideMenu.classList.toggle('visible');
     }
 }
 
+// O botão de "abrir" e "fechar" agora chamam a mesma função de alternância
 if (menuToggleBtns.length > 0) {
     menuToggleBtns.forEach(btn => {
         btn.addEventListener('click', toggleMenu);
     });
 }
-
 if (closeMenuBtn) {
     closeMenuBtn.addEventListener('click', toggleMenu);
 }
 
+// Os botões de navegação no menu devem chamar showLayout e depois fechar o menu
 if (showFeedBtn) {
     showFeedBtn.addEventListener('click', () => {
         showLayout(receitasLayout);
-        toggleMenu();
+        toggleMenu(); // Fecha o menu
     });
 }
 
 if (showCreatePostBtn) {
     showCreatePostBtn.addEventListener('click', () => {
         showLayout(createPostLayout);
-        toggleMenu();
+        toggleMenu(); // Fecha o menu
     });
 }
 
 if (showProfileBtn) {
     showProfileBtn.addEventListener('click', () => {
         showLayout(profileLayout);
-        toggleMenu();
+        toggleMenu(); // Fecha o menu
     });
 }
 
@@ -503,4 +505,4 @@ if (publishPostBtn) {
             alert("Erro ao publicar post: " + error.message);
         });
     });
-    }
+            }
