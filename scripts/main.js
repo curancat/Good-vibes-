@@ -503,4 +503,4 @@ if (publishPostBtn) {
             alert("Erro ao publicar post: " + error.message);
         });
     });
-}
+    }
