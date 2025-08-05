@@ -4,17 +4,15 @@
 // ===========================================
 
 // Configurações do Firebase
-// LEMBRE-SE de usar suas próprias chaves de API
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyBXrIshTVFOD30XPKku_Trk6VKbXv_7Gkg",
-  authDomain: "good-vibes-8a13d.firebaseapp.com",
-  databaseURL: "https://good-vibes-8a13d-default-rtdb.firebaseio.com",
-  projectId: "good-vibes-8a13d",
-  storageBucket: "good-vibes-8a13d.firebasestorage.app",
-  messagingSenderId: "310185051492",
-  appId: "1:310185051492:web:c47435ce7842af9386e671",
-  measurementId: "G-215VPTXGN8"
+    apiKey: "AIzaSyBXrIshTVFOD30XPKku_Trk6VKbXv_7Gkg",
+    authDomain: "good-vibes-8a13d.firebaseapp.com",
+    databaseURL: "https://good-vibes-8a13d-default-rtdb.firebaseio.com",
+    projectId: "good-vibes-8a13d",
+    storageBucket: "good-vibes-8a13d.firebasestorage.app",
+    messagingSenderId: "310185051492",
+    appId: "1:310185051492:web:c47435ce7842af9386e671",
+    measurementId: "G-215VPTXGN8"
 };
 
 // Inicializa o Firebase
@@ -30,7 +28,7 @@ const showLoginLink = document.getElementById('show-login');
 const authContainer = document.getElementById('auth-container');
 
 // Referências dos layouts e menu
-const feedLayout = document.getElementById('feed-layout');
+const receitasLayout = document.getElementById('receitas-layout');
 const createPostLayout = document.getElementById('create-post-layout');
 const profileLayout = document.getElementById('profile-layout');
 const sideMenu = document.getElementById('side-menu');
@@ -62,37 +60,42 @@ const editProfilePhotoInput = document.getElementById('edit-profile-photo');
 const saveProfileBtn = document.getElementById('save-profile-btn');
 
 
-// === Lógica de Autenticação e Layout de Login/Cadastro ===
+// === Lógica de Navegação e Layout ===
+
+function showLayout(layoutToShow) {
+    if (authContainer) authContainer.classList.add('hidden');
+    if (receitasLayout) receitasLayout.classList.add('hidden');
+    if (createPostLayout) createPostLayout.classList.add('hidden');
+    if (profileLayout) profileLayout.classList.add('hidden');
+    
+    if (layoutToShow) layoutToShow.classList.remove('hidden');
+    
+    if (layoutToShow === receitasLayout) {
+        loadPosts();
+    } else if (layoutToShow === profileLayout) {
+        loadUserPosts();
+    }
+}
 
 auth.onAuthStateChanged((user) => {
     if (user) {
-        // Usuário logado: esconde o formulário de login e mostra o feed
-        if (authContainer) authContainer.classList.add('hidden');
-        if (feedLayout) feedLayout.classList.remove('hidden');
-        if (createPostLayout) createPostLayout.classList.add('hidden');
-        if (profileLayout) profileLayout.classList.add('hidden');
-        
-        const userNameElements = document.querySelectorAll('.user-info span');
-        const userPhotoElements = document.querySelectorAll('.user-info img');
-        const menuUserName = document.getElementById('menu-user-name');
-        const menuUserPhoto = document.getElementById('menu-user-photo');
+        showLayout(receitasLayout);
+        const userNameElements = document.querySelectorAll('.user-info span, #menu-user-name');
+        const userPhotoElements = document.querySelectorAll('.user-info img, #menu-user-photo');
 
         userNameElements.forEach(el => el.textContent = user.displayName || 'Usuário');
         userPhotoElements.forEach(el => el.src = user.photoURL || 'https://via.placeholder.com/40');
-        if (menuUserName) menuUserName.textContent = user.displayName || 'Usuário';
-        if (menuUserPhoto) menuUserPhoto.src = user.photoURL || 'https://via.placeholder.com/80';
-
-        loadPosts();
     } else {
-        // Usuário deslogado: mostra o formulário de login e esconde os outros layouts
         if (authContainer) authContainer.classList.remove('hidden');
-        if (feedLayout) feedLayout.classList.add('hidden');
+        if (receitasLayout) receitasLayout.classList.add('hidden');
         if (createPostLayout) createPostLayout.classList.add('hidden');
         if (profileLayout) profileLayout.classList.add('hidden');
     }
 });
 
-// Eventos de clique para alternar entre Login e Cadastro
+
+// === Lógica de Autenticação e Layout de Login/Cadastro ===
+
 if (showRegisterLink) {
     showRegisterLink.addEventListener('click', (e) => {
         e.preventDefault();
@@ -109,7 +112,6 @@ if (showLoginLink) {
     });
 }
 
-// Lógica de Cadastro
 const registerUsername = document.getElementById('register-username');
 const registerEmail = document.getElementById('register-email');
 const registerPassword = document.getElementById('register-password');
@@ -134,6 +136,7 @@ if (registerBtn) {
             })
             .then(() => {
                 alert("Conta criada e perfil atualizado com sucesso!");
+                showLayout(receitasLayout);
             })
             .catch((error) => {
                 alert(`Erro: ${error.message}`);
@@ -141,7 +144,6 @@ if (registerBtn) {
     });
 }
 
-// Lógica de Login
 const loginEmail = document.getElementById('login-email');
 const loginPassword = document.getElementById('login-password');
 const loginBtn = document.getElementById('login-btn');
@@ -155,6 +157,7 @@ if (loginBtn) {
         auth.signInWithEmailAndPassword(email, password)
             .then(() => {
                 alert("Login bem-sucedido!");
+                showLayout(receitasLayout);
             })
             .catch((error) => {
                 alert(`Erro ao fazer login: ${error.message}`);
@@ -162,7 +165,6 @@ if (loginBtn) {
     });
 }
 
-// Lógica de alternar visibilidade de senha
 if (loginToggle) {
     loginToggle.addEventListener('click', () => {
         const type = loginPassword.getAttribute('type') === 'password' ? 'text' : 'password';
@@ -183,7 +185,7 @@ if (registerToggle) {
 // === Lógica do Menu ===
 function toggleMenu() {
     if (sideMenu) {
-        sideMenu.classList.toggle('hidden');
+        sideMenu.classList.toggle('visible');
     }
 }
 
@@ -197,40 +199,25 @@ if (closeMenuBtn) {
     closeMenuBtn.addEventListener('click', toggleMenu);
 }
 
-// Funções para exibir os layouts
-function showFeedLayout() {
-    feedLayout.classList.remove('hidden');
-    createPostLayout.classList.add('hidden');
-    profileLayout.classList.add('hidden');
-    toggleMenu();
-    loadPosts();
-}
-
-function showCreatePostLayout() {
-    feedLayout.classList.add('hidden');
-    createPostLayout.classList.remove('hidden');
-    profileLayout.classList.add('hidden');
-    toggleMenu();
-}
-
-function showProfileLayout() {
-    feedLayout.classList.add('hidden');
-    createPostLayout.classList.add('hidden');
-    profileLayout.classList.remove('hidden');
-    toggleMenu();
-    loadUserPosts();
-}
-
 if (showFeedBtn) {
-    showFeedBtn.addEventListener('click', showFeedLayout);
+    showFeedBtn.addEventListener('click', () => {
+        showLayout(receitasLayout);
+        toggleMenu();
+    });
 }
 
 if (showCreatePostBtn) {
-    showCreatePostBtn.addEventListener('click', showCreatePostLayout);
+    showCreatePostBtn.addEventListener('click', () => {
+        showLayout(createPostLayout);
+        toggleMenu();
+    });
 }
 
 if (showProfileBtn) {
-    showProfileBtn.addEventListener('click', showProfileLayout);
+    showProfileBtn.addEventListener('click', () => {
+        showLayout(profileLayout);
+        toggleMenu();
+    });
 }
 
 if (logoutBtnMenu) {
@@ -243,6 +230,7 @@ if (logoutBtnMenu) {
         });
     });
 }
+
 
 // === Lógica para a criação e exibição de posts ===
 
@@ -308,7 +296,6 @@ function renderPost(post, container) {
     let isLiked = currentUser && likedBy.includes(currentUser.uid);
     let likeButtonClass = isLiked ? 'like-btn liked' : 'like-btn';
 
-    // Conteúdo do post, incluindo a seção de comentários
     postElement.innerHTML = `
         <div class="post-header">
             <img class="post-user-photo" src="${post.authorPhotoURL || 'https://via.placeholder.com/40'}" alt="Foto de perfil de ${post.authorName}">
@@ -335,7 +322,6 @@ function renderPost(post, container) {
     const submitCommentBtn = postElement.querySelector('.submit-comment-btn');
     const commentsList = postElement.querySelector('.comments-list');
 
-    // Lógica para curtir/descurtir o post
     if (likeButton && currentUser) {
         likeButton.addEventListener('click', async () => {
             const postRef = db.collection('posts').doc(post.id);
@@ -353,7 +339,6 @@ function renderPost(post, container) {
         });
     }
 
-    // Lógica para enviar comentários
     if (submitCommentBtn && currentUser) {
         submitCommentBtn.addEventListener('click', async () => {
             const commentText = commentInput.value.trim();
@@ -370,7 +355,6 @@ function renderPost(post, container) {
         });
     }
 
-    // Lógica para carregar e exibir comentários em tempo real
     db.collection("posts").doc(post.id).collection("comments").orderBy("timestamp").onSnapshot(snapshot => {
         commentsList.innerHTML = '';
         snapshot.forEach(doc => {
@@ -385,7 +369,6 @@ function renderPost(post, container) {
         });
     });
 
-    // Lógica de compartilhamento de post
     const shareButton = postElement.querySelector('.share-btn');
     if (shareButton) {
         shareButton.addEventListener('click', () => {
@@ -393,7 +376,7 @@ function renderPost(post, container) {
                 navigator.share({
                     title: 'GOOD-VIBES Post',
                     text: post.text,
-                    url: window.location.href // URL da página atual
+                    url: window.location.href
                 }).then(() => {
                     console.log('Post compartilhado com sucesso!');
                 }).catch((error) => {
@@ -408,7 +391,7 @@ function renderPost(post, container) {
     container.appendChild(postElement);
 }
 
-// === Implementação da funcionalidade de Edição de Perfil ===
+// Implementação da funcionalidade de Edição de Perfil
 if (editProfileBtn) {
     editProfileBtn.addEventListener('click', () => {
         const user = auth.currentUser;
@@ -439,9 +422,7 @@ if (saveProfileBtn) {
             }).then(() => {
                 alert('Perfil atualizado com sucesso!');
                 editProfileModal.classList.add('hidden');
-                // Recarrega os dados do perfil após a atualização
                 loadUserPosts();
-                // Atualiza o nome e a foto nos layouts
                 const userNameElements = document.querySelectorAll('.user-info span, #menu-user-name, #profile-name');
                 const userPhotoElements = document.querySelectorAll('.user-info img, #menu-user-photo, #profile-photo');
                 userNameElements.forEach(el => el.textContent = newName || user.displayName);
@@ -514,11 +495,10 @@ if (publishPostBtn) {
             postLinkInput.value = '';
             linkPreviewContainer.innerHTML = '';
             linkPreviewContainer.classList.add('hidden');
-            // Redireciona para o feed após a publicação
-            showFeedLayout();
+            showLayout(receitasLayout);
         })
         .catch((error) => {
             alert("Erro ao publicar post: " + error.message);
         });
     });
-}
+    }
