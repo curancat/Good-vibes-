@@ -261,6 +261,7 @@ if (postLinkInput) {
             } else if (isYoutube(link)) {
                 const videoId = getYoutubeId(link);
                 if (videoId) {
+                    // CORREÇÃO: URL do iframe do YouTube e sintaxe do template string
                     linkPreviewContainer.innerHTML = `<iframe width="100%" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen></iframe>`;
                 }
             } else {
@@ -501,4 +502,4 @@ if (publishPostBtn) {
             alert("Erro ao publicar post: " + error.message);
         });
     });
-    }
+            }
