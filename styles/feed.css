@@ -1,61 +1,148 @@
-/* Estilos específicos para o layout do feed */
-
-/* Para o container principal do feed */
-#receitas-layout, #create-post-layout, #profile-layout {
-    padding-top: 80px; /* Garante que o conteúdo não fique atrás do header fixo */
-    transition: background-color 0.3s, color 0.3s;
-}
-
-/* Estilos do cabeçalho do aplicativo */
-.app-header {
-    background-color: var(--container-bg-color);
-    padding: 10px 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+/* Estilos para o feed de posts */
+#posts-feed {
     display: flex;
-    justify-content: space-between; /* Alinha os itens para as extremidades */
-    align-items: center;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    box-sizing: border-box;
-    transition: background-color 0.3s, box-shadow 0.3s;
-    z-index: 1000;
+    flex-direction: column;
+    gap: 20px;
+    padding: 20px;
 }
 
-.app-header .layout-title {
-    margin: 0;
-    font-size: 1.5em;
+.post {
+    background-color: var(--post-bg-color);
     color: var(--text-color);
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    padding: 15px;
 }
 
-/* Estilo do botão do menu */
-/* Alterado o seletor de ID para classe para corresponder ao HTML */
-.menu-toggle-btn, #create-post-menu-btn, #profile-menu-btn {
-    font-size: 24px;
-    background: none;
-    border: none;
-    color: var(--text-color);
-    cursor: pointer;
-    margin-right: 15px;
-}
-
-/* Estilos para a foto e nome do usuário */
-.user-info {
+.post-header {
     display: flex;
     align-items: center;
-    gap: 10px;
+    margin-bottom: 10px;
 }
 
-#user-photo {
+.post-user-photo {
     width: 40px;
     height: 40px;
     border-radius: 50%;
     object-fit: cover;
+    margin-right: 10px;
     border: 2px solid var(--primary-color);
 }
 
-#user-name {
+.post-user-name {
     font-weight: bold;
+}
+
+.post-text {
+    margin-bottom: 10px;
+    white-space: pre-line; /* Mantém as quebras de linha */
+}
+
+.post img, .post iframe {
+    width: 100%;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    max-height: 400px; /* Define uma altura máxima */
+    object-fit: contain; /* Garante que a proporção seja mantida */
+}
+
+.post-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.post-actions button {
+    background: none;
+    border: none;
+    color: var(--accent-color);
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 5px;
+    transition: background-color 0.2s;
+}
+
+.post-actions button:hover {
+    background-color: var(--hover-color);
+}
+
+.post-actions .liked {
+    color: var(--primary-color);
+}
+
+.comments-section {
+    margin-top: 10px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 10px;
+}
+
+.comments-list {
+    margin-bottom: 10px;
+}
+
+.comment {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.comment img {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--primary-color);
+}
+
+.comment p {
+    margin: 0;
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+
+.comment p strong {
+    font-weight: bold;
+}
+
+.add-comment-form {
+    display: flex;
+    gap: 10px;
+}
+
+.add-comment-form input {
+    flex-grow: 1;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    background-color: var(--input-bg-color);
     color: var(--text-color);
+}
+
+.add-comment-form button {
+    background-color: var(--accent-color);
+    color: var(--background-color);
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s;
+}
+
+.add-comment-form button:hover {
+    background-color: var(--primary-color);
+}
+
+/* Estilos para quando o feed está vazio */
+#posts-feed h2 {
+    color: var(--text-color-secondary);
+    text-align: center;
+    margin-top: 50px;
+}
+
+#posts-feed p {
+    color: var(--text-color-secondary);
+    text-align: center;
+    margin-top: 10px;
 }
