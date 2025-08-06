@@ -1,13 +1,6 @@
-/* Estilos para a tela de perfil */
+/* Estilos para o layout de perfil */
 .profile-info-container {
     text-align: center;
-}
-
-.profile-header-info {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 2rem;
 }
 
 #profile-photo {
@@ -15,18 +8,42 @@
     height: 100px;
     border-radius: 50%;
     object-fit: cover;
-    margin-bottom: 1rem;
+    margin-bottom: 10px;
     border: 3px solid var(--primary-color);
 }
 
 #profile-name {
-    font-size: 2.5rem;
-    margin-bottom: 1rem;
+    font-size: 1.8em;
+    font-weight: bold;
+    color: var(--text-color);
+    margin-bottom: 20px;
 }
 
 #edit-profile-btn {
-    padding: 0.8rem 1.5rem;
+    padding: 10px 20px;
     background-color: var(--secondary-color);
-    color: white;
+    color: var(--background-color);
+    border: none;
     border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+
+#edit-profile-btn:hover {
+    background-color: var(--primary-color);
+}
+
+/* Estilos para as postagens do usuário dentro do perfil */
+#my-posts-container {
+    margin-top: 40px;
+}
+
+/* Estilos para as fotos de perfil nos cabeçalhos e menu */
+.app-header .user-info img, .post-user-photo {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--primary-color);
 }
