@@ -131,8 +131,8 @@
 }
 
 .add-comment-form .submit-comment-btn {
-    background-color: var(--primary-color); /* Adiciona cor de fundo */
-    color: #FFFFFF; /* CORRIGIDO: Define a cor do texto para branco */
+    background-color: var(--primary-color);
+    color: #FFFFFF;
     border: none;
     padding: 8px 15px;
     border-radius: 5px;
@@ -142,7 +142,7 @@
 }
 
 .add-comment-form .submit-comment-btn:hover {
-    background-color: var(--secondary-color); /* Efeito de hover */
+    background-color: var(--secondary-color);
 }
 
 /* Estilos para quando o feed está vazio */
