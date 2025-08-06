@@ -130,9 +130,9 @@
     color: var(--text-color);
 }
 
-.add-comment-form button {
-    background-color: var(--accent-color);
-    color: var(--background-color);
+.add-comment-form .submit-comment-btn {
+    background-color: var(--primary-color); /* Adiciona cor de fundo */
+    color: #FFFFFF; /* CORRIGIDO: Define a cor do texto para branco */
     border: none;
     padding: 8px 15px;
     border-radius: 5px;
@@ -141,8 +141,8 @@
     transition: background-color 0.2s;
 }
 
-.add-comment-form button:hover {
-    background-color: var(--primary-color);
+.add-comment-form .submit-comment-btn:hover {
+    background-color: var(--secondary-color); /* Efeito de hover */
 }
 
 /* Estilos para quando o feed está vazio */
