@@ -183,14 +183,12 @@ if (registerToggle) {
 
 
 // === Lógica do Menu ===
-// Função única para alternar a visibilidade do menu
 function toggleMenu() {
     if (sideMenu) {
         sideMenu.classList.toggle('visible');
     }
 }
 
-// O botão de "abrir" e "fechar" agora chamam a mesma função de alternância
 if (menuToggleBtns.length > 0) {
     menuToggleBtns.forEach(btn => {
         btn.addEventListener('click', toggleMenu);
@@ -200,25 +198,24 @@ if (closeMenuBtn) {
     closeMenuBtn.addEventListener('click', toggleMenu);
 }
 
-// Os botões de navegação no menu devem chamar showLayout e depois fechar o menu
 if (showFeedBtn) {
     showFeedBtn.addEventListener('click', () => {
         showLayout(receitasLayout);
-        toggleMenu(); // Fecha o menu
+        toggleMenu();
     });
 }
 
 if (showCreatePostBtn) {
     showCreatePostBtn.addEventListener('click', () => {
         showLayout(createPostLayout);
-        toggleMenu(); // Fecha o menu
+        toggleMenu();
     });
 }
 
 if (showProfileBtn) {
     showProfileBtn.addEventListener('click', () => {
         showLayout(profileLayout);
-        toggleMenu(); // Fecha o menu
+        toggleMenu();
     });
 }
 
@@ -237,7 +234,8 @@ if (logoutBtnMenu) {
 // === Lógica para a criação e exibição de posts ===
 
 function isImage(url) {
-    return /\.(jpeg|jpg|gif|png|webp)$/i.test(url);
+    // CORRIGIDO: Aceita URLs com parâmetros de consulta
+    return /\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i.test(url);
 }
 
 function isYoutube(url) {
@@ -263,7 +261,7 @@ if (postLinkInput) {
             } else if (isYoutube(link)) {
                 const videoId = getYoutubeId(link);
                 if (videoId) {
-                    // CORREÇÃO: URL do iframe do YouTube e sintaxe do template string
+                    // CORRIGIDO: URL do iframe do YouTube
                     linkPreviewContainer.innerHTML = `<iframe width="100%" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen></iframe>`;
                 }
             } else {
@@ -288,7 +286,7 @@ function renderPost(post, container) {
         } else if (isYoutube(post.link)) {
             const videoId = getYoutubeId(post.link);
             if (videoId) {
-                // CORREÇÃO: URL do iframe do YouTube e sintaxe do template string
+                // CORRIGIDO: URL do iframe do YouTube
                 mediaHtml = `<iframe width="100%" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen></iframe>`;
             }
         }
@@ -505,4 +503,4 @@ if (publishPostBtn) {
             alert("Erro ao publicar post: " + error.message);
         });
     });
-            }
+}
