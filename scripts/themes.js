@@ -2,18 +2,16 @@ const themeSelector = document.getElementById('theme-selector');
 const darkModeToggle = document.getElementById('dark-mode-toggle');
 const body = document.body;
 
-// Carrega o tema e modo escuro salvos no localStorage
+// Carrega o tema e o modo escuro salvos no localStorage
 document.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('theme');
     const savedDarkMode = localStorage.getItem('darkMode');
 
     if (savedTheme) {
-        if (savedTheme === 'padrao') {
-            body.className = '';
-        } else {
-            body.className = savedTheme;
-        }
-        themeSelector.value = savedTheme.replace('-theme', '');
+        // Aplica o tema salvo (ex: 'theme-red')
+        body.classList.add(savedTheme);
+        // Atualiza o seletor de tema para o valor salvo
+        themeSelector.value = savedTheme.replace('theme-', '');
     }
 
     if (savedDarkMode === 'true') {
@@ -22,28 +20,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Muda o tema de cores
+// Lógica para mudar o tema de cores
 if (themeSelector) {
     themeSelector.addEventListener('change', (event) => {
-        const theme = event.target.value;
-        const themeClass = theme === 'padrao' ? '' : `${theme}-theme`;
+        const selectedTheme = event.target.value;
         
-        // Remove todos os temas de cor e adiciona o novo
-        // Mas mantém a classe dark-mode se ela estiver presente
-        const isDarkMode = body.classList.contains('dark-mode');
-        body.className = '';
-        if (themeClass) {
-            body.classList.add(themeClass);
-        }
-        if (isDarkMode) {
-            body.classList.add('dark-mode');
+        // Remove qualquer classe de tema de cor existente
+        const themeClasses = ['theme-red', 'theme-blue', 'theme-green', 'theme-yellow', 'theme-pink', 'theme-purple', 'theme-black', 'theme-white'];
+        body.classList.remove(...themeClasses);
+
+        let newThemeClass = '';
+        if (selectedTheme !== 'padrao') {
+            newThemeClass = `theme-${selectedTheme}`;
+            body.classList.add(newThemeClass);
         }
 
-        localStorage.setItem('theme', themeClass);
+        localStorage.setItem('theme', newThemeClass);
     });
 }
 
-// Alterna entre o modo claro e escuro
+// Lógica para alternar entre o modo claro e escuro
 if (darkModeToggle) {
     darkModeToggle.addEventListener('click', () => {
         body.classList.toggle('dark-mode');
