@@ -4,7 +4,7 @@
     top: 0;
     left: 0;
     width: 280px;
-    height: 100vh; /* Usa 100% da altura da viewport */
+    height: 100vh;
     background-color: var(--container-bg-color);
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
     transform: translateX(-100%);
@@ -79,5 +79,16 @@
 }
 
 #side-menu .menu-nav button:hover {
+    background-color: var(--hover-color);
+}
+
+/* Estilo para o seletor de tema e o toggle de modo escuro */
+.theme-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding: 10px;
+    border-radius: 5px;
     background-color: var(--hover-color);
 }
