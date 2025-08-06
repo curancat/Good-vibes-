@@ -256,14 +256,19 @@ if (postLinkInput) {
         
         if (link) {
             linkPreviewContainer.classList.remove('hidden');
+            let previewContent = '';
             if (isImage(link)) {
-                linkPreviewContainer.innerHTML = `<img src="${link}" alt="Pré-visualização da imagem">`;
+                // CORRIGIDO: Adiciona o contêiner de mídia para o preview
+                previewContent = `<div class="media-container"><img src="${link}" alt="Pré-visualização da imagem"></div>`;
             } else if (isYoutube(link)) {
                 const videoId = getYoutubeId(link);
                 if (videoId) {
-                    // CORRIGIDO: URL do iframe do YouTube
-                    linkPreviewContainer.innerHTML = `<iframe width="100%" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen></iframe>`;
+                    // CORRIGIDO: Adiciona o contêiner de mídia para o preview
+                    previewContent = `<div class="media-container"><iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen></iframe></div>`;
                 }
+            }
+            if (previewContent) {
+                linkPreviewContainer.innerHTML = previewContent;
             } else {
                 linkPreviewContainer.classList.add('hidden');
             }
@@ -274,8 +279,6 @@ if (postLinkInput) {
 }
 
 
-
-// ... (código anterior da função renderPost) ...
 function renderPost(post, container) {
     const postElement = document.createElement('div');
     postElement.classList.add('post');
@@ -284,12 +287,12 @@ function renderPost(post, container) {
     let mediaHtml = '';
     if (post.link) {
         if (isImage(post.link)) {
-            // CORRIGIDO: Envolve a imagem em um media-container
+            // CORRIGIDO: Envolve a imagem em um media-container para manter a proporção
             mediaHtml = `<div class="media-container"><img src="${post.link}" alt="Imagem do post"></div>`;
         } else if (isYoutube(post.link)) {
             const videoId = getYoutubeId(post.link);
             if (videoId) {
-                // CORRIGIDO: Envolve o iframe em um media-container
+                // CORRIGIDO: Envolve o iframe em um media-container para manter a proporção
                 mediaHtml = `<div class="media-container"><iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen></iframe></div>`;
             }
         }
@@ -322,7 +325,6 @@ function renderPost(post, container) {
         </div>
     `;
 
-    // ... (restante da função renderPost) ...
     const likeButton = postElement.querySelector('.like-btn');
     const commentInput = postElement.querySelector('.comment-input');
     const submitCommentBtn = postElement.querySelector('.submit-comment-btn');
