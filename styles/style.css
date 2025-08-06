@@ -1,4 +1,4 @@
-/* Variáveis de cores (pode ser ajustado) */
+/* Variáveis de cores padrão */
 :root {
     --primary-color: #6a1b9a;
     --secondary-color: #ba68c8;
@@ -117,7 +117,7 @@ main {
     margin: 0;
     font-size: 1.5em;
     font-weight: bold;
-    flex-grow: 1; /* Ocupa o espaço restante */
+    flex-grow: 1; 
     text-align: center;
 }
 
