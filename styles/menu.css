@@ -3,11 +3,11 @@
     position: fixed;
     top: 0;
     left: 0;
-    width: 280px; /* Aumenta a largura */
-    height: 100%;
+    width: 280px;
+    height: 100vh; /* Usa 100% da altura da viewport */
     background-color: var(--container-bg-color);
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
-    transform: translateX(-100%); /* Default hidden state */
+    transform: translateX(-100%);
     transition: transform 0.3s ease-in-out;
     padding: 20px;
     box-sizing: border-box;
@@ -15,7 +15,7 @@
 }
 
 #side-menu.visible {
-    transform: translateX(0); /* State when visible */
+    transform: translateX(0);
 }
 
 /* Estilo para o botão de fechar o menu */
@@ -71,7 +71,7 @@
     background: none;
     border: none;
     color: var(--text-color);
-    padding: 12px; /* Reduz o padding vertical */
+    padding: 12px;
     font-size: 16px;
     border-radius: 5px;
     cursor: pointer;
