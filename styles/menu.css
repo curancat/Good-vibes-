@@ -12,6 +12,10 @@
     padding: 20px;
     box-sizing: border-box;
     z-index: 2000;
+    /* Adicionado para centralizar verticalmente os itens do menu, se necessário */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
 }
 
 #side-menu.visible {
@@ -61,34 +65,52 @@
     margin: 0;
 }
 
+/* CORREÇÃO PRINCIPAL: Aplica flexbox a cada item da lista do menu */
 #side-menu .menu-nav li {
     margin-bottom: 10px;
-}
-
-#side-menu .menu-nav button {
-    width: 100%;
-    text-align: left;
-    background: none;
-    border: none;
-    color: var(--text-color);
     padding: 12px;
-    font-size: 16px;
     border-radius: 5px;
-    cursor: pointer;
     transition: background-color 0.2s;
-}
-
-#side-menu .menu-nav button:hover {
-    background-color: var(--hover-color);
-}
-
-/* Estilo para o seletor de tema e o toggle de modo escuro */
-.theme-controls {
+    cursor: pointer;
+    
+    /* CORREÇÃO: Força o alinhamento horizontal dos itens internos */
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 20px;
-    padding: 10px;
-    border-radius: 5px;
+}
+
+#side-menu .menu-nav li:hover {
     background-color: var(--hover-color);
+}
+
+/* Estilo para os botões do menu */
+#side-menu .menu-nav button {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    font-size: 16px;
+    cursor: pointer;
+}
+
+/* Estilos específicos para o seletor de tema e o toggle de modo escuro */
+#theme-selector {
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    background-color: var(--input-bg-color);
+    color: var(--text-color);
+}
+
+#dark-mode-toggle {
+    padding: 8px 12px;
+    background-color: var(--primary-color);
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+#dark-mode-toggle:hover {
+    background-color: var(--secondary-color);
 }
