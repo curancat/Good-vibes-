@@ -59,6 +59,59 @@ const editProfileNameInput = document.getElementById('edit-profile-name');
 const editProfilePhotoInput = document.getElementById('edit-profile-photo');
 const saveProfileBtn = document.getElementById('save-profile-btn');
 
+// === Lógica de Tema ===
+const themeButtons = document.querySelectorAll('.theme-btn');
+const darkModeToggle = document.getElementById('dark-mode-toggle');
+const body = document.body;
+
+function applyTheme(theme) {
+    const themeClasses = ['theme-red', 'theme-blue', 'theme-green', 'theme-yellow', 'theme-pink', 'theme-purple', 'theme-black', 'theme-white'];
+    body.classList.remove(...themeClasses);
+    if (theme) {
+        body.classList.add(theme);
+    }
+    localStorage.setItem('theme', theme);
+}
+
+function applyDarkMode(isDark) {
+    if (isDark) {
+        body.classList.add('dark-mode');
+        darkModeToggle.textContent = 'Modo Claro';
+    } else {
+        body.classList.remove('dark-mode');
+        darkModeToggle.textContent = 'Modo Escuro';
+    }
+    localStorage.setItem('darkMode', isDark);
+}
+
+// Lógica para mudar o tema de cores usando botões
+if (themeButtons.length > 0) {
+    themeButtons.forEach(button => {
+        button.addEventListener('click', (event) => {
+            const selectedTheme = event.target.dataset.theme;
+            applyTheme(selectedTheme !== 'padrao' ? `theme-${selectedTheme}` : '');
+        });
+    });
+}
+
+// Lógica para alternar entre o modo claro e escuro
+if (darkModeToggle) {
+    darkModeToggle.addEventListener('click', () => {
+        const isDarkMode = !body.classList.contains('dark-mode');
+        applyDarkMode(isDarkMode);
+    });
+}
+
+// Carrega o tema e o modo escuro salvos no localStorage
+document.addEventListener('DOMContentLoaded', () => {
+    const savedTheme = localStorage.getItem('theme');
+    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
+    if (savedTheme) {
+        body.classList.add(savedTheme);
+    }
+    applyDarkMode(savedDarkMode);
+});
+
 
 // === Lógica de Navegação e Layout ===
 
@@ -478,7 +531,7 @@ if (publishPostBtn) {
         const postLink = postLinkInput.value.trim();
 
         if (!user) {
-            alert("Você precisa estar logado para publicar.");
+      alert("Você precisa estar logado para publicar.");
             return;
         }
 
