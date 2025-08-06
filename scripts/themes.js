@@ -1,4 +1,4 @@
-const themeSelector = document.getElementById('theme-selector');
+const themeButtons = document.querySelectorAll('.theme-btn');
 const darkModeToggle = document.getElementById('dark-mode-toggle');
 const body = document.body;
 
@@ -8,34 +8,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedDarkMode = localStorage.getItem('darkMode');
 
     if (savedTheme) {
-        // Aplica o tema salvo (ex: 'theme-red')
         body.classList.add(savedTheme);
-        // Atualiza o seletor de tema para o valor salvo
-        themeSelector.value = savedTheme.replace('theme-', '');
     }
-
     if (savedDarkMode === 'true') {
         body.classList.add('dark-mode');
         darkModeToggle.textContent = 'Modo Claro';
+    } else {
+        darkModeToggle.textContent = 'Modo Escuro';
     }
 });
 
-// Lógica para mudar o tema de cores
-if (themeSelector) {
-    themeSelector.addEventListener('change', (event) => {
-        const selectedTheme = event.target.value;
-        
-        // Remove qualquer classe de tema de cor existente
-        const themeClasses = ['theme-red', 'theme-blue', 'theme-green', 'theme-yellow', 'theme-pink', 'theme-purple', 'theme-black', 'theme-white'];
-        body.classList.remove(...themeClasses);
+// Lógica para mudar o tema de cores usando botões
+if (themeButtons.length > 0) {
+    themeButtons.forEach(button => {
+        button.addEventListener('click', (event) => {
+            const selectedTheme = event.target.dataset.theme;
 
-        let newThemeClass = '';
-        if (selectedTheme !== 'padrao') {
-            newThemeClass = `theme-${selectedTheme}`;
-            body.classList.add(newThemeClass);
-        }
-
-        localStorage.setItem('theme', newThemeClass);
+            // Remove qualquer classe de tema de cor existente
+            const themeClasses = ['theme-red', 'theme-blue', 'theme-green', 'theme-yellow', 'theme-pink', 'theme-purple', 'theme-black', 'theme-white'];
+            body.classList.remove(...themeClasses);
+            
+            // Se o tema não for o padrão, adicione a nova classe
+            if (selectedTheme !== 'padrao') {
+                body.classList.add(`theme-${selectedTheme}`);
+                localStorage.setItem('theme', `theme-${selectedTheme}`);
+            } else {
+                localStorage.setItem('theme', '');
+            }
+        });
     });
 }
 
