@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Good Vibes</title>
+    <style>
+        /* ================= VÁRIAVEIS E TEMA ================= */
+        :root {
+            --primary-color: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg-color: #f8fafc;
+            --text-color: #1e293b;
+            --card-bg: rgba(255, 255, 255, 0.8);
+            --border-color: rgba(226, 232, 240, 0.8);
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --pix-color: #32bcad;
+            --glass-blur: blur(12px);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #0f172a;
+            --text-color: #f1f5f9;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --border-color: rgba(51, 65, 85, 0.8);
+            --shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        /* ================= RESET & GERAL ================= */
+        * {
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at top right, var(--primary-color), transparent 20%),
+                              radial-gradient(circle at bottom left, var(--pix-color), transparent 20%);
+            background-attachment: fixed;
+            color: var(--text-color);
+            transition: var(--transition);
+            line-height: 1.5;
+        }
+
+        /* ================= ANIMAÇÕES ================= */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes scaleIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* ================= HEADER & NAV ================= */
+        .section {
+            display: none; 
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            width: 100%;
+        }
+
+        .section.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 80vh;
+        }
+
+        header .nav-buttons button {
+            background: transparent;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            color: var(--text-color);
+            cursor: pointer;
+            transition: var(--transition);
+            font-weight: 500;
+        }
+
+        header .nav-buttons button:hover {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary-color);
+        }
+
+        header {
+            background: var(--card-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            padding: 0.75rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: var(--shadow);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(45deg, var(--primary-color), var(--pix-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+        }
+
+        /* ================= FEED & CARDS ================= */
+        .post, .create-post, .auth-card, .modal-content {
+            background: var(--card-bg);
+            backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 20px;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow);
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        .create-post textarea {
+            width: 100%;
+            border: 1px solid var(--border-color);
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--text-color);
+            padding: 15px;
+            border-radius: 16px;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .create-post textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .create-post input[type="url"] {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: rgba(0,0,0,0.02);
+            color: var(--text-color);
+        }
+
+        #post-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        #post-btn:hover {
+            filter: brightness(1.1);
+            transform: scale(1.05);
+        }
+
+        .post-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .post-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #ddd, #999);
+            border: 2px solid var(--primary-color);
+            padding: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            font-weight: bold;
+            color: #666;
+        }
+
+        .post-author {
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-left: 12px;
+        }
+
+        .post-content {
+            font-size: 1.05rem;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .post-media img, .post-media video {
+            width: 100%;
+            border-radius: 16px;
+            object-fit: cover;
+            max-height: 450px;
+            transition: var(--transition);
+        }
+
+        .post-media img:hover {
+            transform: scale(1.02);
+        }
+
+        .post-actions {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .post-actions button {
+            background: rgba(0, 0, 0, 0.03);
+            border: none;
+            padding: 10px;
+            border-radius: 10px;
+            color: var(--text-color);
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .post-actions button:hover {
+            background: rgba(0, 0, 0, 0.08);
+        }
+
+        .super-like-btn {
+            color: var(--pix-color) !important;
+            animation: pulse 2s infinite;
+        }
+
+        /* ================= MODAIS & POPUPS ================= */
+        .modal {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+        }
+
+        .modal-content {
+            width: 95%;
+            max-width: 500px;
+            border: 1px solid rgba(255,255,255,0.2);
+            animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* ================= CHAT ================= */
+        .chat-window {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 15px;
+        }
+
+        .chat-messages {
+            border-radius: 15px;
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            background: rgba(0,0,0,0.02);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .chat-tab {
+            flex: 1; padding: 10px; border-radius: 10px; border: none; 
+            background: transparent; color: var(--text-color); cursor: pointer;
+            border: 1px solid var(--border-color); transition: var(--transition);
+        }
+        .chat-tab.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        /* ================= BUSCA DE IMAGENS (GRID) ================= */
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .image-item {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .image-item:hover {
+            transform: scale(1.05);
+            border-color: var(--primary-color);
+        }
+
+        /* ================= FORMULÁRIOS & INPUTS ================= */
+        input[type="text"], input[type="email"], input[type="password"], input[type="url"], select {
+            width: 100%;
+            padding: 12px 16px;
+            margin: 8px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-color);
+            color: var(--text-color);
+            transition: var(--transition);
+        }
+
+        input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+            outline: none;
+        }
+
+        #settings button {
+            margin-top: 10px;
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* ================= RESPONSIVIDADE ================= */
+        @media (max-width: 600px) {
+            header {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .nav-buttons {
+                display: flex;
+                overflow-x: auto;
+                width: 100%;
+                padding-bottom: 5px;
+            }
+            .nav-buttons button {
+                white-space: nowrap;
+                padding: 8px 12px;
+            }
+            .post-actions {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="auth-section">
+        <div class="auth-card" style="max-width: 400px; margin: 100px auto;">
+            <h1 class="logo" style="text-align: center;">Good Vibes</h1>
+            <p style="text-align: center; color: var(--text-color); margin-bottom: 20px;">Espalhe o bem. Conecte-se.</p>
+            
+            <input type="email" id="email" placeholder="Seu melhor E-mail">
+            <input type="password" id="password" placeholder="Sua Senha secreta">
+            
+            <button onclick="login()" style="width: 100%; margin-top: 10px; padding: 12px; border-radius: 12px; background: var(--primary-color); color: white; border: none; font-weight: bold; cursor: pointer;">Entrar</button>
+            
+            <p style="text-align: center; margin: 15px 0;">ou</p>
+            
+            <button onclick="register()" style="width: 100%; padding: 12px; border-radius: 12px; background: #10b981; color: white; border: none; font-weight: bold; cursor: pointer;">Criar Nova Conta</button>
+        </div>
+    </div>
+
+    <div id="app-section" style="display: none;">
+        
+        <header>
+            <div class="logo">Good Vibes</div>
+            <div class="nav-buttons">
+                <button onclick="navigate('foryou')">🏠 For You</button>
+                <button onclick="navigate('chat')">💬 Chat</button>
+                <button onclick="navigate('imageSearch')">🖼️ Buscar Mídia</button>
+                <button onclick="navigate('search')">🔍 Pessoas</button>
+                <button onclick="navigate('profile')">👤 Perfil</button>
+                <button onclick="navigate('settings')">⚙️ Ajustes</button>
+            </div>
+        </header>
+
+        <div class="container">
+            
+            <div id="foryou" class="section active">
+                <div class="create-post">
+                    <textarea id="post-text" rows="3" placeholder="O que está rolando de bom hoje?"></textarea>
+                    
+                    <input type="url" id="post-media-url" placeholder="🔗 Opcional: Cole aqui o link direto de uma imagem ou GIF...">
+                    
+                    <div class="create-post-actions" style="display: flex; justify-content: flex-end; align-items: center; margin-top: 10px;">
+                        <button id="post-btn" onclick="createPost()">Publicar</button>
+                    </div>
+                </div>
+                
+                <div id="feed-container"></div>
+            </div>
+
+            <div id="chat" class="section">
+                <h2>Mensagens</h2>
+                <div class="chat-list" style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <button id="tab-global" class="chat-tab active" onclick="openChat('global')">🌐 Global</button>
+                    <button id="tab-groups" class="chat-tab" onclick="openChat('groups')">👥 Grupos</button>
+                    <button id="tab-private" class="chat-tab" onclick="openChat('private')">👤 Privado</button>
+                </div>
+                <div class="chat-window">
+                    <div class="chat-messages" id="chat-messages" style="height: 400px; overflow-y: auto;">
+                        <p style="text-align: center; color: gray; margin-top: 20px;">Carregando chat...</p>
+                    </div>
+                    <div style="display:flex; margin-top:15px; gap: 10px;">
+                        <input type="text" id="chat-input" placeholder="Digite sua mensagem ou cole um link de imagem..." style="flex:1; margin:0;">
+                        <button onclick="sendChatMessage()" style="padding: 12px 20px; border-radius: 12px; background: var(--primary-color); color: white; border: none; cursor: pointer; font-weight: bold;">Enviar</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="imageSearch" class="section">
+                <h2>Buscar Imagens & GIFs</h2>
+                <p style="color: gray; font-size: 0.9rem;">Pesquise aqui, clique na imagem desejada para copiar o link e cole no Chat, no Post ou no seu Perfil!</p>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="media-search-input" placeholder="Buscar memes, reações, paisagens..." style="flex: 1; margin:0;">
+                    <button onclick="fetchMediaFromWeb()" style="padding: 12px 20px; border-radius: 12px; background: var(--primary-color); color: white; border: none; cursor: pointer; font-weight: bold;">Pesquisar</button>
+                </div>
+                <div id="media-results" class="image-grid">
+                    </div>
+            </div>
+
+            <div id="search" class="section">
+                <h2>Explorar Comunidade</h2>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="search-input" placeholder="Buscar usuários pelo nome..." style="flex: 1; margin:0;">
+                    <button onclick="performSearch()" style="padding: 12px 20px; border-radius: 12px; background: var(--primary-color); color: white; border: none; cursor: pointer; font-weight: bold;">Buscar</button>
+                </div>
+                <div id="search-results" style="margin-top:20px;">
+                    <p style="color: gray;">Digite algo acima para encontrar pessoas.</p>
+                </div>
+            </div>
+
+            <div id="profile" class="section">
+                <h2>Meu Perfil</h2>
+                <div style="display:flex; align-items:center; background: var(--card-bg); padding: 20px; border-radius: 16px; border: 1px solid var(--border-color); margin-bottom: 20px;">
+                    <div id="my-avatar-display" style="width:90px; height:90px; border-radius:50%; background: linear-gradient(135deg, var(--primary-color), var(--pix-color)); display: flex; align-items: center; justify-content: center; color: white; font-size: 2.5rem; font-weight: bold; overflow: hidden; border: 3px solid var(--primary-color);">GV</div>
+                    <div style="margin-left: 20px;">
+                        <h3 id="my-name-display" style="margin: 0; font-size: 1.8rem;">Usuário</h3>
+                        <p style="margin: 5px 0 0 0; color: gray;">Pronto para espalhar boas vibrações.</p>
+                        <button onclick="navigate('settings')" style="margin-top: 10px; padding: 8px 15px; border-radius: 8px; border: none; background: rgba(0,0,0,0.05); color: var(--text-color); cursor: pointer; font-weight: 600;">Editar Perfil</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="settings" class="section">
+                <h2>Configurações</h2>
+                
+                <div style="background: var(--card-bg); padding: 20px; border-radius: 16px; border: 1px solid var(--border-color); margin-bottom: 20px;">
+                    <h3>Aparência</h3>
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="dark-mode-toggle" onchange="toggleTheme(this)" style="width: 20px; height: 20px;"> 
+                        <strong>Ativar Modo Escuro</strong>
+                    </label>
+                    <br>
+                    <label style="display: block; margin-top: 10px;"><strong>Cor Principal do Site:</strong> 
+                        <input type="color" id="site-color" value="#6366f1" onchange="changeColor(this)" style="width: 100%; height: 40px; border: none; border-radius: 8px; margin-top: 5px; cursor: pointer;">
+                    </label>
+                </div>
+
+                <div style="background: var(--card-bg); padding: 20px; border-radius: 16px; border: 1px solid var(--border-color); margin-bottom: 20px;">
+                    <h3>Dados da Conta</h3>
+                    
+                    <label style="font-weight: bold; font-size: 0.9rem; display: block; margin-top: 10px;">Nome de Exibição:</label>
+                    <input type="text" id="set-name" placeholder="Como quer ser chamado?">
+
+                    <label style="font-weight: bold; font-size: 0.9rem; display: block; margin-top: 10px;">Link da Foto de Perfil (URL):</label>
+                    <input type="url" id="set-avatar-url" placeholder="Cole o link direto da imagem aqui...">
+                    <small style="color: gray;">Dica: Use a aba 'Buscar Mídia' para encontrar e copiar o link de uma imagem legal!</small>
+                    
+                    <label style="font-weight: bold; font-size: 0.9rem; display: block; margin-top: 15px;">Chave PIX:</label>
+                    <input type="text" id="set-pix" placeholder="Sua Chave PIX (Para receber Super Likes)">
+                    
+                    <button id="save-profile-btn" onclick="updateProfileData()" style="width: 100%; margin-top: 15px;">💾 Salvar Alterações</button>
+                </div>
+
+                <div style="background: rgba(239, 68, 68, 0.1); padding: 20px; border-radius: 16px; border: 1px solid rgba(239, 68, 68, 0.3);">
+                    <h3 style="color: #ef4444; margin-top: 0;">Zona de Perigo</h3>
+                    <button onclick="logout()" style="width: 100%; background: transparent; border: 2px solid var(--text-color); color: var(--text-color); margin-bottom: 10px;">Sair da Conta (Logout)</button>
+                    <button onclick="deleteAccount()" style="width: 100%; background:#ef4444; color:white; border: none;">🗑️ Deletar Conta Definitivamente</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="comments-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; align-items: center; justify-content: center; z-index: 2000;">
+        <div class="modal-content" style="position: relative; padding: 25px;">
+            <span class="close-modal" onclick="closeModal('comments-modal')" style="position: absolute; top: 15px; right: 20px; font-size: 1.5rem; cursor: pointer; font-weight: bold;">&times;</span>
+            <h2 style="margin-top: 0;">Debate (Comentários)</h2>
+            
+            <div id="comments-list" style="max-height: 350px; overflow-y: auto; margin-bottom: 15px; padding-right: 5px; display: flex; flex-direction: column; gap: 8px;"></div>
+            
+            <div style="display: flex; gap: 10px; flex-direction: column;">
+                <textarea id="new-comment" rows="2" placeholder="Deixe sua opinião e mantenha as good vibes..." style="width:100%; border-radius: 12px; padding: 10px; border: 1px solid var(--border-color);"></textarea>
+                <button onclick="submitComment()" style="padding: 10px; border-radius: 12px; background: var(--primary-color); color: white; border: none; cursor: pointer; font-weight: bold;">Enviar Comentário</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="pix-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; align-items: center; justify-content: center; z-index: 2000;">
+        <div class="modal-content" style="position: relative; text-align: center; padding: 30px;">
+            <span class="close-modal" onclick="closeModal('pix-modal')" style="position: absolute; top: 15px; right: 20px; font-size: 1.5rem; cursor: pointer; font-weight: bold;">&times;</span>
+            
+            <h2 style="margin-top: 0;">Super Like 💸</h2>
+            <p>Mande boas energias reais para este criador! Toda ajuda incentiva novos conteúdos.</p>
+            
+            <h3 style="color: var(--pix-color); margin-bottom: 5px;">Chave PIX:</h3>
+            <div id="pix-key-display" style="font-size: 18px; font-weight: bold; background: rgba(0,0,0,0.05); border: 2px dashed var(--pix-color); padding: 15px; border-radius: 12px; word-break: break-all;">
+                Carregando...
+            </div>
+            
+            <button onclick="navigator.clipboard.writeText(document.getElementById('pix-key-display').innerText); alert('Chave copiada para a área de transferência!');" style="margin-top: 15px; background: var(--pix-color); color: white; border: none; padding: 12px 20px; border-radius: 12px; font-weight: bold; cursor: pointer;">
+                📋 Copiar Chave PIX
+            </button>
+        </div>
+    </div>
+
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        // IMPORTAÇÃO DE STORAGE REMOVIDA PARA USAR APENAS LINKS DA WEB!
+
+        // Configuração do Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXrIshTVFOD30XPKku_Trk6VKbXv_7Gkg",
+            authDomain: "good-vibes-8a13d.firebaseapp.com",
+            databaseURL: "https://good-vibes-8a13d-default-rtdb.firebaseio.com",
+            projectId: "good-vibes-8a13d",
+            messagingSenderId: "310185051492",
+            appId: "1:310185051492:web:c47435ce7842af9386e671",
+            measurementId: "G-215VPTXGN8"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let currentUser = null;
+        let currentUserProfile = {};
+        let currentPostIdForComment = null;
+        let currentChatRoom = 'global';
+        let chatUnsubscribe = null;
+
+        // ================= FUNÇÕES AUXILIARES =================
+        function extractLinksAndGeneratePreview(text) {
+            if (!text) return { formattedText: "", previews: "" };
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            let formattedText = text;
+            let previews = '';
+            
+            const links = text.match(urlRegex);
+            if(links) {
+                links.forEach(link => {
+                    formattedText = formattedText.replace(link, `<a href="${link}" target="_blank" style="color: var(--primary-color); word-break: break-all;">[Link]</a>`);
+                    // Expressão mais permissiva para aceitar links do Giphy, Imgur e outros sem extensão aparente
+                    if(link.match(/\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i) != null || link.includes("giphy.com/media") || link.includes("images.unsplash.com")) {
+                        previews += `<img src="${link}" alt="Preview" style="max-width:100%; max-height: 250px; margin-top:10px; border-radius:8px; object-fit: contain; background: rgba(0,0,0,0.05); display:block;">`;
+                    } else if(link.match(/\.(mp4|webm|ogg)(\?.*)?$/i) != null) {
+                        previews += `<video controls src="${link}" style="max-width:100%; margin-top:10px; border-radius:8px; display:block;"></video>`;
+                    }
+                });
+            }
+            return { formattedText, previews };
+        }
+
+        // ================= AUTENTICAÇÃO =================
+        window.login = async () => {
+            const e = document.getElementById('email').value;
+            const p = document.getElementById('password').value;
+            if (!e || !p) return alert("Por favor, preencha e-mail e senha.");
+            try { await signInWithEmailAndPassword(auth, e, p); } 
+            catch (err) { alert("Erro ao logar: " + err.message); }
+        };
+
+        window.register = async () => {
+            const e = document.getElementById('email').value;
+            const p = document.getElementById('password').value;
+            if (!e || !p) return alert("Por favor, preencha e-mail e senha.");
+
+            try { 
+                const userCredential = await createUserWithEmailAndPassword(auth, e, p);
+                await setDoc(doc(db, "users", userCredential.user.uid), {
+                    name: "Usuário Novo", 
+                    pixKey: "", 
+                    avatarUrl: "", 
+                    theme: "light",
+                    email: e
+                });
+                alert("Conta criada com sucesso!");
+            } catch (err) { alert("Erro ao cadastrar: " + err.message); }
+        };
+
+        window.logout = () => signOut(auth);
+
+        window.deleteAccount = async () => {
+            if(confirm("Tem certeza que deseja deletar sua conta? Isso não pode ser desfeito.")){
+                try { 
+                    await deleteUser(auth.currentUser); 
+                    alert("Conta deletada com sucesso.");
+                } catch(e) { alert("Erro: Faça login novamente para realizar esta ação."); }
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('auth-section').style.display = 'none';
+                document.getElementById('app-section').style.display = 'block';
+                loadUserProfile();
+                loadFeed();
+                window.openChat('global'); 
+            } else {
+                currentUser = null;
+                document.getElementById('auth-section').style.display = 'flex';
+                document.getElementById('app-section').style.display = 'none';
+            }
+        });
+
+        // ================= NAVEGAÇÃO =================
+        window.navigate = (sectionId) => {
+            document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+            const targetSection = document.getElementById(sectionId);
+            if(targetSection) targetSection.classList.add('active');
+        };
+
+        // ================= PERFIL E CONFIGURAÇÕES =================
+        async function loadUserProfile() {
+            if(!currentUser) return;
+            try {
+                const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+                if(userDoc.exists()) {
+                    currentUserProfile = userDoc.data();
+                    
+                    document.getElementById('set-name').value = currentUserProfile.name || "";
+                    document.getElementById('set-pix').value = currentUserProfile.pixKey || "";
+                    document.getElementById('set-avatar-url').value = currentUserProfile.avatarUrl || "";
+                    
+                    document.getElementById('my-name-display').innerText = currentUserProfile.name || "Sem Nome";
+                    const avatarDisplay = document.getElementById('my-avatar-display');
+                    if(currentUserProfile.avatarUrl) {
+                        avatarDisplay.innerHTML = `<img src="${currentUserProfile.avatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+                    } else {
+                        avatarDisplay.innerHTML = (currentUserProfile.name ? currentUserProfile.name.substring(0,2).toUpperCase() : "GV");
+                    }
+
+                    if(currentUserProfile.theme === 'dark') {
+                        document.documentElement.setAttribute('data-theme', 'dark');
+                        document.getElementById('dark-mode-toggle').checked = true;
+                    } else {
+                        document.documentElement.setAttribute('data-theme', 'light');
+                        document.getElementById('dark-mode-toggle').checked = false;
+                    }
+                }
+            } catch(e) { console.error("Erro ao carregar perfil:", e); }
+        }
+
+        window.updateProfileData = async () => {
+            const btn = document.getElementById('save-profile-btn');
+            btn.innerText = "Salvando...";
+            btn.disabled = true;
+
+            const name = document.getElementById('set-name').value;
+            const pix = document.getElementById('set-pix').value;
+            const avatarUrl = document.getElementById('set-avatar-url').value;
+
+            try {
+                await setDoc(doc(db, "users", currentUser.uid), {
+                    name: name,
+                    pixKey: pix,
+                    avatarUrl: avatarUrl
+                }, { merge: true });
+                
+                alert("Perfil atualizado com sucesso!");
+                await loadUserProfile(); 
+            } catch(e) {
+                alert("Erro ao atualizar perfil: " + e.message);
+            } finally {
+                btn.innerText = "💾 Salvar Alterações";
+                btn.disabled = false;
+            }
+        };
+
+        window.toggleTheme = (checkbox) => {
+            const theme = checkbox.checked ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+            if(currentUser) {
+                setDoc(doc(db, "users", currentUser.uid), { theme: theme }, { merge: true });
+            }
+        };
+
+        window.changeColor = (input) => { 
+            document.documentElement.style.setProperty('--primary-color', input.value); 
+        };
+
+        // ================= BUSCA DE IMAGENS NA WEB (API PÚBLICA GIPHY) =================
+        window.fetchMediaFromWeb = async () => {
+            const term = document.getElementById('media-search-input').value;
+            const resultsDiv = document.getElementById('media-results');
+            
+            if(!term) {
+                resultsDiv.innerHTML = "<p>Digite algo para buscar.</p>";
+                return;
+            }
+
+            resultsDiv.innerHTML = "<p>Buscando na internet...</p>";
+
+            try {
+                // Usando uma API pública do Giphy para o exemplo funcionar direto sem chave complexa
+                const response = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=dc6zaTOxFJmzC&q=${encodeURIComponent(term)}&limit=15`);
+                const json = await response.json();
+
+                if(json.data && json.data.length > 0) {
+                    resultsDiv.innerHTML = "";
+                    json.data.forEach(gif => {
+                        const imgUrl = gif.images.fixed_height.url;
+                        const imgElem = document.createElement('img');
+                        imgElem.src = imgUrl;
+                        imgElem.className = "image-item";
+                        imgElem.title = "Clique para copiar o link!";
+                        imgElem.onclick = () => {
+                            navigator.clipboard.writeText(imgUrl);
+                            alert("✅ Link da imagem copiado com sucesso!\nAgora cole no Post, no Chat ou no seu Perfil.");
+                        };
+                        resultsDiv.appendChild(imgElem);
+                    });
+                } else {
+                    resultsDiv.innerHTML = "<p>Nenhum GIF/Imagem encontrado.</p>";
+                }
+            } catch (err) {
+                resultsDiv.innerHTML = "<p>Erro ao buscar imagens. Tente copiar o link diretamente do Google Imagens.</p>";
+            }
+        };
+
+        // ================= POSTAGENS E FEED =================
+        window.createPost = async () => {
+            const text = document.getElementById('post-text').value;
+            const mediaUrl = document.getElementById('post-media-url').value;
+
+            if (!text.trim() && !mediaUrl.trim()) return alert("Escreva algo ou adicione o link de uma imagem!");
+
+            const postBtn = document.getElementById('post-btn');
+            postBtn.innerText = "Postando...";
+            postBtn.disabled = true;
+
+            try {
+                await addDoc(collection(db, "posts"), {
+                    userId: currentUser.uid,
+                    authorName: currentUserProfile.name || "Usuário",
+                    authorAvatar: currentUserProfile.avatarUrl || "",
+                    text: text,
+                    mediaUrl: mediaUrl,
+                    timestamp: serverTimestamp(),
+                    likes: 0
+                });
+                document.getElementById('post-text').value = "";
+                document.getElementById('post-media-url').value = "";
+            } catch(e) { alert("Erro ao postar: " + e.message); } 
+            finally {
+                postBtn.innerText = "Publicar";
+                postBtn.disabled = false;
+            }
+        };
+
+        function loadFeed() {
+            const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
+            onSnapshot(q, (snapshot) => {
+                const feed = document.getElementById('feed-container');
+                feed.innerHTML = '';
+                
+                if(snapshot.empty) {
+                    feed.innerHTML = "<p style='text-align:center; margin-top:20px;'>Nenhum post encontrado. Seja o primeiro a postar!</p>";
+                    return;
+                }
+
+                snapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    const postId = docSnap.id;
+                    const parsedContent = extractLinksAndGeneratePreview(data.text || "");
+                    
+                    let mediaHtml = "";
+                    if(data.mediaUrl) {
+                        if(data.mediaUrl.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i) || data.mediaUrl.includes('video')) {
+                            mediaHtml = `<video controls src="${data.mediaUrl}" style="width:100%; border-radius:16px; margin-top:10px;"></video>`;
+                        } else {
+                            mediaHtml = `<img src="${data.mediaUrl}" style="width:100%; border-radius:16px; margin-top:10px; object-fit:cover;">`;
+                        }
+                    }
+
+                    let avatarHtml = data.authorAvatar 
+                        ? `<img src="${data.authorAvatar}" style="width:100%; height:100%; object-fit:cover;">`
+                        : (data.authorName ? data.authorName.substring(0,2).toUpperCase() : "GV");
+
+                    feed.innerHTML += `
+                        <div class="post">
+                            <div class="post-header">
+                                <div class="post-avatar">${avatarHtml}</div>
+                                <div class="post-author">${data.authorName}</div>
+                            </div>
+                            <div class="post-content">${parsedContent.formattedText}</div>
+                            <div class="post-media">${parsedContent.previews} ${mediaHtml}</div>
+                            <div class="post-actions">
+                                <button onclick="likePost('${postId}')">👍 Curtir (${data.likes || 0})</button>
+                                <button class="super-like-btn" onclick="openPixModal('${data.userId}')">💸 Super Like</button>
+                                <button onclick="openComments('${postId}')">💬 Comentar</button>
+                                <button onclick="sharePost('${postId}')">↗️ Compartilhar</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        window.likePost = async (postId) => {
+            if(!currentUser) return;
+            try { await updateDoc(doc(db, "posts", postId), { likes: increment(1) }); } 
+            catch(e) { console.error("Erro ao curtir:", e); }
+        };
+
+        window.sharePost = (postId) => {
+            const url = window.location.origin + window.location.pathname + "?post=" + postId;
+            if (navigator.share) {
+                navigator.share({ title: 'Good Vibes Post', url: url }).catch(e => console.error(e));
+            } else {
+                navigator.clipboard.writeText(url);
+                alert("Link copiado para a área de transferência!");
+            }
+        };
+
+        // ================= INTERAÇÕES E MODAIS =================
+        window.openPixModal = async (authorId) => {
+            document.getElementById('pix-modal').style.display = 'flex';
+            document.getElementById('pix-key-display').innerText = "Buscando chave PIX...";
+            try {
+                const userDoc = await getDoc(doc(db, "users", authorId));
+                if(userDoc.exists() && userDoc.data().pixKey) {
+                    document.getElementById('pix-key-display').innerText = userDoc.data().pixKey;
+                } else {
+                    document.getElementById('pix-key-display').innerText = "Usuário não cadastrou chave PIX.";
+                }
+            } catch(e) { document.getElementById('pix-key-display').innerText = "Erro ao carregar PIX."; }
+        };
+
+        window.openComments = (postId) => {
+            currentPostIdForComment = postId;
+            document.getElementById('comments-modal').style.display = 'flex';
+            
+            const commentsList = document.getElementById('comments-list');
+            commentsList.innerHTML = "<p>Carregando comentários...</p>";
+            
+            const q = query(collection(db, `posts/${postId}/comments`), orderBy("timestamp", "asc"));
+            onSnapshot(q, (snapshot) => {
+                commentsList.innerHTML = '';
+                if(snapshot.empty) {
+                    commentsList.innerHTML = "<p>Nenhum comentário ainda. Inicie o debate!</p>";
+                    return;
+                }
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    commentsList.innerHTML += `
+                        <div style="background: rgba(0,0,0,0.03); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color);">
+                            <strong style="color: var(--primary-color);">${data.authorName}:</strong> 
+                            <span style="margin-left: 5px;">${data.text}</span>
+                        </div>
+                    `;
+                });
+                commentsList.scrollTop = commentsList.scrollHeight;
+            });
+        };
+
+        window.submitComment = async () => {
+            const text = document.getElementById('new-comment').value;
+            if(!text.trim() || !currentPostIdForComment) return;
+
+            try {
+                await addDoc(collection(db, `posts/${currentPostIdForComment}/comments`), {
+                    userId: currentUser.uid,
+                    authorName: currentUserProfile.name || "Usuário",
+                    text: text,
+                    timestamp: serverTimestamp()
+                });
+                document.getElementById('new-comment').value = '';
+            } catch(e) { alert("Erro ao comentar: " + e.message); }
+        };
+
+        window.closeModal = (modalId) => { document.getElementById(modalId).style.display = 'none'; };
+        window.onclick = function(event) {
+            if (event.target == document.getElementById('comments-modal')) closeModal('comments-modal');
+            if (event.target == document.getElementById('pix-modal')) closeModal('pix-modal');
+        };
+
+        // ================= CHAT REAL-TIME =================
+        window.openChat = (type) => {
+            currentChatRoom = type;
+            
+            document.querySelectorAll('.chat-tab').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('tab-' + type).classList.add('active');
+
+            const chatBox = document.getElementById('chat-messages');
+            chatBox.innerHTML = `<p style="text-align: center; color: gray; margin-top: 20px;">Conectando ao chat ${type}...</p>`;
+
+            if (chatUnsubscribe) chatUnsubscribe();
+
+            const q = query(collection(db, `chats_${type}`), orderBy("timestamp", "asc"));
+            chatUnsubscribe = onSnapshot(q, (snapshot) => {
+                chatBox.innerHTML = '';
+                if (snapshot.empty) {
+                    chatBox.innerHTML = `<p style="text-align: center; color: gray; margin-top: 20px;">Nenhuma mensagem ainda na sala ${type}.</p>`;
+                    return;
+                }
+
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const parsed = extractLinksAndGeneratePreview(data.text || "");
+                    const isMe = data.userId === currentUser.uid;
+
+                    const alignClass = isMe 
+                        ? `margin-left: auto; background: var(--primary-color); color: white;` 
+                        : `margin-right: auto; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-color);`;
+
+                    chatBox.innerHTML += `
+                        <div style="padding:10px 15px; border-radius:16px; width: fit-content; max-width: 85%; ${alignClass}">
+                            <strong style="font-size: 0.8rem; opacity: 0.8;">${data.authorName}</strong><br>
+                            ${parsed.formattedText}
+                            ${parsed.previews}
+                        </div>`;
+                });
+                chatBox.scrollTop = chatBox.scrollHeight;
+            });
+        };
+
+        window.sendChatMessage = async () => {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if(!text) return;
+            
+            input.value = ''; 
+            
+            try {
+                await addDoc(collection(db, `chats_${currentChatRoom}`), {
+                    userId: currentUser.uid,
+                    authorName: currentUserProfile.name || "Usuário",
+                    text: text,
+                    timestamp: serverTimestamp()
+                });
+            } catch(e) { console.error("Erro ao enviar mensagem", e); }
+        };
+
+        // ================= PESQUISA DE PESSOAS =================
+        window.performSearch = async () => {
+            const term = document.getElementById('search-input').value.toLowerCase();
+            const resultsDiv = document.getElementById('search-results');
+            
+            if(!term) {
+                resultsDiv.innerHTML = "<p style='color: gray;'>Digite algo para buscar.</p>";
+                return;
+            }
+            
+            resultsDiv.innerHTML = "<p>Buscando usuários...</p>";
+            
+            try {
+                const usersSnap = await getDocs(collection(db, "users"));
+                let html = "<h3>Usuários encontrados:</h3>";
+                let found = false;
+                
+                usersSnap.forEach(d => {
+                    const data = d.data();
+                    if(data.name && data.name.toLowerCase().includes(term)) {
+                        let avatarHtml = data.avatarUrl 
+                            ? `<img src="${data.avatarUrl}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">`
+                            : `<div style="width:40px; height:40px; border-radius:50%; background:var(--primary-color); color:white; display:flex; align-items:center; justify-content:center; font-weight:bold;">${data.name.substring(0,2).toUpperCase()}</div>`;
+
+                        html += `
+                        <div style="display: flex; align-items: center; gap: 15px; padding: 15px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; margin-top: 10px;">
+                            ${avatarHtml}
+                            <div>
+                                <strong style="font-size: 1.1rem;">${data.name}</strong>
+                            </div>
+                        </div>`;
+                        found = true;
+                    }
+                });
+                
+                resultsDiv.innerHTML = found ? html : "<p>Nenhum usuário encontrado com esse nome.</p>";
+            } catch(e) {
+                resultsDiv.innerHTML = "<p>Erro ao buscar: " + e.message + "</p>";
+            }
+        };
+
+    </script>
+</body>
+</html>
