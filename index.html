@@ -736,7 +736,7 @@
 
             try {
                 // Usando uma API pública do Giphy para o exemplo funcionar direto sem chave complexa
-                const response = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=dc6zaTOxFJmzC&q=${encodeURIComponent(term)}&limit=15`);
+                const response = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=5Eir9BLVUppJQLNQTNH9K2KHzcblnVJl=${encodeURIComponent(term)}&limit=15`);
                 const json = await response.json();
 
                 if(json.data && json.data.length > 0) {
