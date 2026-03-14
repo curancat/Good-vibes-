@@ -376,16 +376,15 @@
     <div id="auth-section">
         <div class="auth-card" style="max-width: 400px; margin: 100px auto;">
             <h1 class="logo" style="text-align: center;">Good Vibes</h1>
-            <p style="text-align: center; color: var(--text-color); margin-bottom: 20px;">Espalhe o bem. Conecte-se.</p>
+            <p style="text-align: center; color: var(--text-color); margin-bottom: 20px;">eu te conheço?</p>
             
-            <input type="email" id="email" placeholder="Seu melhor E-mail">
-            <input type="password" id="password" placeholder="Sua Senha secreta">
+            <input type="email" id="email" placeholder="Seu E-mail">
+            <input type="password" id="password" placeholder="Sua Senha">
             
             <button onclick="login()" style="width: 100%; margin-top: 10px; padding: 12px; border-radius: 12px; background: var(--primary-color); color: white; border: none; font-weight: bold; cursor: pointer;">Entrar</button>
             
             <p style="text-align: center; margin: 15px 0;">ou</p>
-            
-            <button onclick="register()" style="width: 100%; padding: 12px; border-radius: 12px; background: #10b981; color: white; border: none; font-weight: bold; cursor: pointer;">Criar Nova Conta</button>
+        
         </div>
     </div>
 
@@ -601,24 +600,6 @@
             if (!e || !p) return alert("Por favor, preencha e-mail e senha.");
             try { await signInWithEmailAndPassword(auth, e, p); } 
             catch (err) { alert("Erro ao logar: " + err.message); }
-        };
-
-        window.register = async () => {
-            const e = document.getElementById('email').value;
-            const p = document.getElementById('password').value;
-            if (!e || !p) return alert("Por favor, preencha e-mail e senha.");
-
-            try { 
-                const userCredential = await createUserWithEmailAndPassword(auth, e, p);
-                await setDoc(doc(db, "users", userCredential.user.uid), {
-                    name: "Usuário Novo", 
-                    pixKey: "", 
-                    avatarUrl: "", 
-                    theme: "light",
-                    email: e
-                });
-                alert("Conta criada com sucesso!");
-            } catch (err) { alert("Erro ao cadastrar: " + err.message); }
         };
 
         window.logout = () => signOut(auth);
