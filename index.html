@@ -723,11 +723,12 @@
         };
 
         // ================= BUSCA DE IMAGENS NA WEB (API PÚBLICA GIPHY) =================
+        
         window.fetchMediaFromWeb = async () => {
     const term = document.getElementById('media-search-input').value;
     const resultsDiv = document.getElementById('media-results');
     
-    // Substituímos a chave pública pela sua nova chave
+    // Sua API Key atualizada
     const myApiKey = "5Eir9BLVUppJQLNQTNH9K2KHzcblnVJl";
 
     if(!term) {
@@ -738,14 +739,13 @@
     resultsDiv.innerHTML = "<p>Buscando na internet...</p>";
 
     try {
-        // Agora usando sua chave privada e garantindo HTTPS
+        // Adicionamos parâmetros de segurança e idioma para garantir o retorno
         const response = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${myApiKey}&q=${encodeURIComponent(term)}&limit=15&rating=g&lang=pt`);
         const json = await response.json();
 
         if(json.data && json.data.length > 0) {
             resultsDiv.innerHTML = "";
             json.data.forEach(gif => {
-                // Usamos a versão 'fixed_height' para carregar rápido na grade
                 const imgUrl = gif.images.fixed_height.url;
                 const imgElem = document.createElement('img');
                 imgElem.src = imgUrl;
@@ -753,16 +753,16 @@
                 imgElem.title = "Clique para copiar o link!";
                 imgElem.onclick = () => {
                     navigator.clipboard.writeText(imgUrl);
-                    alert("✅ Link da imagem copiado com sucesso!\nAgora cole no Post, no Chat ou no seu Perfil.");
+                    alert("✅ Link da imagem copiado!");
                 };
                 resultsDiv.appendChild(imgElem);
             });
         } else {
-            resultsDiv.innerHTML = "<p>Nenhum GIF/Imagem encontrado para este termo.</p>";
+            resultsDiv.innerHTML = "<p>Nenhum GIF encontrado. Tente outro termo!</p>";
         }
     } catch (err) {
         console.error("Erro na busca:", err);
-        resultsDiv.innerHTML = "<p>Erro ao conectar com o serviço de busca. Verifique sua conexão.</p>";
+        resultsDiv.innerHTML = "<p>Erro na conexão. Verifique o Console (F12).</p>";
     }
 };
         
