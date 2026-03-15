@@ -708,7 +708,8 @@
                 const userDoc = await getDoc(doc(db, "users", currentUser.uid));
                 if(userDoc.exists()) {
                     currentUserProfile = userDoc.data();
-                    
+                    const preference = currentUserProfile.blurNsfw ?? true;
+                    document.getElementById('setting-blur-nsfw').checked = preference;
                     document.getElementById('set-name').value = currentUserProfile.name || "";
                     document.getElementById('set-pix').value = currentUserProfile.pixKey || "";
                     document.getElementById('set-avatar-url').value = currentUserProfile.avatarUrl || "";
@@ -729,6 +730,7 @@
                         document.getElementById('dark-mode-toggle').checked = false;
                     }
                     if(currentUserProfile.blurNsfw === false) {
+                        
                         document.getElementById('setting-blur-nsfw').checked = false;
                     } else {
                         document.getElementById('setting-blur-nsfw').checked = true; // Padrão é embaçado
