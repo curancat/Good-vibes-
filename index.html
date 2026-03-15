@@ -720,7 +720,7 @@
 
     try {
         // Adicionamos parâmetros de segurança e idioma para garantir o retorno
-        const response = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${myApiKey}&q=${encodeURIComponent(term)}&limit=15&rating=g&lang=pt`);
+        const response = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${myApiKey}&q=${encodeURIComponent(term)}&limit=30&rating=g&lang=pt`);
         const json = await response.json();
 
         if(json.data && json.data.length > 0) {
