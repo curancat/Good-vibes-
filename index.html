@@ -498,7 +498,13 @@
                     
                     <button id="save-profile-btn" onclick="updateProfileData()" style="width: 100%; margin-top: 15px;">💾 Salvar Alterações</button>
                 </div>
-
+                <div style="background: var(--card-bg); padding: 20px; border-radius: 16px; border: 1px solid var(--border-color); margin-bottom: 20px;">
+                <h3>Comunidade</h3>
+                <p style="font-size: 0.9rem; color: gray;">Antes de postar, confira o que é permitido por aqui para manter as boas vibrações.</p>
+                 <button onclick="document.getElementById('rules-modal').style.display = 'flex'" style="width: 100%; background: var(--primary-color); color: white; border: none; padding: 12px; border-radius: 12px; font-weight: bold; cursor: pointer;">
+                        📜 Ver Regras e Diretrizes
+                        </button>
+                    </div>
                 <div style="background: rgba(239, 68, 68, 0.1); padding: 20px; border-radius: 16px; border: 1px solid rgba(239, 68, 68, 0.3);">
                     <h3 style="color: #ef4444; margin-top: 0;">Zona de Perigo</h3>
                     <button onclick="logout()" style="width: 100%; background: transparent; border: 2px solid var(--text-color); color: var(--text-color); margin-bottom: 10px;">Sair da Conta (Logout)</button>
@@ -541,7 +547,24 @@
         </div>
     </div>
 
-
+<div id="rules-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; align-items: center; justify-content: center; z-index: 2000;">
+    <div class="modal-content" style="position: relative; padding: 30px; max-height: 80vh; overflow-y: auto;">
+        <span class="close-modal" onclick="closeModal('rules-modal')" style="position: absolute; top: 15px; right: 20px; font-size: 1.5rem; cursor: pointer; font-weight: bold;">&times;</span>
+        
+        <h2 style="margin-top: 0; color: var(--primary-color);">Diretrizes do Refúgio 🌊</h2>
+        <p>Este é um espaço privado e invisível. Para que ele continue existindo, precisamos seguir alguns combinados:</p>
+        
+        <ul style="text-align: left; line-height: 1.8;">
+            <li><strong>Respeito ao Feed:</strong> Use a aba correta para cada assunto. Se o conteúdo for pesado ou artístico (Furry/NSFW), avise na descrição (o sistema de Blur automático será implementado em breve).</li>
+            <li><strong>Anonimato:</strong> Eu sou o único que sabe quem é quem. Não revele a identidade real dos amigos sem permissão.</li>
+            <li><strong>Tolerância Zero:</strong> Conteúdos criminosos (Fascismo, Pedofilia, Apologia à Violência, Estupro... {entre outros}) resultam em <strong>banimento imediato</strong> e exclusão da conta sem aviso.</li>
+            <li><strong>Convites:</strong> O limite é de 20 pessoas. Se quiser chamar alguém, fale comigo primeiro.</li>
+            <li><strong>Moderação:</strong> Se algo te incomodar, denuncie ou me chame. Eu irei de desativar contas que não respeitarem o ambiente.</li>
+        </ul>
+        
+        <button onclick="closeModal('rules-modal')" style="margin-top: 15px; width: 100%; background: var(--primary-color); color: white; border: none; padding: 12px; border-radius: 12px; font-weight: bold; cursor: pointer;">Entendido!</button>
+    </div>
+</div>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
