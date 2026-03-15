@@ -750,7 +750,7 @@
                 await setDoc(doc(db, "users", currentUser.uid), {
                     name: name,
                     pixKey: pix,
-                    blurNsfw: blurNsfw
+                    blurNsfw: blurNsfw,
                     avatarUrl: avatarUrl
                 }, { merge: true });
                 
