@@ -1539,14 +1539,10 @@ window.clearNotificationDot = (type) => {
         snapshot.forEach(docSnap => {
             const data = docSnap.data();
             const isMe = data.userId === currentUser.uid;
-            // Dentro do loop que lê as mensagens do Firebase
-            const data = docSnap.data();
             // Traduz o código de volta para texto original
             const decryptedText = decrypt(data.text || ""); 
             // Agora passa o texto já traduzido para gerar os links e previews
             const parsed = extractLinksAndGeneratePreview(decryptedText);
-            // A SUAS MÍDIAS JÁ FUNCIONAM AQUI AUTOMATICAMENTE!
-            const parsed = extractLinksAndGeneratePreview(data.text || "");
 
             const alignClass = isMe 
                 ? `margin-left: auto; background: var(--primary-color); color: white;` 
