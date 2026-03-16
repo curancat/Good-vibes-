@@ -1454,51 +1454,60 @@ window.clearNotificationDot = (type) => {
     if (chatUnsubscribe) chatUnsubscribe();
 
     const q = query(collection(db, `chats_${type}`), orderBy("timestamp", "asc"));
+    
     chatUnsubscribe = onSnapshot(q, (snapshot) => {
+        
+        // --- 1. PARTE DAS NOTIFICAÇÕES (AGORA COM TRADUÇÃO) ---
         snapshot.docChanges().forEach((change) => {
             const data = change.doc.data();
             const msgTime = data.timestamp?.toMillis() || Date.now();
 
-            // SÓ NOTIFICA se: 1. For adicionado, 2. Não for meu, 3. For MAIS NOVO que o momento que abri o chat
             if (change.type === "added" && data.userId !== currentUser.uid && msgTime > window.lastReadChatTimestamp) {
                 
-                // Se eu não estiver na seção de chat, mostra a bolinha
                 if (!document.getElementById('chat').classList.contains('active')) {
                     document.getElementById('dot-chat').style.display = 'block';
                 }
                 
                 let roomName = type === 'global' ? 'Global' : 'Privado';
-                window.sendBrowserNotification(`Mensagem em ${roomName}`, `${data.authorName}: ${data.text}`);
-                window.saveNotification(`Chat ${roomName}`, `${data.authorName}: ${data.text}`, 'chat', msgTime);
+                
+                // TRADUZ A NOTIFICAÇÃO ANTES DE AVISAR O USUÁRIO
+                const textoNotificacao = decrypt(data.text || "");
+                
+                window.sendBrowserNotification(`Mensagem em ${roomName}`, `${data.authorName}: ${textoNotificacao}`);
+                window.saveNotification(`Chat ${roomName}`, `${data.authorName}: ${textoNotificacao}`, 'chat', msgTime);
             }
         });
 
+        // --- 2. PARTE DO DESENHO DAS MENSAGENS ---
         chatBox.innerHTML = '';
+        
         snapshot.forEach(docSnap => {
-    const data = docSnap.data();
-    const isMe = data.userId === currentUser.uid;
+            const data = docSnap.data();
+            const isMe = data.userId === currentUser.uid;
 
-    // 1. DESCRIPTOGRAFAR: Aqui é onde estava o erro.
-    // Pegamos no código cifrado e transformamos em texto real.
-    const textoDecifrado = decrypt(data.text || ""); 
+            // DESCRIPTOGRAFAR: Transforma o código cifrado em texto real
+            const textoDecifrado = decrypt(data.text || ""); 
 
-    // 2. PROCESSAR MÍDIA: Passamos o texto já limpo para a tua usina de links.
-    const conteudo = extractLinksAndGeneratePreview(textoDecifrado);
+            // PROCESSAR MÍDIA: Extrai links e gera o HTML
+            const conteudo = extractLinksAndGeneratePreview(textoDecifrado);
 
-    const alignClass = isMe 
-        ? `margin-left: auto; background: var(--primary-color); color: white;` 
-        : `margin-right: auto; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-color);`;
+            const alignClass = isMe 
+                ? `margin-left: auto; background: var(--primary-color); color: white;` 
+                : `margin-right: auto; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-color);`;
 
-    // 3. EXIBIR: Usamos o conteudo.formattedText (que é o texto limpo)
-    chatBox.innerHTML += `
-        <div style="padding:10px 15px; border-radius:16px; width: fit-content; max-width: 85%; margin-bottom: 10px; ${alignClass}">
-            <div style="font-size: 0.75rem; opacity: 0.8; margin-bottom: 4px;">${data.authorName || 'Usuário'}</div>
-            <div style="word-break: break-word;">${conteudo.formattedText}</div>
-            ${conteudo.previews}
-        </div>`;
+            // EXIBIR NA TELA
+            chatBox.innerHTML += `
+                <div style="padding:10px 15px; border-radius:16px; width: fit-content; max-width: 85%; margin-bottom: 10px; ${alignClass}">
+                    <div style="font-size: 0.75rem; opacity: 0.8; margin-bottom: 4px;">${data.authorName || 'Usuário'}</div>
+                    <div style="word-break: break-word;">${conteudo.formattedText}</div>
+                    ${conteudo.previews}
+                </div>`;
+        });
+        
+        // Mantive a rolagem de tela FORA do forEach para não dar lag, mas DENTRO do onSnapshot
         chatBox.scrollTop = chatBox.scrollHeight;
     });
-});
+};
         
     window.sendChatMessage = async () => {
     const chatInput = document.getElementById('chat-input');
