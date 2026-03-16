@@ -833,12 +833,12 @@ window.markAsRead = (id) => {
     }
 };
 
-// Limpar tudo
 window.clearAllNotifications = () => {
-    if(confirm("Tem certeza que deseja limpar todo o histórico?")) {
-        notificationsHistory = [];
-        localStorage.setItem('gv_notifications', JSON.stringify(notificationsHistory));
-        renderNotificationsList();
+    if(confirm("Deseja limpar todo o histórico de notificações?")) {
+        window.notificationsHistory = [];
+        localStorage.removeItem('gv_notifications');
+        window.renderNotificationsList();
+        console.log("Histórico de notificações limpo.");
     }
 };
 
