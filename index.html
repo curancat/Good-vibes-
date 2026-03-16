@@ -768,71 +768,64 @@ window.sendBrowserNotification = (title, body) => {
                 // ================= HISTÓRICO DE NOTIFICAÇÕES =================
 
 // Carrega o histórico salvo no navegador do usuário
-let notificationsHistory = JSON.parse(localStorage.getItem('gv_notifications') || '[]');
+window.notificationsHistory = JSON.parse(localStorage.getItem('gv_notifications') || '[]');
 
-// Função para registrar a notificação no histórico
 window.saveNotification = (title, body, sectionToNavigate) => {
     const newNotif = {
         id: Date.now(),
         title: title,
         body: body,
         section: sectionToNavigate,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' - ' + new Date().toLocaleDateString(),
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         read: false
     };
     
-    // Coloca a mais nova no topo da lista
-    notificationsHistory.unshift(newNotif); 
+    window.notificationsHistory.unshift(newNotif); 
+    if(window.notificationsHistory.length > 50) window.notificationsHistory.pop();
     
-    // Mantém o limite de 50 notificações para não pesar a memória
-    if(notificationsHistory.length > 50) notificationsHistory.pop();
+    localStorage.setItem('gv_notifications', JSON.stringify(window.notificationsHistory));
     
-    localStorage.setItem('gv_notifications', JSON.stringify(notificationsHistory));
-    
-    // Acende a bolinha da aba de notificações
     if (!document.getElementById('notifications').classList.contains('active')) {
         document.getElementById('dot-notifications').style.display = 'block';
     }
 };
 
-// Função para desenhar a lista na tela
 window.renderNotificationsList = () => {
     const list = document.getElementById('notifications-list');
     if(!list) return;
     
     list.innerHTML = '';
     
-    if(notificationsHistory.length === 0) {
+    if(window.notificationsHistory.length === 0) {
         list.innerHTML = '<p style="text-align: center; color: gray; padding: 20px;">Nenhuma notificação por enquanto.</p>';
         return;
     }
 
-    notificationsHistory.forEach(notif => {
-        // Se não foi lida, ganha um fundo azulado e borda mais forte
+    window.notificationsHistory.forEach(notif => {
         const bg = notif.read ? 'rgba(0,0,0,0.03)' : 'rgba(99, 102, 241, 0.1)';
         const border = notif.read ? 'var(--border-color)' : 'var(--primary-color)';
         
         list.innerHTML += `
-            <div onclick="markAsRead(${notif.id}); navigate('${notif.section}')" style="background: ${bg}; border-left: 4px solid ${border}; padding: 15px; border-radius: 12px; border-top: 1px solid var(--border-color); border-right: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); cursor: pointer; transition: var(--transition);">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                    <strong style="color: var(--text-color); font-size: 1.05rem;">${notif.title}</strong>
-                    <small style="color: gray; font-size: 0.8rem;">${notif.time}</small>
+            <div onclick="markAsRead(${notif.id}); navigate('${notif.section}')" style="background: ${bg}; border-left: 4px solid ${border}; padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); cursor: pointer; margin-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between;">
+                    <strong>${notif.title}</strong>
+                    <small>${notif.time}</small>
                 </div>
-                <p style="margin: 0; font-size: 0.95rem; color: var(--text-color); opacity: 0.8;">${notif.body}</p>
+                <p style="margin: 5px 0 0 0; font-size: 0.9rem; opacity: 0.8;">${notif.body}</p>
             </div>
         `;
     });
 };
 
-// Função para marcar como lida ao clicar e ir para o local
 window.markAsRead = (id) => {
-    const index = notificationsHistory.findIndex(n => n.id === id);
+    const index = window.notificationsHistory.findIndex(n => n.id === id);
     if(index > -1) {
-        notificationsHistory[index].read = true;
-        localStorage.setItem('gv_notifications', JSON.stringify(notificationsHistory));
+        window.notificationsHistory[index].read = true;
+        localStorage.setItem('gv_notifications', JSON.stringify(window.notificationsHistory));
     }
 };
 
+// ESSA É A FUNÇÃO QUE ESTAVA DANDO ERRO
 window.clearAllNotifications = () => {
     if(confirm("Deseja limpar todo o histórico de notificações?")) {
         window.notificationsHistory = [];
@@ -841,7 +834,6 @@ window.clearAllNotifications = () => {
         console.log("Histórico de notificações limpo.");
     }
 };
-
         // ================= NAVEGAÇÃO =================
         window.navigate = (sectionId) => {
             document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
