@@ -380,7 +380,25 @@
             background: var(--primary-color);
             color: white;
         }
+        /* ================= NOTIFICAÇÕES (BOLINHAS) ================= */
+.nav-btn-wrapper {
+    position: relative;
+    display: inline-block;
+}
 
+.notify-dot {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 12px;
+    height: 12px;
+    background: #ef4444;
+    border-radius: 50%;
+    border: 2px solid var(--card-bg);
+    display: none; /* Escondido por padrão */
+    z-index: 10;
+    box-shadow: 0 0 5px rgba(239, 68, 68, 0.5);
+}
         /* ================= RESPONSIVIDADE ================= */
         @media (max-width: 600px) {
             header {
@@ -422,13 +440,21 @@
         <header>
             <div class="logo">Good Vibes</div>
             <div class="nav-buttons">
-                <button onclick="navigate('foryou')">🏠 For You</button>
-                <button onclick="navigate('chat')">💬 Chat</button>
-                <button onclick="navigate('imageSearch')">🖼️ Buscar Mídia</button>
-                <button onclick="navigate('search')">🔍 Pessoas</button>
-                <button onclick="navigate('profile')">👤 Perfil</button>
-                <button onclick="navigate('settings')">⚙️ Ajustes</button>
-            </div>
+    <div class="nav-btn-wrapper">
+        <button onclick="navigate('foryou'); clearNotificationDot('foryou')">🏠 For You</button>
+        <div id="dot-foryou" class="notify-dot"></div>
+    </div>
+    
+    <div class="nav-btn-wrapper">
+        <button onclick="navigate('chat'); clearNotificationDot('chat')">💬 Chat</button>
+        <div id="dot-chat" class="notify-dot"></div>
+    </div>
+    
+    <button onclick="navigate('imageSearch')">🖼️ Buscar Mídia</button>
+    <button onclick="navigate('search')">🔍 Pessoas</button>
+    <button onclick="navigate('profile')">👤 Perfil</button>
+    <button onclick="navigate('settings')">⚙️ Ajustes</button>
+</div>
         </header>
 
         <div class="container">
@@ -670,7 +696,7 @@
             }
             return { formattedText, previews };
         }
-
+        
         // ================= AUTENTICAÇÃO =================
         window.login = async () => {
             const e = document.getElementById('email').value;
@@ -681,7 +707,25 @@
         };
 
         window.logout = () => signOut(auth);
+        // ================= SISTEMA DE NOTIFICAÇÕES =================
+// Pede permissão para o usuário assim que carregar
+if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+    Notification.requestPermission();
+}
 
+window.clearNotificationDot = (type) => {
+    document.getElementById(`dot-${type}`).style.display = 'none';
+};
+
+window.sendBrowserNotification = (title, body) => {
+    // Só envia a notificação do navegador se o usuário estiver em outra aba/minimizado (document.hidden)
+    if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
+        new Notification(title, {
+            body: body,
+            icon: "https://cdn-icons-png.flaticon.com/512/3649/3649496.png" // Ícone genérico de sino
+        });
+    }
+};
         window.deleteAccount = async () => {
             if(confirm("Tem certeza que deseja deletar sua conta? Isso não pode ser desfeito.")){
                 try { 
@@ -913,7 +957,22 @@
         function loadFeed() {
             const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
             onSnapshot(q, (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    // Se foi adicionado um post novo, o timestamp existe, e não fui eu que postei:
+                    if (change.type === "added" && change.doc.data().timestamp && change.doc.data().userId !== currentUser.uid) {
+                        const data = change.doc.data();
+                        
+                        // Se não estou na aba For You, mostra a bolinha
+                        if (!document.getElementById('foryou').classList.contains('active')) {
+                            document.getElementById('dot-foryou').style.display = 'block';
+                        }
+                        
+                        // Dispara a notificação de sistema se estiver em outra aba
+                        window.sendBrowserNotification("Refúgio 🌊", `${data.authorName} publicou algo novo!`);
+                    }
+                });
                 const feed = document.getElementById('feed-container');
+                
                 feed.innerHTML = '';
                 
                 if(snapshot.empty) {
@@ -1073,6 +1132,20 @@
 
             const q = query(collection(db, `chats_${type}`), orderBy("timestamp", "asc"));
             chatUnsubscribe = onSnapshot(q, (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === "added" && change.doc.data().timestamp && change.doc.data().userId !== currentUser.uid) {
+                        const data = change.doc.data();
+                        
+                        // Se não estou na aba Chat ativamente
+                        if (!document.getElementById('chat').classList.contains('active')) {
+                            document.getElementById('dot-chat').style.display = 'block';
+                        }
+                        
+                        // Dispara notificação se estiver em outra aba
+                        let roomName = type === 'global' ? 'Global' : (type === 'groups' ? 'Grupos' : 'Privado');
+                        window.sendBrowserNotification(`Mensagem no Chat ${roomName}`, `${data.authorName}: ${data.text}`);
+                    }
+                });
                 chatBox.innerHTML = '';
                 if (snapshot.empty) {
                     chatBox.innerHTML = `<p style="text-align: center; color: gray; margin-top: 20px;">Nenhuma mensagem ainda na sala ${type}.</p>`;
