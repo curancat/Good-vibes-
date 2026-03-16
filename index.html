@@ -450,7 +450,7 @@
         <div id="dot-chat" class="notify-dot"></div>
     </div>
     <div class="nav-btn-wrapper">
-        <button onclick="navigate('notifications'); clearNotificationDot('notifications'); renderNotificationsList()">🔔 Notificações</button>
+       <button onclick="navigate('notifications'); clearNotificationDot('notifications'); renderNotificationsList()">🔔 Notificações</button>
         <div id="dot-notifications" class="notify-dot"></div>
     </div>
     <button onclick="navigate('imageSearch')">🖼️ Buscar Mídia</button>
@@ -769,12 +769,12 @@ window.sendBrowserNotification = (title, body) => {
         
 // Carrega o histórico salvo no navegador do usuário
 // ================= SISTEMA DE NOTIFICAÇÕES (VERSÃO FINAL) =================
+// ================= SISTEMA DE NOTIFICAÇÕES CORRIGIDO =================
 window.notificationsHistory = JSON.parse(localStorage.getItem('gv_notifications') || '[]');
-// Salva o timestamp de quando o usuário limpou o histórico pela última vez
 window.lastClearedTimestamp = parseInt(localStorage.getItem('gv_last_cleared') || '0');
 window.lastReadChatTimestamp = parseInt(localStorage.getItem('gv_last_chat_read') || Date.now());
+
 window.saveNotification = (title, body, sectionToNavigate, itemTimestamp) => {
-    // Se o item for mais antigo que a última vez que limpamos ou lemos, ignora
     if (itemTimestamp && itemTimestamp <= window.lastClearedTimestamp) return;
 
     const newNotif = {
@@ -791,11 +791,23 @@ window.saveNotification = (title, body, sectionToNavigate, itemTimestamp) => {
     
     localStorage.setItem('gv_notifications', JSON.stringify(window.notificationsHistory));
     
-    // Só acende a bolinha se não estivermos na aba de notificações
     if (!document.getElementById('notifications').classList.contains('active')) {
-        document.getElementById('dot-notifications').style.display = 'block';
+        const dot = document.getElementById('dot-notifications');
+        if(dot) dot.style.display = 'block';
     }
 };
+
+// ESSA É A FUNÇÃO QUE ESTAVA DANDO ERRO NO SEU LOG
+window.renderNotificationsList = () => {
+    const list = document.getElementById('notifications-list');
+    if(!list) return;
+    
+    list.innerHTML = '';
+    
+    if(window.notificationsHistory.length === 0) {
+        list.innerHTML = '<p style="text-align: center; color: gray; padding: 20px;">Nenhuma notificação por enquanto.</p>';
+        return;
+    }
 
     window.notificationsHistory.forEach(notif => {
         const bg = notif.read ? 'rgba(0,0,0,0.03)' : 'rgba(99, 102, 241, 0.1)';
@@ -810,15 +822,25 @@ window.saveNotification = (title, body, sectionToNavigate, itemTimestamp) => {
                 <p style="margin: 5px 0 0 0; font-size: 0.9rem; opacity: 0.8;">${notif.body}</p>
             </div>`;
     });
+};
 
 window.clearAllNotifications = () => {
     if(confirm("Deseja limpar todo o histórico?")) {
         window.notificationsHistory = [];
-        window.lastClearedTimestamp = Date.now(); // Marca que limpamos AGORA
+        window.lastClearedTimestamp = Date.now();
         localStorage.setItem('gv_last_cleared', window.lastClearedTimestamp);
         localStorage.removeItem('gv_notifications');
         window.renderNotificationsList();
-        document.getElementById('dot-notifications').style.display = 'none';
+        const dot = document.getElementById('dot-notifications');
+        if(dot) dot.style.display = 'none';
+    }
+};
+
+window.markAsRead = (id) => {
+    const index = window.notificationsHistory.findIndex(n => n.id === id);
+    if(index > -1) {
+        window.notificationsHistory[index].read = true;
+        localStorage.setItem('gv_notifications', JSON.stringify(window.notificationsHistory));
     }
 };
 
@@ -826,10 +848,14 @@ window.clearNotificationDot = (type) => {
     const dot = document.getElementById(`dot-${type}`);
     if(dot) dot.style.display = 'none';
     
-    // Se estiver limpando a aba de notificações, marca todas como lidas
     if(type === 'notifications') {
         window.notificationsHistory.forEach(n => n.read = true);
         localStorage.setItem('gv_notifications', JSON.stringify(window.notificationsHistory));
+    }
+    // Se clicou no chat, atualiza o tempo de leitura para a bolinha não voltar
+    if(type === 'chat') {
+        window.lastReadChatTimestamp = Date.now();
+        localStorage.setItem('gv_last_chat_read', window.lastReadChatTimestamp);
     }
 };
         // ================= NAVEGAÇÃO =================
