@@ -720,25 +720,6 @@
         };
 
         window.logout = () => signOut(auth);
-        // ================= SISTEMA DE NOTIFICAÇÕES =================
-// Pede permissão para o usuário assim que carregar
-if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
-    Notification.requestPermission();
-}
-
-window.clearNotificationDot = (type) => {
-    document.getElementById(`dot-${type}`).style.display = 'none';
-};
-
-window.sendBrowserNotification = (title, body) => {
-    // Só envia a notificação do navegador se o usuário estiver em outra aba/minimizado (document.hidden)
-    if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
-        new Notification(title, {
-            body: body,
-            icon: "https://cdn-icons-png.flaticon.com/512/3649/3649496.png" // Ícone genérico de sino
-        });
-    }
-};
 
         window.deleteAccount = async () => {
             if(confirm("Tem certeza que deseja deletar sua conta? Isso não pode ser desfeito.")){
@@ -768,9 +749,33 @@ window.sendBrowserNotification = (title, body) => {
                 // ================= HISTÓRICO DE NOTIFICAÇÕES =================
 
 // Carrega o histórico salvo no navegador do usuário
+// ================= SISTEMA DE NOTIFICAÇÕES (VERSÃO FINAL) =================
 window.notificationsHistory = JSON.parse(localStorage.getItem('gv_notifications') || '[]');
+// Salva o timestamp de quando o usuário limpou o histórico pela última vez
+window.lastClearedTimestamp = parseInt(localStorage.getItem('gv_last_cleared') || '0');
+  // ================= SISTEMA DE NOTIFICAÇÕES =================
+// Pede permissão para o usuário assim que carregar
+if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+    Notification.requestPermission();
+}
 
-window.saveNotification = (title, body, sectionToNavigate) => {
+window.clearNotificationDot = (type) => {
+    document.getElementById(`dot-${type}`).style.display = 'none';
+};
+
+window.sendBrowserNotification = (title, body) => {
+    // Só envia a notificação do navegador se o usuário estiver em outra aba/minimizado (document.hidden)
+    if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
+        new Notification(title, {
+            body: body,
+            icon: "https://cdn-icons-png.flaticon.com/512/3649/3649496.png" // Ícone genérico de sino
+        });
+    }
+};
+window.saveNotification = (title, body, sectionToNavigate, itemTimestamp) => {
+    // SÓ SALVA se a notificação for mais nova do que o momento da última limpeza
+    if (itemTimestamp && itemTimestamp <= window.lastClearedTimestamp) return;
+
     const newNotif = {
         id: Date.now(),
         title: title,
@@ -793,7 +798,6 @@ window.saveNotification = (title, body, sectionToNavigate) => {
 window.renderNotificationsList = () => {
     const list = document.getElementById('notifications-list');
     if(!list) return;
-    
     list.innerHTML = '';
     
     if(window.notificationsHistory.length === 0) {
@@ -812,27 +816,31 @@ window.renderNotificationsList = () => {
                     <small>${notif.time}</small>
                 </div>
                 <p style="margin: 5px 0 0 0; font-size: 0.9rem; opacity: 0.8;">${notif.body}</p>
-            </div>
-        `;
+            </div>`;
     });
 };
 
-window.markAsRead = (id) => {
-    const index = window.notificationsHistory.findIndex(n => n.id === id);
-    if(index > -1) {
-        window.notificationsHistory[index].read = true;
-        localStorage.setItem('gv_notifications', JSON.stringify(window.notificationsHistory));
+window.clearAllNotifications = () => {
+    if(confirm("Deseja limpar todo o histórico?")) {
+        window.notificationsHistory = [];
+        window.lastClearedTimestamp = Date.now(); // Marca que limpamos AGORA
+        localStorage.setItem('gv_last_cleared', window.lastClearedTimestamp);
+        localStorage.removeItem('gv_notifications');
+        window.renderNotificationsList();
+        document.getElementById('dot-notifications').style.display = 'none';
     }
 };
 
-// ESSA É A FUNÇÃO QUE ESTAVA DANDO ERRO
-window.clearAllNotifications = () => {
-    if(confirm("Deseja limpar todo o histórico de notificações?")) {
-        window.notificationsHistory = [];
-        localStorage.removeItem('gv_notifications');
-        window.renderNotificationsList();
-        console.log("Histórico de notificações limpo.");
+window.clearNotificationDot = (type) => {
+    const dot = document.getElementById(`dot-${type}`);
+    if(dot) dot.style.display = 'none';
+    
+    // Se estiver limpando a aba de notificações, marca todas como lidas
+    if(type === 'notifications') {
+        window.notificationsHistory.forEach(n => n.read = true);
+        localStorage.setItem('gv_notifications', JSON.stringify(window.notificationsHistory));
     }
+};
 };
         // ================= NAVEGAÇÃO =================
         window.navigate = (sectionId) => {
@@ -1053,7 +1061,8 @@ window.clearAllNotifications = () => {
                         
                         // Dispara a notificação de sistema se estiver em outra aba
                         window.sendBrowserNotification("Refúgio 🌊", `${data.authorName} publicou algo novo!`);
-                        window.saveNotification("Novo Post no Feed", `${data.authorName} publicou algo novo.`, 'foryou');
+                        const postTime = data.timestamp?.toMillis() || Date.now();
+                        window.saveNotification("Novo Post no Feed", `${data.authorName} publicou algo.`, 'foryou', postTime);
                     }
                 });
                 const feed = document.getElementById('feed-container');
@@ -1230,7 +1239,9 @@ window.clearAllNotifications = () => {
                         
                         let roomName = type === 'global' ? 'Global' : (type === 'groups' ? 'Grupos' : 'Privado');
                         window.sendBrowserNotification(`Mensagem no Chat ${roomName}`, `${data.authorName}: ${data.text}`);
-                        window.saveNotification(`Mensagem: Chat ${roomName}`, `${data.authorName}: ${data.text}`, 'chat');
+                        // Dentro do snapshot.docChanges().forEach
+                        const msgTime = data.timestamp?.toMillis() || Date.now();
+                        window.saveNotification(`Mensagem: ${roomName}`, `${data.authorName}: ${data.text}`, 'chat', msgTime);
                     }
                 });
 
