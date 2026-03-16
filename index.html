@@ -1189,7 +1189,8 @@ window.clearNotificationDot = (type) => {
                     isNsfw: isNsfw,
                     mediaUrl: mediaUrl,
                     timestamp: serverTimestamp(),
-                    likes: 0
+                    likes: 0,
+                    dislikes: 0
                 });
                 document.getElementById('post-text').value = "";
                 document.getElementById('post-media-url').value = "";
@@ -1279,6 +1280,7 @@ window.clearNotificationDot = (type) => {
 
         <div class="post-actions">
             <button onclick="likePost('${postId}')">👍 Curtir (${data.likes || 0})</button>
+            <button onclick="dislikePost('${postId}')" style="color: #ff4444;">👎 (${data.dislikes || 0})</button>
             <button class="super-like-btn" onclick="openPixModal('${data.userId}')">💸 Super Like</button>
             <button onclick="openComments('${postId}')">💬 Comentar</button>
             <button onclick="sharePost('${postId}')">↗️ Compartilhar</button>
@@ -1294,6 +1296,18 @@ window.clearNotificationDot = (type) => {
             try { await updateDoc(doc(db, "posts", postId), { likes: increment(1) }); } 
             catch(e) { console.error("Erro ao curtir:", e); }
         };
+        window.dislikePost = async (postId) => {
+    if(!currentUser) return;
+    try { 
+        // Usamos o increment(1) para subir o contador de dislikes no Firestore
+        await updateDoc(doc(db, "posts", postId), { 
+            dislikes: increment(1) 
+        }); 
+    } 
+    catch(e) { 
+        console.error("Erro ao dar deslike:", e); 
+    }
+};
 
         window.sharePost = (postId) => {
             const url = window.location.origin + window.location.pathname + "?post=" + postId;
