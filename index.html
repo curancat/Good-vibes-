@@ -1494,6 +1494,7 @@ window.clearNotificationDot = (type) => {
     });
 };
         window.sendChatMessage = async () => {
+            const chatInput = document.getElementById('chat-input');
             const input = document.getElementById('chat-input');
             const text = input.value.trim();
             const textValue = chatInput.value.trim();
