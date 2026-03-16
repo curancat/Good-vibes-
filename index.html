@@ -1383,26 +1383,58 @@ window.clearNotificationDot = (type) => {
 
         // ================= CHAT REAL-TIME =================
        // ================= CHAT REAL-TIME =================
-      window.openChat = (type) => {
+    window.openChat = async (type) => {
     currentChatRoom = type;
     
-    // ATUALIZAÇÃO: Marca o momento que você abriu o chat para silenciar mensagens antigas
     window.lastReadChatTimestamp = Date.now();
     localStorage.setItem('gv_last_chat_read', window.lastReadChatTimestamp);
-    
-    // Esconde a bolinha do chat imediatamente ao abrir
     document.getElementById('dot-chat').style.display = 'none';
 
     document.querySelectorAll('.chat-tab').forEach(btn => btn.classList.remove('active'));
     if(document.getElementById('tab-' + type)) document.getElementById('tab-' + type).classList.add('active');
 
     const chatBox = document.getElementById('chat-messages');
+    
+    // SE FOR PRIVADO: Mostra a lista de usuários
+    if (type === 'private') {
+        chatBox.innerHTML = `<p style="text-align: center; color: gray; margin-top: 20px;">Carregando contatos...</p>`;
+        document.getElementById('chat-input').parentElement.style.display = 'none'; // Esconde o input por enquanto
+        
+        if (chatUnsubscribe) chatUnsubscribe(); // Para de ouvir o chat antigo
+
+        try {
+            const usersSnap = await getDocs(collection(db, "users"));
+            let html = "<h3 style='margin-top:0;'>Escolha com quem conversar:</h3>";
+            
+            usersSnap.forEach(d => {
+                const data = d.data();
+                // Não mostra você mesmo na lista
+                if (d.id !== currentUser.uid) {
+                    let avatarHtml = data.avatarUrl 
+                        ? `<img src="${data.avatarUrl}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">`
+                        : `<div style="width:40px; height:40px; border-radius:50%; background:var(--primary-color); color:white; display:flex; align-items:center; justify-content:center; font-weight:bold;">${(data.name || "U").substring(0,2).toUpperCase()}</div>`;
+
+                    html += `
+                    <div onclick="startPrivateChat('${d.id}', '${data.name}')" style="display: flex; align-items: center; gap: 15px; padding: 12px; background: rgba(0,0,0,0.05); border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 10px; cursor: pointer; transition: 0.2s;">
+                        ${avatarHtml}
+                        <strong style="font-size: 1.1rem;">${data.name}</strong>
+                    </div>`;
+                }
+            });
+            chatBox.innerHTML = html;
+        } catch(e) {
+            chatBox.innerHTML = "<p>Erro ao carregar usuários.</p>";
+        }
+        return; // Sai da função aqui, pois o chat privado tem sua própria lógica
+    }
+
+    // SE FOR GLOBAL OU GRUPO: Lógica normal
+    document.getElementById('chat-input').parentElement.style.display = 'flex'; // Mostra o input
     chatBox.innerHTML = `<p style="text-align: center; color: gray; margin-top: 20px;">Conectando...</p>`;
 
     if (chatUnsubscribe) chatUnsubscribe();
 
     const q = query(collection(db, `chats_${type}`), orderBy("timestamp", "asc"));
-    
     chatUnsubscribe = onSnapshot(q, (snapshot) => {
         snapshot.docChanges().forEach((change) => {
             const data = change.doc.data();
@@ -1458,6 +1490,52 @@ window.clearNotificationDot = (type) => {
                 });
             } catch(e) { console.error("Erro ao enviar mensagem", e); }
         };
+        window.startPrivateChat = (otherUid, otherName) => {
+    // 1. Cria um ID único para essa conversa juntando os dois UIDs em ordem alfabética.
+    // Isso garante que tanto faz quem chamou quem, a sala será sempre a mesma.
+    const roomHash = [currentUser.uid, otherUid].sort().join('_');
+    currentChatRoom = 'dm_' + roomHash;
+
+    const chatBox = document.getElementById('chat-messages');
+    document.getElementById('chat-input').parentElement.style.display = 'flex'; // Mostra o input de volta
+    
+    // Cria um botãozinho de "Voltar" no topo do chat
+    chatBox.innerHTML = `
+        <button onclick="openChat('private')" style="margin-bottom: 10px; background: transparent; color: var(--primary-color); border: 1px solid var(--primary-color); padding: 5px 10px; border-radius: 8px; cursor: pointer;">⬅️ Voltar aos contatos</button>
+        <p style="text-align: center; color: gray;">Conversa privada com ${otherName}</p>
+    `;
+
+    if (chatUnsubscribe) chatUnsubscribe();
+
+    // 2. Ouve apenas as mensagens dessa sala específica
+    const q = query(collection(db, currentChatRoom), orderBy("timestamp", "asc"));
+    
+    chatUnsubscribe = onSnapshot(q, (snapshot) => {
+        chatBox.innerHTML = `
+            <button onclick="openChat('private')" style="margin-bottom: 10px; background: transparent; color: var(--primary-color); border: 1px solid var(--primary-color); padding: 5px 10px; border-radius: 8px; cursor: pointer;">⬅️ Voltar aos contatos</button>
+            <p style="text-align: center; color: gray; font-size: 0.8rem;">Conversa protegida de ponta a ponta no banco de dados com <strong>${otherName}</strong></p>
+        `;
+        
+        snapshot.forEach(docSnap => {
+            const data = docSnap.data();
+            const isMe = data.userId === currentUser.uid;
+            
+            // A SUAS MÍDIAS JÁ FUNCIONAM AQUI AUTOMATICAMENTE!
+            const parsed = extractLinksAndGeneratePreview(data.text || "");
+
+            const alignClass = isMe 
+                ? `margin-left: auto; background: var(--primary-color); color: white;` 
+                : `margin-right: auto; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-color);`;
+
+            chatBox.innerHTML += `
+                <div style="padding:10px 15px; border-radius:16px; width: fit-content; max-width: 85%; margin-bottom: 10px; ${alignClass}">
+                    ${parsed.formattedText}
+                    ${parsed.previews}
+                </div>`;
+        });
+        chatBox.scrollTop = chatBox.scrollHeight;
+    });
+};
 
         // ================= PESQUISA DE PESSOAS =================
         window.performSearch = async () => {
