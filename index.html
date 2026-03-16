@@ -420,6 +420,24 @@
             }
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js">
+        const SECRET_KEY = "B9-0.12p´-09p3en3rjec9"; // Mude isso para algo aleatório
+
+        // Transforma texto em código
+const encrypt = (text) => {
+    return CryptoJS.AES.encrypt(text, SECRET_KEY).toString();
+};
+
+// Transforma código em texto original
+const decrypt = (cipherText) => {
+    try {
+        const bytes = CryptoJS.AES.decrypt(cipherText, SECRET_KEY);
+        return bytes.toString(CryptoJS.enc.Utf8);
+    } catch (e) {
+        return "Mensagem corrompida ou protegida.";
+    }
+};
+    </script>
 </head>
 <body>
     <div id="auth-section">
@@ -1477,6 +1495,7 @@ window.clearNotificationDot = (type) => {
         window.sendChatMessage = async () => {
             const input = document.getElementById('chat-input');
             const text = input.value.trim();
+            const textValue = chatInput.value.trim();
             if(!text) return;
             
             input.value = ''; 
@@ -1485,7 +1504,7 @@ window.clearNotificationDot = (type) => {
                 await addDoc(collection(db, `chats_${currentChatRoom}`), {
                     userId: currentUser.uid,
                     authorName: currentUserProfile.name || "Usuário",
-                    text: text,
+                    text: encrypt(textValue),
                     timestamp: serverTimestamp()
                 });
             } catch(e) { console.error("Erro ao enviar mensagem", e); }
@@ -1519,7 +1538,12 @@ window.clearNotificationDot = (type) => {
         snapshot.forEach(docSnap => {
             const data = docSnap.data();
             const isMe = data.userId === currentUser.uid;
-            
+            // Dentro do loop que lê as mensagens do Firebase
+            const data = docSnap.data();
+            // Traduz o código de volta para texto original
+            const decryptedText = decrypt(data.text || ""); 
+            // Agora passa o texto já traduzido para gerar os links e previews
+            const parsed = extractLinksAndGeneratePreview(decryptedText);
             // A SUAS MÍDIAS JÁ FUNCIONAM AQUI AUTOMATICAMENTE!
             const parsed = extractLinksAndGeneratePreview(data.text || "");
 
