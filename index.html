@@ -1238,8 +1238,8 @@ window.clearAllNotifications = () => {
                         let roomName = type === 'global' ? 'Global' : (type === 'groups' ? 'Grupos' : 'Privado');
                         window.sendBrowserNotification(`Mensagem no Chat ${roomName}`, `${data.authorName}: ${data.text}`);
                         window.saveNotification(`Mensagem: Chat ${roomName}`, `${data.authorName}: ${data.text}`, 'chat');
-    }
-                    }
+                 }
+                    });
                 });
                 chatBox.innerHTML = '';
                 if (snapshot.empty) {
