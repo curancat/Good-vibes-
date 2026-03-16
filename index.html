@@ -1475,21 +1475,27 @@ window.clearNotificationDot = (type) => {
 
         chatBox.innerHTML = '';
         snapshot.forEach(docSnap => {
-            const data = docSnap.data();
-            const isMe = data.userId === currentUser.uid;
-            const parsed = extractLinksAndGeneratePreview(data.text || "");
+    const data = docSnap.data();
+    const isMe = data.userId === currentUser.uid;
 
-            const alignClass = isMe 
-                ? `margin-left: auto; background: var(--primary-color); color: white;` 
-                : `margin-right: auto; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-color);`;
+    // 1. DESCRIPTOGRAFAR: Aqui é onde estava o erro.
+    // Pegamos no código cifrado e transformamos em texto real.
+    const textoDecifrado = decrypt(data.text || ""); 
 
-            chatBox.innerHTML += `
-                <div style="padding:10px 15px; border-radius:16px; width: fit-content; max-width: 85%; margin-bottom: 10px; ${alignClass}">
-                    <strong style="font-size: 0.7rem; opacity: 0.8;">${data.authorName}</strong><br>
-                    ${parsed.formattedText}
-                    ${parsed.previews}
-                </div>`;
-        });
+    // 2. PROCESSAR MÍDIA: Passamos o texto já limpo para a tua usina de links.
+    const conteudo = extractLinksAndGeneratePreview(textoDecifrado);
+
+    const alignClass = isMe 
+        ? `margin-left: auto; background: var(--primary-color); color: white;` 
+        : `margin-right: auto; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-color);`;
+
+    // 3. EXIBIR: Usamos o conteudo.formattedText (que é o texto limpo)
+    chatBox.innerHTML += `
+        <div style="padding:10px 15px; border-radius:16px; width: fit-content; max-width: 85%; margin-bottom: 10px; ${alignClass}">
+            <div style="font-size: 0.75rem; opacity: 0.8; margin-bottom: 4px;">${data.authorName || 'Usuário'}</div>
+            <div style="word-break: break-word;">${conteudo.formattedText}</div>
+            ${conteudo.previews}
+        </div>`;
         chatBox.scrollTop = chatBox.scrollHeight;
     });
 };
