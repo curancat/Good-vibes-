@@ -747,13 +747,7 @@
             
         });
                 // ================= HISTÓRICO DE NOTIFICAÇÕES =================
-
-// Carrega o histórico salvo no navegador do usuário
-// ================= SISTEMA DE NOTIFICAÇÕES (VERSÃO FINAL) =================
-window.notificationsHistory = JSON.parse(localStorage.getItem('gv_notifications') || '[]');
-// Salva o timestamp de quando o usuário limpou o histórico pela última vez
-window.lastClearedTimestamp = parseInt(localStorage.getItem('gv_last_cleared') || '0');
-  // ================= SISTEMA DE NOTIFICAÇÕES =================
+ // ================= SISTEMA DE NOTIFICAÇÕES =================
 // Pede permissão para o usuário assim que carregar
 if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
     Notification.requestPermission();
@@ -772,8 +766,15 @@ window.sendBrowserNotification = (title, body) => {
         });
     }
 };
+        
+// Carrega o histórico salvo no navegador do usuário
+// ================= SISTEMA DE NOTIFICAÇÕES (VERSÃO FINAL) =================
+window.notificationsHistory = JSON.parse(localStorage.getItem('gv_notifications') || '[]');
+// Salva o timestamp de quando o usuário limpou o histórico pela última vez
+window.lastClearedTimestamp = parseInt(localStorage.getItem('gv_last_cleared') || '0');
+window.lastReadChatTimestamp = parseInt(localStorage.getItem('gv_last_chat_read') || Date.now());
 window.saveNotification = (title, body, sectionToNavigate, itemTimestamp) => {
-    // SÓ SALVA se a notificação for mais nova do que o momento da última limpeza
+    // Se o item for mais antigo que a última vez que limpamos ou lemos, ignora
     if (itemTimestamp && itemTimestamp <= window.lastClearedTimestamp) return;
 
     const newNotif = {
@@ -790,20 +791,11 @@ window.saveNotification = (title, body, sectionToNavigate, itemTimestamp) => {
     
     localStorage.setItem('gv_notifications', JSON.stringify(window.notificationsHistory));
     
+    // Só acende a bolinha se não estivermos na aba de notificações
     if (!document.getElementById('notifications').classList.contains('active')) {
         document.getElementById('dot-notifications').style.display = 'block';
     }
 };
-
-window.renderNotificationsList = () => {
-    const list = document.getElementById('notifications-list');
-    if(!list) return;
-    list.innerHTML = '';
-    
-    if(window.notificationsHistory.length === 0) {
-        list.innerHTML = '<p style="text-align: center; color: gray; padding: 20px;">Nenhuma notificação por enquanto.</p>';
-        return;
-    }
 
     window.notificationsHistory.forEach(notif => {
         const bg = notif.read ? 'rgba(0,0,0,0.03)' : 'rgba(99, 102, 241, 0.1)';
@@ -1213,63 +1205,65 @@ window.clearNotificationDot = (type) => {
 
         // ================= CHAT REAL-TIME =================
        // ================= CHAT REAL-TIME =================
-        window.openChat = (type) => {
-            currentChatRoom = type;
-            
-            document.querySelectorAll('.chat-tab').forEach(btn => btn.classList.remove('active'));
-            document.getElementById('tab-' + type).classList.add('active');
+      window.openChat = (type) => {
+    currentChatRoom = type;
+    
+    // ATUALIZAÇÃO: Marca o momento que você abriu o chat para silenciar mensagens antigas
+    window.lastReadChatTimestamp = Date.now();
+    localStorage.setItem('gv_last_chat_read', window.lastReadChatTimestamp);
+    
+    // Esconde a bolinha do chat imediatamente ao abrir
+    document.getElementById('dot-chat').style.display = 'none';
 
-            const chatBox = document.getElementById('chat-messages');
-            chatBox.innerHTML = `<p style="text-align: center; color: gray; margin-top: 20px;">Conectando ao chat ${type}...</p>`;
+    document.querySelectorAll('.chat-tab').forEach(btn => btn.classList.remove('active'));
+    if(document.getElementById('tab-' + type)) document.getElementById('tab-' + type).classList.add('active');
 
-            if (chatUnsubscribe) chatUnsubscribe();
+    const chatBox = document.getElementById('chat-messages');
+    chatBox.innerHTML = `<p style="text-align: center; color: gray; margin-top: 20px;">Conectando...</p>`;
 
-            const q = query(collection(db, `chats_${type}`), orderBy("timestamp", "asc"));
-            
-            chatUnsubscribe = onSnapshot(q, (snapshot) => {
-                // Lógica de Notificações
-                snapshot.docChanges().forEach((change) => {
-                    if (change.type === "added" && change.doc.data().timestamp && change.doc.data().userId !== currentUser.uid) {
-                        const data = change.doc.data();
-                        
-                        if (!document.getElementById('chat').classList.contains('active')) {
-                            document.getElementById('dot-chat').style.display = 'block';
-                        }
-                        
-                        let roomName = type === 'global' ? 'Global' : (type === 'groups' ? 'Grupos' : 'Privado');
-                        window.sendBrowserNotification(`Mensagem no Chat ${roomName}`, `${data.authorName}: ${data.text}`);
-                        // Dentro do snapshot.docChanges().forEach
-                        const msgTime = data.timestamp?.toMillis() || Date.now();
-                        window.saveNotification(`Mensagem: ${roomName}`, `${data.authorName}: ${data.text}`, 'chat', msgTime);
-                    }
-                });
+    if (chatUnsubscribe) chatUnsubscribe();
 
-                // Renderização das mensagens
-                chatBox.innerHTML = '';
-                if (snapshot.empty) {
-                    chatBox.innerHTML = `<p style="text-align: center; color: gray; margin-top: 20px;">Nenhuma mensagem ainda na sala ${type}.</p>`;
-                    return;
+    const q = query(collection(db, `chats_${type}`), orderBy("timestamp", "asc"));
+    
+    chatUnsubscribe = onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+            const data = change.doc.data();
+            const msgTime = data.timestamp?.toMillis() || Date.now();
+
+            // SÓ NOTIFICA se: 1. For adicionado, 2. Não for meu, 3. For MAIS NOVO que o momento que abri o chat
+            if (change.type === "added" && data.userId !== currentUser.uid && msgTime > window.lastReadChatTimestamp) {
+                
+                // Se eu não estiver na seção de chat, mostra a bolinha
+                if (!document.getElementById('chat').classList.contains('active')) {
+                    document.getElementById('dot-chat').style.display = 'block';
                 }
+                
+                let roomName = type === 'global' ? 'Global' : 'Privado';
+                window.sendBrowserNotification(`Mensagem em ${roomName}`, `${data.authorName}: ${data.text}`);
+                window.saveNotification(`Chat ${roomName}`, `${data.authorName}: ${data.text}`, 'chat', msgTime);
+            }
+        });
 
-                snapshot.forEach(docSnap => {
-                    const data = docSnap.data();
-                    const parsed = extractLinksAndGeneratePreview(data.text || "");
-                    const isMe = data.userId === currentUser.uid;
+        chatBox.innerHTML = '';
+        snapshot.forEach(docSnap => {
+            const data = docSnap.data();
+            const isMe = data.userId === currentUser.uid;
+            const parsed = extractLinksAndGeneratePreview(data.text || "");
 
-                    const alignClass = isMe 
-                        ? `margin-left: auto; background: var(--primary-color); color: white;` 
-                        : `margin-right: auto; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-color);`;
+            const alignClass = isMe 
+                ? `margin-left: auto; background: var(--primary-color); color: white;` 
+                : `margin-right: auto; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-color);`;
 
-                    chatBox.innerHTML += `
-                        <div style="padding:10px 15px; border-radius:16px; width: fit-content; max-width: 85%; margin-bottom: 10px; ${alignClass}">
-                            <strong style="font-size: 0.8rem; opacity: 0.8;">${data.authorName}</strong><br>
-                            ${parsed.formattedText}
-                            ${parsed.previews}
-                        </div>`;
-                });
-                chatBox.scrollTop = chatBox.scrollHeight;
-            });
-        };
+            chatBox.innerHTML += `
+                <div style="padding:10px 15px; border-radius:16px; width: fit-content; max-width: 85%; margin-bottom: 10px; ${alignClass}">
+                    <strong style="font-size: 0.7rem; opacity: 0.8;">${data.authorName}</strong><br>
+                    ${parsed.formattedText}
+                    ${parsed.previews}
+                </div>`;
+        });
+        chatBox.scrollTop = chatBox.scrollHeight;
+    });
+};
         window.sendChatMessage = async () => {
             const input = document.getElementById('chat-input');
             const text = input.value.trim();
