@@ -1212,6 +1212,7 @@ window.clearAllNotifications = () => {
         };
 
         // ================= CHAT REAL-TIME =================
+       // ================= CHAT REAL-TIME =================
         window.openChat = (type) => {
             currentChatRoom = type;
             
@@ -1224,23 +1225,24 @@ window.clearAllNotifications = () => {
             if (chatUnsubscribe) chatUnsubscribe();
 
             const q = query(collection(db, `chats_${type}`), orderBy("timestamp", "asc"));
+            
             chatUnsubscribe = onSnapshot(q, (snapshot) => {
+                // Lógica de Notificações
                 snapshot.docChanges().forEach((change) => {
                     if (change.type === "added" && change.doc.data().timestamp && change.doc.data().userId !== currentUser.uid) {
                         const data = change.doc.data();
                         
-                        // Se não estou na aba Chat ativamente
                         if (!document.getElementById('chat').classList.contains('active')) {
                             document.getElementById('dot-chat').style.display = 'block';
                         }
                         
-                        // Dispara notificação se estiver em outra aba
                         let roomName = type === 'global' ? 'Global' : (type === 'groups' ? 'Grupos' : 'Privado');
                         window.sendBrowserNotification(`Mensagem no Chat ${roomName}`, `${data.authorName}: ${data.text}`);
                         window.saveNotification(`Mensagem: Chat ${roomName}`, `${data.authorName}: ${data.text}`, 'chat');
-                 }
-                    });
+                    }
                 });
+
+                // Renderização das mensagens
                 chatBox.innerHTML = '';
                 if (snapshot.empty) {
                     chatBox.innerHTML = `<p style="text-align: center; color: gray; margin-top: 20px;">Nenhuma mensagem ainda na sala ${type}.</p>`;
@@ -1257,7 +1259,7 @@ window.clearAllNotifications = () => {
                         : `margin-right: auto; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-color);`;
 
                     chatBox.innerHTML += `
-                        <div style="padding:10px 15px; border-radius:16px; width: fit-content; max-width: 85%; ${alignClass}">
+                        <div style="padding:10px 15px; border-radius:16px; width: fit-content; max-width: 85%; margin-bottom: 10px; ${alignClass}">
                             <strong style="font-size: 0.8rem; opacity: 0.8;">${data.authorName}</strong><br>
                             ${parsed.formattedText}
                             ${parsed.previews}
@@ -1266,7 +1268,6 @@ window.clearAllNotifications = () => {
                 chatBox.scrollTop = chatBox.scrollHeight;
             });
         };
-
         window.sendChatMessage = async () => {
             const input = document.getElementById('chat-input');
             const text = input.value.trim();
