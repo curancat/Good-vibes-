@@ -494,7 +494,8 @@
                         <button onclick="sendChatMessage()" style="padding: 12px 20px; border-radius: 12px; background: var(--primary-color); color: white; border: none; cursor: pointer; font-weight: bold;">Enviar</button>
                     </div>
                 </div>
-                <div id="notifications" class="section">
+            </div>
+             <div id="notifications" class="section">
     <h2>Histórico de Notificações</h2>
     
     <div style="background: var(--card-bg); padding: 20px; border-radius: 16px; border: 1px solid var(--border-color); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
@@ -505,8 +506,6 @@
     <div id="notifications-list" style="display: flex; flex-direction: column; gap: 10px;">
         </div>
 </div>
-            </div>
-
             <div id="imageSearch" class="section">
                 <h2>Buscar Imagens & GIFs</h2>
                 <p style="color: gray; font-size: 0.9rem;">Pesquise aqui, clique na imagem desejada para copiar o link e cole no Chat, no Post ou no seu Perfil!</p>
@@ -740,7 +739,33 @@ window.sendBrowserNotification = (title, body) => {
         });
     }
 };
-        // ================= HISTÓRICO DE NOTIFICAÇÕES =================
+
+        window.deleteAccount = async () => {
+            if(confirm("Tem certeza que deseja deletar sua conta? Isso não pode ser desfeito.")){
+                try { 
+                    await deleteUser(auth.currentUser); 
+                    alert("Conta deletada com sucesso.");
+                } catch(e) { alert("Erro: Faça login novamente para realizar esta ação."); }
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('auth-section').style.display = 'none';
+                document.getElementById('app-section').style.display = 'block';
+                loadUserProfile();
+                loadFeed();
+                window.openChat('global'); 
+            } else {
+                currentUser = null;
+                document.getElementById('auth-section').style.display = 'flex';
+                document.getElementById('app-section').style.display = 'none';
+            }
+
+            
+        });
+                // ================= HISTÓRICO DE NOTIFICAÇÕES =================
 
 // Carrega o histórico salvo no navegador do usuário
 let notificationsHistory = JSON.parse(localStorage.getItem('gv_notifications') || '[]');
@@ -816,29 +841,6 @@ window.clearAllNotifications = () => {
         renderNotificationsList();
     }
 };
-        window.deleteAccount = async () => {
-            if(confirm("Tem certeza que deseja deletar sua conta? Isso não pode ser desfeito.")){
-                try { 
-                    await deleteUser(auth.currentUser); 
-                    alert("Conta deletada com sucesso.");
-                } catch(e) { alert("Erro: Faça login novamente para realizar esta ação."); }
-            }
-        };
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                document.getElementById('auth-section').style.display = 'none';
-                document.getElementById('app-section').style.display = 'block';
-                loadUserProfile();
-                loadFeed();
-                window.openChat('global'); 
-            } else {
-                currentUser = null;
-                document.getElementById('auth-section').style.display = 'flex';
-                document.getElementById('app-section').style.display = 'none';
-            }
-        });
 
         // ================= NAVEGAÇÃO =================
         window.navigate = (sectionId) => {
