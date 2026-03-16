@@ -449,7 +449,10 @@
         <button onclick="navigate('chat'); clearNotificationDot('chat')">💬 Chat</button>
         <div id="dot-chat" class="notify-dot"></div>
     </div>
-    
+    <div class="nav-btn-wrapper">
+        <button onclick="navigate('notifications'); clearNotificationDot('notifications'); renderNotificationsList()">🔔 Notificações</button>
+        <div id="dot-notifications" class="notify-dot"></div>
+    </div>
     <button onclick="navigate('imageSearch')">🖼️ Buscar Mídia</button>
     <button onclick="navigate('search')">🔍 Pessoas</button>
     <button onclick="navigate('profile')">👤 Perfil</button>
@@ -491,6 +494,17 @@
                         <button onclick="sendChatMessage()" style="padding: 12px 20px; border-radius: 12px; background: var(--primary-color); color: white; border: none; cursor: pointer; font-weight: bold;">Enviar</button>
                     </div>
                 </div>
+                <div id="notifications" class="section">
+    <h2>Histórico de Notificações</h2>
+    
+    <div style="background: var(--card-bg); padding: 20px; border-radius: 16px; border: 1px solid var(--border-color); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+        <p style="margin: 0; color: gray; font-size: 0.9rem;">Tudo o que aconteceu enquanto você estava fora.</p>
+        <button onclick="clearAllNotifications()" style="padding: 8px 15px; border-radius: 8px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); cursor: pointer; font-weight: bold; transition: var(--transition);">Limpar Histórico</button>
+    </div>
+
+    <div id="notifications-list" style="display: flex; flex-direction: column; gap: 10px;">
+        </div>
+</div>
             </div>
 
             <div id="imageSearch" class="section">
@@ -724,6 +738,82 @@ window.sendBrowserNotification = (title, body) => {
             body: body,
             icon: "https://cdn-icons-png.flaticon.com/512/3649/3649496.png" // Ícone genérico de sino
         });
+    }
+};
+        // ================= HISTÓRICO DE NOTIFICAÇÕES =================
+
+// Carrega o histórico salvo no navegador do usuário
+let notificationsHistory = JSON.parse(localStorage.getItem('gv_notifications') || '[]');
+
+// Função para registrar a notificação no histórico
+window.saveNotification = (title, body, sectionToNavigate) => {
+    const newNotif = {
+        id: Date.now(),
+        title: title,
+        body: body,
+        section: sectionToNavigate,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' - ' + new Date().toLocaleDateString(),
+        read: false
+    };
+    
+    // Coloca a mais nova no topo da lista
+    notificationsHistory.unshift(newNotif); 
+    
+    // Mantém o limite de 50 notificações para não pesar a memória
+    if(notificationsHistory.length > 50) notificationsHistory.pop();
+    
+    localStorage.setItem('gv_notifications', JSON.stringify(notificationsHistory));
+    
+    // Acende a bolinha da aba de notificações
+    if (!document.getElementById('notifications').classList.contains('active')) {
+        document.getElementById('dot-notifications').style.display = 'block';
+    }
+};
+
+// Função para desenhar a lista na tela
+window.renderNotificationsList = () => {
+    const list = document.getElementById('notifications-list');
+    if(!list) return;
+    
+    list.innerHTML = '';
+    
+    if(notificationsHistory.length === 0) {
+        list.innerHTML = '<p style="text-align: center; color: gray; padding: 20px;">Nenhuma notificação por enquanto.</p>';
+        return;
+    }
+
+    notificationsHistory.forEach(notif => {
+        // Se não foi lida, ganha um fundo azulado e borda mais forte
+        const bg = notif.read ? 'rgba(0,0,0,0.03)' : 'rgba(99, 102, 241, 0.1)';
+        const border = notif.read ? 'var(--border-color)' : 'var(--primary-color)';
+        
+        list.innerHTML += `
+            <div onclick="markAsRead(${notif.id}); navigate('${notif.section}')" style="background: ${bg}; border-left: 4px solid ${border}; padding: 15px; border-radius: 12px; border-top: 1px solid var(--border-color); border-right: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); cursor: pointer; transition: var(--transition);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <strong style="color: var(--text-color); font-size: 1.05rem;">${notif.title}</strong>
+                    <small style="color: gray; font-size: 0.8rem;">${notif.time}</small>
+                </div>
+                <p style="margin: 0; font-size: 0.95rem; color: var(--text-color); opacity: 0.8;">${notif.body}</p>
+            </div>
+        `;
+    });
+};
+
+// Função para marcar como lida ao clicar e ir para o local
+window.markAsRead = (id) => {
+    const index = notificationsHistory.findIndex(n => n.id === id);
+    if(index > -1) {
+        notificationsHistory[index].read = true;
+        localStorage.setItem('gv_notifications', JSON.stringify(notificationsHistory));
+    }
+};
+
+// Limpar tudo
+window.clearAllNotifications = () => {
+    if(confirm("Tem certeza que deseja limpar todo o histórico?")) {
+        notificationsHistory = [];
+        localStorage.setItem('gv_notifications', JSON.stringify(notificationsHistory));
+        renderNotificationsList();
     }
 };
         window.deleteAccount = async () => {
@@ -969,6 +1059,7 @@ window.sendBrowserNotification = (title, body) => {
                         
                         // Dispara a notificação de sistema se estiver em outra aba
                         window.sendBrowserNotification("Refúgio 🌊", `${data.authorName} publicou algo novo!`);
+                        window.saveNotification("Novo Post no Feed", `${data.authorName} publicou algo novo.`, 'foryou');
                     }
                 });
                 const feed = document.getElementById('feed-container');
@@ -1144,6 +1235,8 @@ window.sendBrowserNotification = (title, body) => {
                         // Dispara notificação se estiver em outra aba
                         let roomName = type === 'global' ? 'Global' : (type === 'groups' ? 'Grupos' : 'Privado');
                         window.sendBrowserNotification(`Mensagem no Chat ${roomName}`, `${data.authorName}: ${data.text}`);
+                        window.saveNotification(`Mensagem: Chat ${roomName}`, `${data.authorName}: ${data.text}`, 'chat');
+    }
                     }
                 });
                 chatBox.innerHTML = '';
