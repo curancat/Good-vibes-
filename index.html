@@ -1493,72 +1493,84 @@ window.clearNotificationDot = (type) => {
         chatBox.scrollTop = chatBox.scrollHeight;
     });
 };
-        window.sendChatMessage = async () => {
-            const chatInput = document.getElementById('chat-input');
-            const input = document.getElementById('chat-input');
-            const text = input.value.trim();
-            const textValue = chatInput.value.trim();
-            if(!text) return;
-            
-            input.value = ''; 
-            
-            try {
-                await addDoc(collection(db, `chats_${currentChatRoom}`), {
-                    userId: currentUser.uid,
-                    authorName: currentUserProfile.name || "Usuário",
-                    text: encrypt(textValue),
-                    timestamp: serverTimestamp()
-                });
-            } catch(e) { console.error("Erro ao enviar mensagem", e); }
-        };
+        
+    window.sendChatMessage = async () => {
+    const chatInput = document.getElementById('chat-input');
+    if (!chatInput) return;
+
+    const messageText = chatInput.value.trim();
+    if (!messageText) return;
+
+    // Limpa o campo imediatamente para dar sensação de velocidade
+    chatInput.value = ''; 
+
+    try {
+        // Se o currentChatRoom já for 'global' ou 'grupo', usamos o prefixo chats_
+        // Se for uma DM, usamos o ID da sala direto
+        const collectionName = currentChatRoom.startsWith('dm_') 
+            ? currentChatRoom 
+            : `chats_${currentChatRoom}`;
+
+        await addDoc(collection(db, collectionName), {
+            userId: currentUser.uid,
+            authorName: currentUserProfile.name || "Usuário",
+            // Enviando o texto CRIPTOGRAFADO
+            text: encrypt(messageText),
+            timestamp: serverTimestamp()
+        });
+    } catch(e) { 
+        console.error("Erro ao enviar mensagem:", e); 
+    }
+};
         window.startPrivateChat = (otherUid, otherName) => {
-    // 1. Cria um ID único para essa conversa juntando os dois UIDs em ordem alfabética.
-    // Isso garante que tanto faz quem chamou quem, a sala será sempre a mesma.
+    // 1. Define a sala única entre os dois usuários
     const roomHash = [currentUser.uid, otherUid].sort().join('_');
     currentChatRoom = 'dm_' + roomHash;
 
     const chatBox = document.getElementById('chat-messages');
-    document.getElementById('chat-input').parentElement.style.display = 'flex'; // Mostra o input de volta
+    const chatInputArea = document.getElementById('chat-input').parentElement;
     
-    // Cria um botãozinho de "Voltar" no topo do chat
-    chatBox.innerHTML = `
-        <button onclick="openChat('private')" style="margin-bottom: 10px; background: transparent; color: var(--primary-color); border: 1px solid var(--primary-color); padding: 5px 10px; border-radius: 8px; cursor: pointer;">⬅️ Voltar aos contatos</button>
-        <p style="text-align: center; color: gray;">Conversa privada com ${otherName}</p>
-    `;
-
+    // Mostra o campo de texto (caso estivesse escondido na lista de contatos)
+    chatInputArea.style.display = 'flex';
+    
+    // Cancela escutas anteriores para não duplicar mensagens
     if (chatUnsubscribe) chatUnsubscribe();
 
-    // 2. Ouve apenas as mensagens dessa sala específica
     const q = query(collection(db, currentChatRoom), orderBy("timestamp", "asc"));
     
     chatUnsubscribe = onSnapshot(q, (snapshot) => {
+        // Limpa a tela e coloca o botão de voltar e o cabeçalho
         chatBox.innerHTML = `
             <button onclick="openChat('private')" style="margin-bottom: 10px; background: transparent; color: var(--primary-color); border: 1px solid var(--primary-color); padding: 5px 10px; border-radius: 8px; cursor: pointer;">⬅️ Voltar aos contatos</button>
-            <p style="text-align: center; color: gray; font-size: 0.8rem;">Conversa protegida de ponta a ponta no banco de dados com <strong>${otherName}</strong></p>
+            <p style="text-align: center; color: gray; font-size: 0.8rem; margin-bottom: 15px;">Conversa segura com <strong>${otherName}</strong></p>
         `;
         
         snapshot.forEach(docSnap => {
-            const data = docSnap.data();
-            const isMe = data.userId === currentUser.uid;
-            // Traduz o código de volta para texto original
-            const decryptedText = decrypt(data.text || ""); 
-            // Agora passa o texto já traduzido para gerar os links e previews
-            const parsed = extractLinksAndGeneratePreview(decryptedText);
+            const messageData = docSnap.data();
+            const isMe = messageData.userId === currentUser.uid;
+            
+            // A MÁGICA DA SEGURANÇA:
+            // Primeiro traduzimos o código estranho (U2Fsd...) para texto real
+            const textoDecifrado = decrypt(messageData.text || ""); 
+            
+            // Depois passamos o texto limpo para gerar os links/vídeos/imagens
+            const conteudoProcessado = extractLinksAndGeneratePreview(textoDecifrado);
 
-            const alignClass = isMe 
+            const alignStyle = isMe 
                 ? `margin-left: auto; background: var(--primary-color); color: white;` 
                 : `margin-right: auto; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-color);`;
 
             chatBox.innerHTML += `
-                <div style="padding:10px 15px; border-radius:16px; width: fit-content; max-width: 85%; margin-bottom: 10px; ${alignClass}">
-                    ${parsed.formattedText}
-                    ${parsed.previews}
+                <div style="padding:10px 15px; border-radius:16px; width: fit-content; max-width: 85%; margin-bottom: 10px; ${alignStyle}">
+                    <div style="word-break: break-word;">${conteudoProcessado.formattedText}</div>
+                    ${conteudoProcessado.previews}
                 </div>`;
         });
+        
+        // Rola o chat para a última mensagem
         chatBox.scrollTop = chatBox.scrollHeight;
     });
 };
-
         // ================= PESQUISA DE PESSOAS =================
         window.performSearch = async () => {
             const term = document.getElementById('search-input').value.toLowerCase();
