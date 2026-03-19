@@ -973,46 +973,71 @@ window.clearNotificationDot = (type) => {
         };
 
         // ================= PERFIL E CONFIGURAÇÕES =================
-       async function validarAcesso(e) {
-    if (e) e.preventDefault();
+       async function validarAcessoAdmin(e) {
+    if (e) e.preventDefault(); // Bloqueia a ação nativa do navegador imediatamente
 
-    // Se você já validou nesta sessão, não pede de novo
-    if (sessionStorage.getItem("isDev") === "true") return;
+    // Se o desenvolvedor já foi validado nesta sessão, libera o acesso
+    if (sessionStorage.getItem("isDev") === "true") {
+        return; 
+    }
 
     try {
-        // Busca o documento no Firestore
-        // 'db' já deve estar definido no seu código principal
-        const docRef = doc(db, "config", "seguranca"); 
+        // 1. Busca a referência da senha no seu Firestore
+        // Coleção: config | Documento: seguranca | Campo: chave
+        const docRef = doc(db, "config", "seguranca");
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-            const senhaReal = docSnap.data().chave; // O nome do campo no Firestore
-            const tentativa = prompt("🔐 ACESSO RESTRITO\nDigite a chave mestra:");
+            const senhaReal = docSnap.data().chave;
 
+            // 2. Abre o prompt para o usuário
+            const tentativa = prompt("🔐 ACESSO RESTRITO\nO código deste site é protegido por criptografia de ponta. Digite a chave mestra para continuar:");
+
+            // 3. Verifica a senha
             if (tentativa === senhaReal && tentativa !== null) {
-                alert("Acesso concedido, João!");
+                alert("Acesso concedido! Ferramentas liberadas para esta sessão.");
                 sessionStorage.setItem("isDev", "true");
             } else {
-                window.location.href = "https://cataas.com/cat/says/Acesso%20Negado";
+                alert("Acesso negado. Você não tem permissão para ver o código.");
+                window.location.href = "https://cataas.com/cat/says/Xô%20Curioso"; // Redireciona para o gato
             }
         } else {
-            console.error("Documento de configuração não encontrado no Firestore!");
+            console.error("Erro: Documento 'config/seguranca' não encontrado no Firestore.");
         }
     } catch (err) {
-        console.error("Erro ao validar no Firestore:", err);
+        console.error("Erro técnico na validação:", err);
     }
 }
 
-// Escuta os atalhos (F12, Ctrl+U, etc.)
-document.addEventListener('keydown', (e) => {
-    const isCtrl = e.ctrlKey || e.metaKey;
-    if (e.keyCode === 123 || (isCtrl && e.keyCode === 85)) {
-        validarAcesso(e);
+// --- MONITORAMENTO DE EVENTOS ---
+
+// 1. Bloqueia o Botão Direito do Mouse
+document.addEventListener('contextmenu', (e) => {
+    if (sessionStorage.getItem("isDev") !== "true") {
+        validarAcessoAdmin(e);
     }
 });
 
-// Bloqueia o botão direito e pede a senha
-document.addEventListener('contextmenu', validarAcesso);
+// 2. Bloqueia Atalhos de Teclado (F12, Ctrl+U, Ctrl+Shift+I/C/J, Ctrl+S)
+document.addEventListener('keydown', (e) => {
+    const isCtrl = e.ctrlKey || e.metaKey;
+    const isShift = e.shiftKey;
+
+    const atalhosProibidos = [
+        e.keyCode === 123, // F12
+        isCtrl && e.keyCode === 85, // Ctrl + U (Código Fonte)
+        isCtrl && isShift && e.keyCode === 73, // Ctrl + Shift + I (Inspetor)
+        isCtrl && isShift && e.keyCode === 67, // Ctrl + Shift + C (Selecionar elemento)
+        isCtrl && isShift && e.keyCode === 74, // Ctrl + Shift + J (Console)
+        isCtrl && e.keyCode === 83  // Ctrl + S (Salvar Página)
+    ];
+
+    if (atalhosProibidos.some(condicao => condicao)) {
+        if (sessionStorage.getItem("isDev") !== "true") {
+            validarAcessoAdmin(e);
+        }
+    }
+});
         
         async function loadUserProfile() {
             if(!currentUser) return;
