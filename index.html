@@ -1339,6 +1339,18 @@ window.clearNotificationDot = (type) => {
         };
 
         // ================= INTERAÇÕES E MODAIS =================
+        document.addEventListener('keydown', function(event) {
+    // Verifica se o usuário apertou Ctrl (ou Cmd no Mac) + a tecla 'U' (código 85)
+    if ((event.ctrlKey || event.metaKey) && event.keyCode === 85) {
+        event.preventDefault(); // Impede o navegador de abrir o código-fonte
+        
+        // Redireciona para um site aleatório de gatinhos
+        window.location.href = "https://cataas.com/cat/says/Vai%20bisbilhotar%20na%20casa%20do%20chapéu";
+        
+        // Ou se você preferir um gif de alguém apontando:
+        // window.location.href = "https://media.giphy.com/media/cO39srN2EUIRaVqaVq/giphy.gif";
+    }
+});
         window.openPixModal = async (authorId) => {
             document.getElementById('pix-modal').style.display = 'flex';
             document.getElementById('pix-key-display').innerText = "Buscando chave PIX...";
