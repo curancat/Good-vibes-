@@ -1339,16 +1339,29 @@ window.clearNotificationDot = (type) => {
         };
 
         // ================= INTERAÇÕES E MODAIS =================
-        document.addEventListener('keydown', function(event) {
-    // Verifica se o usuário apertou Ctrl (ou Cmd no Mac) + a tecla 'U' (código 85)
-    if ((event.ctrlKey || event.metaKey) && event.keyCode === 85) {
-        event.preventDefault(); // Impede o navegador de abrir o código-fonte
-        
-        // Redireciona para um site aleatório de gatinhos
-        window.location.href = "https://cataas.com/cat/says/Vai%20bisbilhotar%20na%20casa%20do%20chapéu";
-        
-        // Ou se você preferir um gif de alguém apontando:
-        // window.location.href = "https://media.giphy.com/media/cO39srN2EUIRaVqaVq/giphy.gif";
+   // 1. Bloqueia o Botão Direito do Mouse
+document.addEventListener('contextmenu', function(event) {
+    event.preventDefault();
+     alert("Opa! Aqui não."); 
+    // Ou redirecionar:
+    window.location.href = "https://cataas.com/cat/says/Nada%20de%20clique%20direito";
+});
+
+// 2. Bloqueia Atalhos de Teclado (Ctrl+U, F12, Ctrl+Shift+I/C)
+document.addEventListener('keydown', function(event) {
+    const isCtrl = event.ctrlKey || event.metaKey;
+    const isShift = event.shiftKey;
+    
+    // Bloqueia F12
+    if (event.keyCode === 123) {
+        event.preventDefault();
+        window.location.href = "https://cataas.com/cat/says/F12%20bloqueado";
+    }
+
+    // Bloqueia Ctrl+U, Ctrl+Shift+I, Ctrl+Shift+C
+    if (isCtrl && (event.keyCode === 85 || (isShift && (event.keyCode === 73 || event.keyCode === 67)))) {
+        event.preventDefault();
+        window.location.href = "https://cataas.com/cat/says/Tentando%20ver%20o%20codigo?";
     }
 });
         window.openPixModal = async (authorId) => {
