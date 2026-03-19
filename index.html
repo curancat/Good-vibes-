@@ -721,7 +721,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, updatePassword,createUserWithEmailAndPassword, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-        import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         // Configuração do Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyBXrIshTVFOD30XPKku_Trk6VKbXv_7Gkg",
@@ -974,33 +973,47 @@ window.clearNotificationDot = (type) => {
         };
 
         // ================= PERFIL E CONFIGURAÇÕES =================
-        async function verificarAcesso(e) {
-    e.preventDefault();
-    
-    // 1. Busca a senha real direto do Firebase (Segurança de verdade)
-    const snapshot = await get(ref(db, 'configuracoes/chave_mestra'));
-    const senhaCorreta = snapshot.val();
+       async function validarAcesso(e) {
+    if (e) e.preventDefault();
 
-    // 2. Pergunta ao bisbilhoteiro
-    let tentativa = prompt("⚠️ ACESSO RESTRITO\nDigite a senha de desenvolvedor:");
+    // Se você já validou nesta sessão, não pede de novo
+    if (sessionStorage.getItem("isDev") === "true") return;
 
-    // 3. Validação "Server-Side"
-    if (tentativa === senhaCorreta) {
-        alert("Acesso autorizado, João. Não quebre nada.");
-        // Aqui você pode até salvar um 'sessionStorage' para não pedir a senha toda hora para você
-    } else {
-        window.location.href = "https://cataas.com/cat/says/Tentativa%20de%20invasao%20detectada";
+    try {
+        // Busca o documento no Firestore
+        // 'db' já deve estar definido no seu código principal
+        const docRef = doc(db, "config", "seguranca"); 
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            const senhaReal = docSnap.data().chave; // O nome do campo no Firestore
+            const tentativa = prompt("🔐 ACESSO RESTRITO\nDigite a chave mestra:");
+
+            if (tentativa === senhaReal && tentativa !== null) {
+                alert("Acesso concedido, João!");
+                sessionStorage.setItem("isDev", "true");
+            } else {
+                window.location.href = "https://cataas.com/cat/says/Acesso%20Negado";
+            }
+        } else {
+            console.error("Documento de configuração não encontrado no Firestore!");
+        }
+    } catch (err) {
+        console.error("Erro ao validar no Firestore:", err);
     }
 }
 
-// Bloqueios que acionam a verificação
-document.addEventListener('contextmenu', verificarAcesso);
-document.addEventListener('keydown', function(e) {
+// Escuta os atalhos (F12, Ctrl+U, etc.)
+document.addEventListener('keydown', (e) => {
     const isCtrl = e.ctrlKey || e.metaKey;
-    if (e.keyCode === 123 || (isCtrl && (e.keyCode === 85 || e.keyCode === 73 || e.keyCode === 67))) {
-        verificarAcesso(e);
+    if (e.keyCode === 123 || (isCtrl && e.keyCode === 85)) {
+        validarAcesso(e);
     }
 });
+
+// Bloqueia o botão direito e pede a senha
+document.addEventListener('contextmenu', validarAcesso);
+        
         async function loadUserProfile() {
             if(!currentUser) return;
             try {
