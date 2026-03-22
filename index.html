@@ -1281,23 +1281,27 @@ window.clearNotificationDot = (type) => {
     });
 }
       window.votarEnquete = async (msgId, optId) => {
-    // Impede votar duas vezes na mesma sessão
     if (sessionStorage.getItem(`voto_${msgId}`)) {
-        alert("Você já votou nesta enquete!");
+        alert("Você já votou!");
         return;
     }
 
     try {
+        // Importamos as ferramentas necessárias na hora
         const { doc, updateDoc, increment } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
-        const docRef = doc(db, "posts", msgId); // Certifique-se que o nome da coleção é "posts"
+        
+        // IMPORTANTE: db deve ser a variável que você usou no firebase.initializeApp
+        const docRef = doc(db, "posts", msgId); 
         
         await updateDoc(docRef, {
             [`enquete.votos_${optId}`]: increment(1)
         });
 
         sessionStorage.setItem(`voto_${msgId}`, "true");
+        console.log("Voto computado!");
     } catch (e) {
         console.error("Erro ao computar voto:", e);
+        alert("Erro ao votar. Verifique o console.");
     }
 };
         function loadFeed() {
@@ -1397,6 +1401,32 @@ window.clearNotificationDot = (type) => {
         </div>
     </div>
     `;
+
+window.likePost = async (postId) => {
+    if(!currentUser) { alert("Faça login para curtir!"); return; }
+    try { 
+        const { doc, updateDoc, increment } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+        await updateDoc(doc(db, "posts", postId), { likes: increment(1) }); 
+    } catch(e) { console.error("Erro ao curtir:", e); }
+};
+
+window.dislikePost = async (postId) => {
+    if(!currentUser) { alert("Faça login!"); return; }
+    try { 
+        const { doc, updateDoc, increment } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+        await updateDoc(doc(db, "posts", postId), { dislikes: increment(1) }); 
+    } catch(e) { console.error("Erro ao dar deslike:", e); }
+};
+
+window.sharePost = (postId) => {
+    const url = window.location.origin + window.location.pathname + "?post=" + postId;
+    if (navigator.share) {
+        navigator.share({ title: 'Good Vibes Post', url: url }).catch(e => console.error(e));
+    } else {
+        navigator.clipboard.writeText(url);
+        alert("Link copiado!");
+    }
+};
 });
 });
 }
