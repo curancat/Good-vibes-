@@ -1305,13 +1305,6 @@ window.clearNotificationDot = (type) => {
             onSnapshot(q, (snapshot) => {
                 
                 snapshot.docChanges().forEach((change) => {
-                    const post = { id: docSnap.id, ...docSnap.data() };
-
-                    const postElement = document.createElement("div");
-                    postElement.classList.add("post");
-
-                    // Chamamos a função passando o objeto 'post' completo
-                    const conteudoFinal = renderizarConteudo(post);
                     // Se foi adicionado um post novo, o timestamp existe, e não fui eu que postei:
                     if (change.type === "added" && change.doc.data().timestamp && change.doc.data().userId !== currentUser.uid) {
                         const data = change.doc.data();
@@ -1336,39 +1329,51 @@ window.clearNotificationDot = (type) => {
                     return;
                 }
 
-                snapshot.forEach((docSnap) => {
-                    const data = docSnap.data();
-                    const postId = docSnap.id;
-                    const parsedContent = extractLinksAndGeneratePreview(data.text || "");
-                    const isPostNsfw = data.isNsfw === true;
-                    const userWantsBlur = currentUserProfile.blurNsfw !== false;
-                    let mediaHtml = "";
-                    let blurClass = "";
-                    let warningHtml = "";
-                    let clickToReveal = "";
-                    let nsfwBadge = "";
-                    if(data.mediaUrl) {
-                        if(data.mediaUrl.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i) || data.mediaUrl.includes('video')) {
-                            mediaHtml = `<video controls src="${data.mediaUrl}" style="width:100%; border-radius:16px; margin-top:10px;"></video>`;
-                        } else {
-                            mediaHtml = `<img src="${data.mediaUrl}" style="width:100%; border-radius:16px; margin-top:10px; object-fit:cover;">`;
-                        }
-                    }
-                    if (isPostNsfw) {
-                         nsfwBadge = `<span style="background: #ef4444; color: white; padding: 2px 6px; border-radius: 6px; font-size: 0.7rem; margin-left: 10px;">🔞 NSFW</span>`;  
-                        // Se o usuário estiver com a proteção ligada
-                        if (userWantsBlur) {
-                             blurClass = "nsfw-blur";
-                             warningHtml = `<div class="nsfw-warning" id="warning-${postId}">🔞 Conteúdo Sensível<br><small>Clique para revelar</small></div>`;
-                             // Ao clicar, remove o blur e some com o aviso
-                            clickToReveal = `onclick="this.querySelector('.nsfw-blur').classList.remove('nsfw-blur'); this.querySelector('.nsfw-warning').style.display='none'; this.style.cursor='default';"`;
-                            }
-                        }
+               snapshot.forEach((docSnap) => {
+    const data = docSnap.data();
+    const postId = docSnap.id;
+    const parsedContent = extractLinksAndGeneratePreview(data.text || "");
+    const isPostNsfw = data.isNsfw === true;
+    const userWantsBlur = currentUserProfile.blurNsfw !== false;
 
-                    let avatarHtml = data.authorAvatar 
-                        ? `<img src="${data.authorAvatar}" style="width:100%; height:100%; object-fit:cover;">`
-                        : (data.authorName ? data.authorName.substring(0,2).toUpperCase() : "GV");
-                   feed.innerHTML += `
+    let mediaHtml = "";
+    let blurClass = "";
+    let warningHtml = "";
+    let clickToReveal = "";
+    let nsfwBadge = "";
+
+    // ----------------------------------------------------
+    // A MÁGICA DA ENQUETE ACONTECE AQUI:
+    // Pega o texto formatado e converte as enquetes em botões
+    const conteudoComEnquetes = renderizarConteudo({ 
+        id: postId, 
+        texto: parsedContent.formattedText, 
+        enquete: data.enquete 
+    });
+    // ----------------------------------------------------
+
+    if(data.mediaUrl) {
+        if(data.mediaUrl.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i) || data.mediaUrl.includes('video')) {
+            mediaHtml = `<video controls src="${data.mediaUrl}" style="width:100%; border-radius:16px; margin-top:10px;"></video>`;
+        } else {
+            mediaHtml = `<img src="${data.mediaUrl}" style="width:100%; border-radius:16px; margin-top:10px; object-fit:cover;">`;
+        }
+    }
+    
+    if (isPostNsfw) {
+         nsfwBadge = `<span style="background: #ef4444; color: white; padding: 2px 6px; border-radius: 6px; font-size: 0.7rem; margin-left: 10px;">🔞 NSFW</span>`;  
+        if (userWantsBlur) {
+             blurClass = "nsfw-blur";
+             warningHtml = `<div class="nsfw-warning" id="warning-${postId}">🔞 Conteúdo Sensível<br><small>Clique para revelar</small></div>`;
+            clickToReveal = `onclick="this.querySelector('.nsfw-blur').classList.remove('nsfw-blur'); this.querySelector('.nsfw-warning').style.display='none'; this.style.cursor='default';"`;
+        }
+    }
+
+    let avatarHtml = data.authorAvatar 
+        ? `<img src="${data.authorAvatar}" style="width:100%; height:100%; object-fit:cover;">`
+        : (data.authorName ? data.authorName.substring(0,2).toUpperCase() : "GV");
+    
+    feed.innerHTML += `
     <div class="post">
         <div class="post-header">
             <div class="post-avatar">${avatarHtml}</div>
@@ -1378,7 +1383,7 @@ window.clearNotificationDot = (type) => {
         <div class="nsfw-container" ${clickToReveal}>
             ${warningHtml}
             <div class="${blurClass}">
-                <div class="post-content">${parsedContent.formattedText}</div>
+                <div class="post-content">${conteudoComEnquetes}</div>
                 <div class="post-media">${parsedContent.previews} ${mediaHtml}</div>
             </div>
         </div>
@@ -1391,39 +1396,8 @@ window.clearNotificationDot = (type) => {
             <button onclick="sharePost('${postId}')">↗️ Compartilhar</button>
         </div>
     </div>
-`;
-                });
-            });
-        }
-
-        window.likePost = async (postId) => {
-            if(!currentUser) return;
-            try { await updateDoc(doc(db, "posts", postId), { likes: increment(1) }); } 
-            catch(e) { console.error("Erro ao curtir:", e); }
-        };
-        window.dislikePost = async (postId) => {
-    if(!currentUser) return;
-    try { 
-        // Usamos o increment(1) para subir o contador de dislikes no Firestore
-        await updateDoc(doc(db, "posts", postId), { 
-            dislikes: increment(1) 
-        }); 
-    } 
-    catch(e) { 
-        console.error("Erro ao dar deslike:", e); 
-    }
-};
-
-        window.sharePost = (postId) => {
-            const url = window.location.origin + window.location.pathname + "?post=" + postId;
-            if (navigator.share) {
-                navigator.share({ title: 'Good Vibes Post', url: url }).catch(e => console.error(e));
-            } else {
-                navigator.clipboard.writeText(url);
-                alert("Link copiado para a área de transferência!");
-            }
-        };
-
+    `;
+});
         // ================= INTERAÇÕES E MODAIS =================
 
         window.openPixModal = async (authorId) => {
