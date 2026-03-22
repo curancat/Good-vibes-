@@ -1282,9 +1282,6 @@ window.clearNotificationDot = (type) => {
         console.error("Erro ao votar:", e);
     }
 };
-    
-    sessionStorage.setItem(`voto_${msgId}`, "true");
-};
         function loadFeed() {
             const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
             onSnapshot(q, (snapshot) => {
