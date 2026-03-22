@@ -301,6 +301,24 @@
     z-index: 10;
     pointer-events: none; /* Deixa o clique passar para a div de baixo */
 }
+        .btn-enquete {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 15px;
+    margin: 5px;
+    cursor: pointer;
+    font-size: 14px;
+}
+.badge-votos {
+    background: #50fa7b;
+    color: #282a36;
+    padding: 1px 6px;
+    border-radius: 10px;
+    margin-left: 5px;
+    font-weight: bold;
+}
         /* ================= CHAT ================= */
         .chat-window {
             background: var(--card-bg);
@@ -1220,7 +1238,43 @@ window.clearNotificationDot = (type) => {
                 document.getElementById('post-nsfw').checked = false;
             }
         };
+        async function enviarMensagemComEnquete(textoDigitado) {
+    let enqueteData = null;
+    const regexEnquete = /\(option:(\w+)\{.+?\}\)/g;
+    let match;
 
+    while ((match = regexEnquete.exec(textoDigitado)) !== null) {
+        if (!enqueteData) enqueteData = {};
+        enqueteData[`votos_${match[1]}`] = 0;
+    }
+
+    await addDoc(collection(db, "mensagens"), {
+        texto: textoDigitado,
+        enquete: enqueteData,
+        timestamp: serverTimestamp()
+    });
+}
+        function processarTextoEnquete(mensagemObj) {
+    const regex = /\(option:(\w+)\{(.+?)\}\)/g;
+    
+    return mensagemObj.texto.replace(regex, (match, id, rotulo) => {
+        const votos = (mensagemObj.enquete && mensagemObj.enquete[`votos_${id}`]) || 0;
+        return `
+            <button class="btn-enquete" onclick="votarEnquete('${mensagemObj.id}', '${id}')">
+                ${rotulo} <span class="badge-votos">${votos}</span>
+            </button>`;
+    });
+}
+        window.votarEnquete = async (msgId, optId) => {
+    if (sessionStorage.getItem(`voto_${msgId}`)) return;
+
+    const docRef = doc(db, "mensagens", msgId);
+    await updateDoc(docRef, {
+        [`enquete.votos_${optId}`]: increment(1)
+    });
+    
+    sessionStorage.setItem(`voto_${msgId}`, "true");
+};
         function loadFeed() {
             const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
             onSnapshot(q, (snapshot) => {
