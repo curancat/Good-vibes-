@@ -1287,8 +1287,6 @@ window.clearNotificationDot = (type) => {
     }
 
     try {
-        // Importamos as ferramentas necessárias na hora
-        const { doc, updateDoc, increment } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
         
         // IMPORTANTE: db deve ser a variável que você usou no firebase.initializeApp
         const docRef = doc(db, "posts", msgId); 
@@ -1403,25 +1401,48 @@ window.clearNotificationDot = (type) => {
     `;
 
 window.likePost = async (postId) => {
-    if(!currentUser) { alert("Faça login para curtir!"); return; }
-    try { 
-        const { doc, updateDoc, increment } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
-        await updateDoc(doc(db, "posts", postId), { likes: increment(1) }); 
-    } catch(e) { console.error("Erro ao curtir:", e); }
+    if(!currentUser) { alert("Entre para curtir!"); return; }
+    try {
+        const postRef = doc(db, "posts", postId);
+        await updateDoc(postRef, { likes: increment(1) });
+    } catch (e) {
+        console.error("Erro ao curtir:", e);
+    }
 };
 
+// Função para Descurtir
 window.dislikePost = async (postId) => {
-    if(!currentUser) { alert("Faça login!"); return; }
-    try { 
-        const { doc, updateDoc, increment } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
-        await updateDoc(doc(db, "posts", postId), { dislikes: increment(1) }); 
-    } catch(e) { console.error("Erro ao dar deslike:", e); }
+    if(!currentUser) { alert("Entre para dar deslike!"); return; }
+    try {
+        const postRef = doc(db, "posts", postId);
+        await updateDoc(postRef, { dislikes: increment(1) });
+    } catch (e) {
+        console.error("Erro ao descurtir:", e);
+    }
 };
 
+// Função de Votar na Enquete
+window.votarEnquete = async (msgId, optId) => {
+    if (sessionStorage.getItem(`voto_${msgId}`)) {
+        alert("Você já votou!");
+        return;
+    }
+    try {
+        const docRef = doc(db, "posts", msgId);
+        await updateDoc(docRef, {
+            [`enquete.votos_${optId}`]: increment(1)
+        });
+        sessionStorage.setItem(`voto_${msgId}`, "true");
+    } catch (e) {
+        console.error("Erro ao votar:", e);
+    }
+};
+
+// Função de Compartilhar
 window.sharePost = (postId) => {
     const url = window.location.origin + window.location.pathname + "?post=" + postId;
     if (navigator.share) {
-        navigator.share({ title: 'Good Vibes Post', url: url }).catch(e => console.error(e));
+        navigator.share({ title: 'Good Vibes', url: url }).catch(console.error);
     } else {
         navigator.clipboard.writeText(url);
         alert("Link copiado!");
