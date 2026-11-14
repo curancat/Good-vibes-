@@ -372,6 +372,8 @@ let inboxUnsubscribe = null;
 let dmUnsubscribe = null;
 let dmInitialLoad = true;
 let feedInitialLoad = true;
+/* Cache dos posts visíveis no feed — usado pela "Energia da casa" (ver seção abaixo) */
+let feedPostsCache = [];
 let inboxInitialLoad = true;
 const revealedPosts = new Set();
 
@@ -1010,6 +1012,7 @@ function loadFeed() {
             });
         });
         feedInitialLoad = false;
+        feedPostsCache = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 
         const feed = $('#feed-container');
         if (!feed) return;
@@ -1700,6 +1703,58 @@ window.addEventListener('appinstalled', () => {
     showToast('Aplicativo instalado com sucesso! 🎉', 'success');
 });
 
+/* ================= ENERGIA DA CASA (engajamento ambiental) ================= */
+// A cada 3 minutos com o app aberto, a casa distribui uma energia:
+// curte um post recente de outra pessoa (80% das vezes) ou descurtida (20%).
+// Não é uma pessoa tocando — é o app respirando (ver regras no app).
+// Nunca impulsiona: post próprio, post com 🔞 ou posts com mais de 7 dias.
+const AMBIENT_INTERVAL_MS = 3 * 60 * 1000;
+const AMBIENT_DISLIKE_RATE = 0.2;   // fração de descurtidas (0.2 = 20%)
+const AMBIENT_MAX_AGE_MS = 7 * 24 * 3600 * 1000;
+let ambientTimer = null;
+let ambientUsed = new Set();        // posts já impulsionados nesta sessão
+
+function ambientCandidates() {
+    const me = currentUser?.uid;
+    if (!me) return [];
+    const now = Date.now();
+    return (feedPostsCache || []).filter((p) => {
+        if (!p || !p.id) return false;
+        if (p.userId === me) return false;
+        if (p.isNsfw) return false;
+        const ts = p.timestamp?.toMillis ? p.timestamp.toMillis() : Number(p.timestamp) || 0;
+        if (ts && now - ts > AMBIENT_MAX_AGE_MS) return false;
+        return true;
+    });
+}
+
+async function ambientPulse() {
+    if (document.hidden || !currentUser) return;
+    const candidates = ambientCandidates();
+    if (!candidates.length) return;
+    const fresh = candidates.filter((p) => !ambientUsed.has(p.id));
+    const pool = fresh.length ? fresh : candidates;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    const dislike = Math.random() < AMBIENT_DISLIKE_RATE;
+    ambientUsed.add(pick.id);
+    if (ambientUsed.size > 300) ambientUsed = new Set([...ambientUsed].slice(-150));
+    try {
+        await updateDoc(doc(db, 'posts', pick.id), dislike ? { dislikes: increment(1) } : { likes: increment(1) });
+        console.log(`🌊 Energia da casa: ${dislike ? '👎' : '👍'} no post ${pick.id}`);
+    } catch (err) {
+        console.warn('🌊 Energia da casa não pôde ser entregue:', err?.message);
+    }
+}
+
+function startAmbientVibes() {
+    stopAmbientVibes();
+    ambientTimer = setInterval(ambientPulse, AMBIENT_INTERVAL_MS);
+}
+function stopAmbientVibes() {
+    if (ambientTimer) { clearInterval(ambientTimer); ambientTimer = null; }
+    ambientUsed = new Set();
+}
+
 /* ================= ESTADO DE AUTENTICAÇÃO ================= */
 onAuthStateChanged(auth, (user) => {
     if (user) {
@@ -1709,6 +1764,7 @@ onAuthStateChanged(auth, (user) => {
         window.openChat('global'); // mantém o canal ouvindo para os badges
         startInboxListener();
         startDmInboxListener();
+        startAmbientVibes();
         if (unlocked) showUnlockedScreen();
     } else {
         currentUser = null;
@@ -1720,6 +1776,8 @@ onAuthStateChanged(auth, (user) => {
         if (commentsUnsubscribe) { commentsUnsubscribe(); commentsUnsubscribe = null; }
         if (inboxUnsubscribe) { inboxUnsubscribe(); inboxUnsubscribe = null; }
         if (dmUnsubscribe) { dmUnsubscribe(); dmUnsubscribe = null; }
+        stopAmbientVibes();
+        feedPostsCache = [];
         relock();
     }
 });
@@ -1739,7 +1797,7 @@ setInterval(tickClock, 1000);
 })();
 
 /* ================= ATUALIZAÇÃO DO APP (NOVA VERSÃO) ================= */
-const APP_VERSION = '2.5.0';
+const APP_VERSION = '2.6.0';
 const appVersionEl = $('#app-version');
 if (appVersionEl) appVersionEl.textContent = `Good Vibes 🌊 · O Refúgio · v${APP_VERSION}`;
 let swRegistration = null;
