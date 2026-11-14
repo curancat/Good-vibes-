@@ -81,6 +81,15 @@ const clipboardCopy = async (text) => {
     }
 };
 
+/** Mensagem amigável para "Missing or insufficient permissions" do Firestore */
+const firestorePermissionMsg = (err) => {
+    const msg = String(err?.message || err?.code || '');
+    if (/permission|PERMISSION_DENIED|insufficient/i.test(msg)) {
+        return '🚫 O Firebase recusou o acesso (regras de segurança do Firestore). O administrador precisa publicar as regras do arquivo firestore.rules no Console → Firestore → Regras.';
+    }
+    return msg || 'Erro desconhecido do Firestore.';
+};
+
 const debounce = (fn, wait = 250) => {
     let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
 };
@@ -954,8 +963,8 @@ function loadFeed() {
     }, (err) => {
         console.error('Erro no feed:', err);
         const feed = $('#feed-container');
-        if (feed) feed.innerHTML = `<div class="empty-state"><span class="empty-emoji">😕</span><strong>Não consegui carregar o feed.</strong><p>${escapeHtml(err?.message || 'Verifique sua conexão e tente novamente.')}</p></div>`;
-        showToast('Erro ao carregar o feed.', 'error');
+        if (feed) feed.innerHTML = `<div class="empty-state"><span class="empty-emoji">😕</span><strong>Não consegui carregar o feed.</strong><p>${escapeHtml(firestorePermissionMsg(err))}</p></div>`;
+        showToast(firestorePermissionMsg(err), 'error', 6000);
     });
 }
 
@@ -1119,6 +1128,7 @@ $('#submit-comment-btn')?.addEventListener('click', async () => {
                     to: currentPostAuthorForComment,
                     type: 'comment',
                     from: currentUserProfile.name || 'Alguém',
+                    fromId: currentUser.uid,
                     text: text.slice(0, 140),
                     postId: currentPostIdForComment,
                     timestamp: serverTimestamp()
@@ -1238,7 +1248,8 @@ window.openChat = (type) => {
         if (nearBottom) chatBox.scrollTop = chatBox.scrollHeight;
     }, (err) => {
         console.error('Erro no chat:', err);
-        chatBox.innerHTML = '<p class="muted">Chat indisponível no momento.</p>';
+        chatBox.innerHTML = `<p class="muted">${escapeHtml(firestorePermissionMsg(err))}</p>`;
+        showToast('Sem permissão no chat (Firestore).', 'error', 6000);
     });
 };
 

@@ -1,0 +1,103 @@
+rules_version = '2';
+
+// ============================================================
+// GOOD VIBES 🌊 — Regras de Segurança do Firestore
+//
+// Como publicar (uma das opções):
+//   a) Firebase Console → Firestore Database → Regras → cole este
+//      arquivo → "Publicar"   (2 minutos, recomendado)
+//   b) Firebase CLI:  firebase deploy --only firestore:rules
+//
+// ⚠️  Sem publicar estas regras, contas que NÃO são a do dono do
+// projeto veem "Missing or insufficient permissions" em TUDO
+// (perfil, feed, chat e inbox) — exatamente o erro relatado.
+// ============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // ---------- PERFIS ----------
+    // Qualquer membro pode LER perfis (necessário para busca de
+    // pessoas, contatos do chat e modal de PIX do criador).
+    // Cada um só pode ESCREVER no próprio documento.
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create, update, delete: if signedIn() && request.auth.uid == userId;
+    }
+
+    // ---------- FEED ----------
+    match /posts/{postId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.authorName is string
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 1000;
+      // Curtir/descurtir e votar na enquete mexem SÓ nos contadores.
+      // Conteúdo (texto, autor, mídia) é imutável para outras pessoas.
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['likes', 'dislikes', 'enquete']);
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+
+      match /comments/{commentId} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 500;
+        allow update, delete: if false;
+      }
+    }
+
+    // ---------- CHATS DE CANAL (Global e Grupos) ----------
+    match /chats_global/{messageId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 4000;
+      allow update, delete: if false;
+    }
+
+    match /chats_groups/{messageId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 4000;
+      allow update, delete: if false;
+    }
+
+    // ---------- MENSAGENS DIRETAS ----------
+    // Salas no formato dm_{uidA}_{uidB} (uids ordenados por quem
+    // criou). Só quem tem o próprio uid no nome da sala lê/escreve.
+    match /{dmRoom}/{messageId} {
+      allow read: if signedIn()
+        && dmRoom.matches('dm_.*' + request.auth.uid + '.*');
+      allow create: if signedIn()
+        && dmRoom.matches('dm_.*' + request.auth.uid + '.*')
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 4000;
+      allow update, delete: if false;
+    }
+
+    // ---------- INBOX (notificações de comentário) ----------
+    match /inbox/{notifId} {
+      allow read: if signedIn() && resource.data.to == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.to is string
+        && request.resource.data.fromId == request.auth.uid
+        && request.resource.data.type == 'comment'
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 300;
+      // Destinatário pode marcar como lida ou apagar
+      allow update, delete: if signedIn() && resource.data.to == request.auth.uid;
+    }
+  }
+}

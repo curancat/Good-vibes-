@@ -61,6 +61,34 @@ icons/            # Ícones do app (192/512/maskable/apple-touch/favicon)
 tests/smoke.mjs   # Teste de fumaça offline (jsdom, Firebase stubado)
 ```
 
+## 🔐 Firestore: corrigindo "Missing or insufficient permissions"
+
+Se **você** vê tudo funcionando mas os **amigos** recebem `FirebaseError: Missing or insufficient permissions` (perfil, feed, chat, inbox), o problema está nas **Regras de Segurança do Firestore** — elas são avaliadas no servidor, no Console do Firebase, e nenhum código do site pode burlá-las.
+
+Causa provável: as regras do seu projeto só liberam acesso à sua conta (ex.: `request.auth.uid == 'seu-uid'` ou e-mail fixo) **ou** o modo de teste do Firestore expirou (as regras com `request.time < timestamp.date(...)` vencem em 30 dias).
+
+### Como resolver (2 minutos)
+
+1. Acesse o [Console do Firebase](https://console.firebase.google.com) → seu projeto **good-vibes-8a13d**
+2. **Firestore Database → Regras**
+3. Cole o conteúdo do arquivo [`firestore.rules`](firestore.rules) deste repositório (versão refinada: cada usuário só escreve no próprio perfil, posts só alteram contadores, DM só entre os dois uids da sala, inbox só para o destinatário)
+4. Clique em **Publicar**
+
+Se preferir a versão simples (recomendada só para testes rápidos entre amigos):
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+```
+
+Depois de publicar, peça para os amigos **recarregarem a página** (Ctrl+Shift+R). Nos logs vai aparecer `✅` no lugar dos erros. O app já mostra mensagens amigáveis em pt-BR quando as regras barram o acesso.
+
 ## 🧪 Teste de fumaça
 
 ```bash
