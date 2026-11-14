@@ -8,3 +8,7 @@ Thumbs.db
 
 # Pacotes gerados
 *.zip
+node_modules/
+bots/node_modules/
+bots/bot-state.json
+.bot-credentials.json

@@ -1689,7 +1689,7 @@ setInterval(tickClock, 1000);
 })();
 
 /* ================= ATUALIZAÇÃO DO APP (NOVA VERSÃO) ================= */
-const APP_VERSION = '2.2.0';
+const APP_VERSION = '2.3.0';
 const appVersionEl = $('#app-version');
 if (appVersionEl) appVersionEl.textContent = `Good Vibes 🌊 · O Refúgio · v${APP_VERSION}`;
 let swRegistration = null;

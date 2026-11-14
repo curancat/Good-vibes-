@@ -1,0 +1,19 @@
+{
+  "name": "good-vibes-bots",
+  "version": "2.3.0",
+  "private": true,
+  "type": "module",
+  "description": "Robôs da casa do Good Vibes 🌊🤖 — cutem, comentam e compartilham posts para manter a comunidade animada.",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node good-vibes-bots.mjs",
+    "dry-run": "node good-vibes-bots.mjs --dry-run",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "crypto-js": "^4.1.1",
+    "firebase": "^10.8.1"
+  }
+}
