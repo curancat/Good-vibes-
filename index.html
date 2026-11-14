@@ -178,13 +178,18 @@
                         <textarea id="post-text" rows="3" maxlength="500" placeholder="O que está rolando de bom hoje?"></textarea>
                         <div class="composer-row">
                             <input type="url" id="post-media-url" placeholder="🔗 Cole um link de imagem, GIF ou vídeo…" inputmode="url">
-                            <button class="composer-gallery-btn" id="gallery-post-btn" aria-label="Escolher foto da galeria" title="Escolher da galeria">
+                            <button class="composer-gallery-btn" id="gallery-post-btn" aria-label="Escolher foto da galeria" title="Escolher foto da galeria">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17 5-5 4 4 3.5-3.5L21 17"/></svg>
-                                <span>Galeria</span>
+                                <span>Foto</span>
+                            </button>
+                            <button class="composer-gallery-btn composer-video-btn" id="video-post-btn" aria-label="Escolher vídeo da galeria" title="Escolher vídeo da galeria">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="14" height="12" rx="3"/><path d="m16.5 10.5 5-3v9l-5-3"/></svg>
+                                <span>Vídeo</span>
                             </button>
                         </div>
                         <div class="post-media-preview" id="post-media-preview" hidden>
                             <img id="post-media-preview-img" alt="Pré-visualização da mídia">
+                            <video id="post-media-preview-video" controls muted playsinline preload="metadata" hidden></video>
                             <div class="pmp-info"><strong>Mídia anexada ✅</strong><span>O link foi colado automaticamente.</span></div>
                             <button class="pmp-remove" id="post-media-preview-remove" aria-label="Remover mídia">✕</button>
                         </div>
@@ -546,6 +551,7 @@
 
 <!-- Inputs de arquivo globais (galeria) -->
 <input type="file" id="file-gallery-post" accept="image/*" hidden>
+<input type="file" id="file-gallery-post-video" accept="video/*" hidden>
 <input type="file" id="file-gallery-chat" accept="image/*" hidden>
 <input type="file" id="file-gallery-avatar" accept="image/*" hidden>
 

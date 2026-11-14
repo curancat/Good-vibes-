@@ -809,21 +809,37 @@ async function uploadToImgbb(file) {
     throw new Error(result?.error?.message || 'Falha no servidor de imagens.');
 }
 
-/** Mostra/oculta a prévia do anexo no compositor de post */
+const isVideoUrl = (url) => /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(url) || url.includes('res.cloudinary.com');
+
+/** Mostra/oculta a prévia do anexo no compositor de post (imagem OU vídeo) */
 function showPostMediaPreview(url) {
     const preview = $('#post-media-preview');
     const img = $('#post-media-preview-img');
-    if (!preview || !img) return;
+    const video = $('#post-media-preview-video');
+    if (!preview || !img || !video) return;
     const safe = sanitizeUrl(url);
     if (!safe) { preview.hidden = true; return; }
-    img.src = safe;
+    if (isVideoUrl(safe)) {
+        video.src = safe;
+        video.hidden = false;
+        img.hidden = true;
+        img.removeAttribute('src');
+    } else {
+        img.src = safe;
+        img.hidden = false;
+        video.hidden = true;
+        video.removeAttribute('src');
+        video.load?.();
+    }
     preview.hidden = false;
 }
 function hidePostMediaPreview() {
     const preview = $('#post-media-preview');
     if (preview) preview.hidden = true;
     const img = $('#post-media-preview-img');
-    if (img) img.removeAttribute('src');
+    if (img) { img.removeAttribute('src'); img.hidden = false; }
+    const video = $('#post-media-preview-video');
+    if (video) { video.removeAttribute('src'); video.hidden = true; video.load?.(); }
 }
 
 /** Fluxo principal pedido: escolher foto da galeria → link colado DIRETO no input do post */
@@ -846,6 +862,40 @@ async function attachGalleryFileToPost(file) {
         btn?.classList.remove('loading');
     }
 }
+
+async function attachVideoFileToPost(file) {
+    const urlInput = $('#post-media-url');
+    const btn = $('#video-post-btn');
+    if (!file || !urlInput) return;
+    if (file.size > 100 * 1024 * 1024) { showToast('Vídeo muito grande (máx. 100 MB). Tente um trecho mais curto 🙂', 'warn'); return; }
+
+    btn?.classList.add('loading');
+    showToast('Enviando vídeo para a nuvem… pode demorar um pouquinho ☁️', 'info', 4000);
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', CLOUDINARY_PRESET);
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/video/upload`, { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!data?.secure_url) throw new Error(data?.error?.message || 'Falha no upload do vídeo');
+        urlInput.value = data.secure_url;
+        showPostMediaPreview(data.secure_url);
+        vibrate([10, 40, 10]);
+        showToast('Prontinho! O link do vídeo foi colado no post. 🎬', 'success');
+    } catch (err) {
+        console.error(err);
+        showToast(err?.message || 'Não foi possível enviar o vídeo.', 'error', 4500);
+    } finally {
+        btn?.classList.remove('loading');
+    }
+}
+
+$('#video-post-btn')?.addEventListener('click', () => $('#file-gallery-post-video')?.click());
+$('#file-gallery-post-video')?.addEventListener('change', (e) => {
+    const file = e.target.files?.[0];
+    attachVideoFileToPost(file);
+    e.target.value = ''; // permite reenviar o mesmo arquivo
+});
 
 $('#gallery-post-btn')?.addEventListener('click', () => $('#file-gallery-post')?.click());
 $('#file-gallery-post')?.addEventListener('change', (e) => {
@@ -1689,7 +1739,7 @@ setInterval(tickClock, 1000);
 })();
 
 /* ================= ATUALIZAÇÃO DO APP (NOVA VERSÃO) ================= */
-const APP_VERSION = '2.4.0';
+const APP_VERSION = '2.5.0';
 const appVersionEl = $('#app-version');
 if (appVersionEl) appVersionEl.textContent = `Good Vibes 🌊 · O Refúgio · v${APP_VERSION}`;
 let swRegistration = null;

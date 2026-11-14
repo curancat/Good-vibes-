@@ -26,6 +26,7 @@ Uma rede social privada entre amigos, agora com cara de **tela inicial de telefo
 
 📷 **Galeria → Post em um toque**
 - Botão **Galeria** no compositor (e nos Ajustes/Perfil e no Chat): escolha a foto na galeria, ela é enviada para a nuvem e o **link é colado direto no input do post**, com prévia automática
+- Botão **🎥 Vídeo** no compositor: escolha o vídeo na galeria, ele é enviado pela mesma nuvem (Cloudinary) e o **link cola direto no input do post**, com prévia em vídeo — o feed renderiza como player
 
 🔔 **Notificações reescritas**
 - Bolinhas com **contador** nos ícones (Feed, Chat e Avisos)

@@ -633,6 +633,7 @@ textarea { resize: vertical; }
     animation: cardIn .35s var(--spring);
 }
 .post-media-preview img { width: 74px; height: 74px; object-fit: cover; border-radius: 12px; }
+.post-media-preview video { width: 96px; height: 74px; object-fit: cover; border-radius: 12px; background: #000; }
 .pmp-info { flex: 1; display: flex; flex-direction: column; font-size: 12px; color: var(--text-muted); }
 .pmp-info strong { color: var(--text-color); font-size: 13px; }
 .pmp-remove { background: var(--chip-bg); border: none; color: var(--text-muted); width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 14px; }
@@ -1197,3 +1198,15 @@ input[type="color"] { width: 58px; height: 38px; border: 1px solid var(--border-
     font-size: 13px; cursor: pointer; line-height: 1;
 }
 .ub-close:hover { background: rgba(255,255,255,0.3); }
+
+/* Compositor: dois botões de mídia (Foto/Vídeo) + input — não esmagar o campo */
+.composer-row input[type="url"] { min-width: 0; }
+@media (max-width: 400px) {
+    .composer-row .composer-gallery-btn { padding: 0 10px; gap: 5px; }
+    .composer-row .composer-gallery-btn span { font-size: 12px; }
+}
+.composer-video-btn {
+    border-color: color-mix(in srgb, #38bdf8 55%, transparent) !important;
+    background: color-mix(in srgb, #38bdf8 18%, transparent) !important;
+    color: color-mix(in srgb, #38bdf8 65%, var(--text-color)) !important;
+}
