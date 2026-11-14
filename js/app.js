@@ -212,10 +212,10 @@ function sendSystemNotification(title, body, tag = 'good-vibes') {
  * - Atualiza os badges dos ícones (Feed/Chat/Avisos)
  * - Mostra toast in-app, chime e (se permitido e fora do app) notificação do sistema
  */
-function pushNotification({ type = 'system', title, body, section = 'notifications' }) {
+function pushNotification({ type = 'system', title, body, section = 'notifications', action = null }) {
     const notif = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        type, title, body, section,
+        type, title, body, section, action,
         time: Date.now(),
         read: false
     };
@@ -299,6 +299,12 @@ function renderNotificationsList() {
                 const item = notificationsHistory.find((x) => x.id === n.id);
                 if (item) { item.read = true; saveNotifHistory(); }
                 renderNotificationsList();
+                // Aviso de PV → abre o Chat e entra na conversa direto
+                if (n.action?.kind === 'dm' && n.action.uid) {
+                    openApp('chat');
+                    setTimeout(() => window.startPrivateChat(n.action.uid, n.action.name || 'Amigo'), 250);
+                    return;
+                }
                 if (n.section && document.getElementById(`app-${n.section}`)) openApp(n.section);
             };
             el.addEventListener('click', activate);
@@ -363,6 +369,8 @@ let currentChatRoom = 'global';
 let chatUnsubscribe = null;
 let commentsUnsubscribe = null;
 let inboxUnsubscribe = null;
+let dmUnsubscribe = null;
+let dmInitialLoad = true;
 let feedInitialLoad = true;
 let inboxInitialLoad = true;
 const revealedPosts = new Set();
@@ -1231,8 +1239,8 @@ window.openChat = (type) => {
             const data = change.doc.data();
             const msgTime = data.timestamp?.toMillis?.() || Date.now();
             const isMine = data.userId === currentUser.uid;
-            const chatAppActive = $('#app-chat')?.classList.contains('active');
-            if (isMine || msgTime <= window.lastReadChatTimestamp || chatAppActive) return;
+            const viewingThisRoom = $('#app-chat')?.classList.contains('active') && currentChatRoom === type;
+            if (isMine || msgTime <= window.lastReadChatTimestamp || viewingThisRoom) return;
             pushNotification({
                 type: 'chat',
                 title: type === 'global' ? '💬 Chat Global' : '💬 Chat de Grupos',
@@ -1284,17 +1292,39 @@ $('#chat-messages')?.addEventListener('click', (e) => {
     if (btn) window.startPrivateChat(btn.dataset.dmUid, btn.dataset.dmName);
 });
 
+/** Atualiza o índice dms/{room} com o resumo da última mensagem (alimenta as notificações de PV) */
+async function recordDmActivity(roomHash, encryptedText, senderName) {
+    const rest = roomHash.replace(/^dm_/, '');
+    const members = rest.split('_').slice(0, 2);
+    if (members.length !== 2) return;
+    await setDoc(doc(db, 'dms', roomHash), {
+        members,
+        lastText: encryptedText,
+        lastSenderId: currentUser.uid,
+        lastSenderName: senderName,
+        updatedAt: serverTimestamp()
+    }, { merge: true });
+}
+
 async function sendChatMessageText(messageText) {
     const text = messageText.trim();
     if (!text || !currentUser) return false;
     const collectionName = currentChatRoom.startsWith('dm_') ? currentChatRoom : `chats_${currentChatRoom}`;
+    const encrypted = encrypt(text);
     await addDoc(collection(db, collectionName), {
         userId: currentUser.uid,
         authorName: currentUserProfile.name || 'Usuário',
         authorAvatar: currentUserProfile.avatarUrl || '',
-        text: encrypt(text),
+        text: encrypted,
         timestamp: serverTimestamp()
     });
+    if (collectionName.startsWith('dm_')) {
+        try {
+            await recordDmActivity(collectionName, encrypted, currentUserProfile.name || 'Usuário');
+        } catch (err) {
+            console.warn('Não consegui atualizar o índice de PVs (verifique as regras do Firestore):', err?.message);
+        }
+    }
     return true;
 }
 
@@ -1343,6 +1373,35 @@ function startInboxListener() {
         });
         inboxInitialLoad = false;
     }, (err) => console.warn('Inbox offline/sem permissão:', err?.message));
+}
+
+/* ================= PVs: NOTIFICAR MENSAGENS PRIVADAS ================= */
+function startDmInboxListener() {
+    if (!currentUser || dmUnsubscribe) return;
+    const q = query(collection(db, 'dms'), where('members', 'array-contains', currentUser.uid));
+    dmUnsubscribe = onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+            if (change.type !== 'modified' && change.type !== 'added') return;
+            const data = change.doc.data();
+            const roomHash = change.doc.id;
+            const updated = data.updatedAt?.toMillis?.() || Date.now();
+            const isMine = data.lastSenderId === currentUser.uid;
+            // Não avisa se a pessoa está com ESTA conversa aberta agora
+            const viewingThisRoom = $('#app-chat')?.classList.contains('active') && currentChatRoom === roomHash;
+            if (dmInitialLoad || isMine || updated <= window.lastReadChatTimestamp || viewingThisRoom) return;
+
+            const otherUid = (data.members || []).find((m) => m !== currentUser.uid) || '';
+            const name = data.lastSenderName || 'Alguém';
+            pushNotification({
+                type: 'chat',
+                title: '💬 Mensagem no PV',
+                body: `${name}: ${decrypt(data.lastText || '').slice(0, 90)}`,
+                section: 'chat',
+                action: { kind: 'dm', uid: otherUid, name }
+            });
+        });
+        dmInitialLoad = false;
+    }, (err) => console.warn('PVs indisponíveis (verifique as regras do Firestore):', err?.message));
 }
 
 /* ================= MÍDIA (GIPHY / IMGBB / CLOUDINARY) ================= */
@@ -1599,15 +1658,18 @@ onAuthStateChanged(auth, (user) => {
         loadFeed();
         window.openChat('global'); // mantém o canal ouvindo para os badges
         startInboxListener();
+        startDmInboxListener();
         if (unlocked) showUnlockedScreen();
     } else {
         currentUser = null;
         currentUserProfile = {};
         feedInitialLoad = true;
         inboxInitialLoad = true;
+        dmInitialLoad = true;
         if (chatUnsubscribe) { chatUnsubscribe(); chatUnsubscribe = null; }
         if (commentsUnsubscribe) { commentsUnsubscribe(); commentsUnsubscribe = null; }
         if (inboxUnsubscribe) { inboxUnsubscribe(); inboxUnsubscribe = null; }
+        if (dmUnsubscribe) { dmUnsubscribe(); dmUnsubscribe = null; }
         relock();
     }
 });
@@ -1627,7 +1689,7 @@ setInterval(tickClock, 1000);
 })();
 
 /* ================= ATUALIZAÇÃO DO APP (NOVA VERSÃO) ================= */
-const APP_VERSION = '2.1.0';
+const APP_VERSION = '2.2.0';
 const appVersionEl = $('#app-version');
 if (appVersionEl) appVersionEl.textContent = `Good Vibes 🌊 · O Refúgio · v${APP_VERSION}`;
 let swRegistration = null;

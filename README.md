@@ -4,6 +4,9 @@ Uma rede social privada entre amigos, agora com cara de **tela inicial de telefo
 
 ## ✨ O que há de novo na v2.0
 
+💬 **Notificação de PV**
+- Mensagens privadas (chat direto) agora disparam aviso em tempo real para o destinatário — toast, badge no app Chat, chime e notificação do sistema (se ativada). Tocar no aviso **abre a conversa direto**. Funciona via coleção-índice `dms` (ver `firestore.rules`)
+
 🔄 **Aviso de nova versão**
 - O app verifica a cada 1 minuto (e sempre que volta para o primeiro plano) se há deploy novo — via Service Worker e via `version.json` — e mostra uma barrinha “Nova versão disponível!” com o botão **Atualizar 🔄** (e um “✕” para lembrar depois)
 
