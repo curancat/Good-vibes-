@@ -4,7 +4,7 @@
    ===================================================================== */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, deleteUser, updatePassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, deleteUser, updatePassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, increment, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 /* ================= FIREBASE ================= */
@@ -570,9 +570,39 @@ const friendlyAuthError = (err) => {
         'auth/too-many-requests': 'Muitas tentativas. Aguarde um pouco e tente de novo.',
         'auth/network-request-failed': 'Sem conexão com a internet.',
         'auth/user-disabled': 'Essa conta foi desativada.',
+        'auth/email-already-in-use': 'Esse e-mail já tem conta. Faça login!',
+        'auth/weak-password': 'Senha muito fraca — use pelo menos 6 caracteres.',
+        'auth/operation-not-allowed': 'Cadastro por e-mail/senha desativado no Firebase.',
+        'auth/invalid-password': 'Senha inválida.',
     };
     return map[code] || `Erro ao entrar: ${err?.message || 'desconhecido'}`;
 };
+
+/* ---------- Abas Entrar / Criar conta ---------- */
+let authMode = 'login';
+function setAuthMode(mode) {
+    authMode = mode === 'signup' ? 'signup' : 'login';
+    const form = $('#auth-form');
+    const signup = authMode === 'signup';
+
+    form.dataset.mode = authMode;
+    $('#tab-login')?.classList.toggle('active', !signup);
+    $('#tab-signup')?.classList.toggle('active', signup);
+    $('#tab-login')?.setAttribute('aria-selected', String(!signup));
+    $('#tab-signup')?.setAttribute('aria-selected', String(signup));
+
+    $('#login-btn .btn-label').textContent = signup ? 'Criar conta 🌊' : 'Entrar';
+    $('#password').setAttribute('autocomplete', signup ? 'new-password' : 'current-password');
+    $('#password').placeholder = signup ? 'Crie uma senha (mín. 6 caracteres)' : 'Sua senha';
+    $('#auth-tagline').textContent = signup ? 'venha espalhar boas vibrações 🌊' : 'eu te conheço? 🌊';
+    $('#auth-note').textContent = signup
+        ? 'Ao criar sua conta você aceita as 📜 Regras e Diretrizes do Refúgio.'
+        : 'Bem-vindo de volta ao Refúgio 🌊';
+    $('#auth-error').textContent = '';
+    if (signup) $('#auth-name')?.focus();
+}
+$('#tab-login')?.addEventListener('click', () => setAuthMode('login'));
+$('#tab-signup')?.addEventListener('click', () => setAuthMode('signup'));
 
 $('#auth-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -584,15 +614,39 @@ $('#auth-form')?.addEventListener('submit', async (e) => {
 
     if (!email || !password) { errorEl.textContent = 'Preencha e-mail e senha.'; return; }
 
-    btn.classList.add('loading');
-    try {
-        await signInWithEmailAndPassword(auth, email, password);
-        showToast('Bem-vindo de volta! 🌊', 'success');
-    } catch (err) {
-        errorEl.textContent = friendlyAuthError(err);
-        const card = $('.auth-card');
+    const card = $('.auth-card');
+    const fail = (msg) => {
+        errorEl.textContent = msg;
         card?.classList.remove('shake'); void card?.offsetWidth; card?.classList.add('shake');
         vibrate([30, 60, 30]);
+    };
+
+    btn.classList.add('loading');
+    try {
+        if (authMode === 'signup') {
+            const name = $('#auth-name').value.trim();
+            if (name.length < 2) { btn.classList.remove('loading'); fail('Diga seu nome — pode ser um apelido! 🙂'); return; }
+            if (password.length < 6) { btn.classList.remove('loading'); fail('A senha precisa de pelo menos 6 caracteres.'); return; }
+
+            const cred = await createUserWithEmailAndPassword(auth, email, password);
+            try {
+                await setDoc(doc(db, 'users', cred.user.uid), {
+                    name,
+                    blurNsfw: true,
+                    createdAt: serverTimestamp()
+                }, { merge: true });
+                currentUserProfile = { name, blurNsfw: true };
+            } catch (profileErr) {
+                console.warn('Conta criada, mas o perfil não salvou:', profileErr?.message);
+            }
+            showToast('Conta criada! Bem-vindo ao Refúgio! 🎉', 'success', 5000);
+            await loadUserProfile();
+        } else {
+            await signInWithEmailAndPassword(auth, email, password);
+            showToast('Bem-vindo de volta! 🌊', 'success');
+        }
+    } catch (err) {
+        fail(friendlyAuthError(err));
     } finally {
         btn.classList.remove('loading');
     }

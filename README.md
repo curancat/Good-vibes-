@@ -4,6 +4,9 @@ Uma rede social privada entre amigos, agora com cara de **tela inicial de telefo
 
 ## ✨ O que há de novo na v2.0
 
+👤 **Cadastro aberto**
+- Aba “Criar conta” na tela de login (nome de exibição + e-mail + senha), com criação automática do perfil no Firestore, boas-vindas e tratamento amigável de erros (e-mail já usado, senha fraca etc.)
+
 🖼️ **Home de telefone de verdade**
 - Tela de bloqueio animada (relógio, saudação, lanterna funcional 🔦 e câmera)
 - Tela inicial com widget de relógio + frase do dia, grade de apps e dock translúcido

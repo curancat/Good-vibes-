@@ -14,6 +14,7 @@ js = js
   .replace(/import \{ initializeApp \}[^;]+;/, `const initializeApp = () => ({});`)
   .replace(/import \{ getAuth[^;]+;/, `const getAuth = () => ({});
 const signInWithEmailAndPassword = async () => { throw new Error('stub'); };
+const createUserWithEmailAndPassword = async () => ({ user: { uid: 'novo123', metadata: { creationTime: new Date().toISOString() } } });
 const signOut = async () => {};
 const onAuthStateChanged = (auth, cb) => { globalThis.__authCb = cb; };
 const deleteUser = async () => {};
@@ -86,6 +87,17 @@ await new Promise((r) => setTimeout(r, 50));
 assert.ok($('#lockscreen').classList.contains('unlocking'), 'lockscreen deve deslizar para cima');
 assert.ok($('#auth-screen').classList.contains('active'), 'auth deve aparecer após desbloqueio (sem sessão)');
 console.log('✓ desbloqueio abre a tela de login');
+
+// Alterna para "Criar conta"
+$('#tab-signup').click();
+assert.equal($('#auth-form').dataset.mode, 'signup', 'form entra em modo cadastro');
+assert.ok($('#tab-signup').classList.contains('active'), 'aba Criar conta ativa');
+assert.equal($('#login-btn .btn-label').textContent, 'Criar conta 🌊', 'botão muda para Criar conta');
+assert.equal($('#password').getAttribute('autocomplete'), 'new-password', 'autocomplete new-password');
+$('#tab-login').click();
+assert.equal($('#login-btn .btn-label').textContent, 'Entrar', 'botão volta para Entrar');
+assert.equal($('#auth-form').dataset.mode, 'login', 'form volta ao modo login');
+console.log('✓ abas Entrar / Criar conta funcionam');
 
 // Simula login bem-sucedido
 window.eval('globalThis.__authCb && globalThis.__authCb({ uid: "u123", metadata: { creationTime: "2025-01-01T00:00:00Z" } })');

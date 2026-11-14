@@ -1145,3 +1145,12 @@ input[type="color"] { width: 58px; height: 38px; border: 1px solid var(--border-
 .notif-permission[hidden],
 #install-card[hidden] { display: none !important; }
 .composer-gallery-btn.loading { opacity: 0.6; pointer-events: none; }
+
+/* ================= ABA ENTRAR / CRIAR CONTA ================= */
+.auth-tabs { display: flex; gap: 4px; padding: 4px; margin: 0 0 4px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.09); border-radius: 14px; }
+.auth-tab { flex: 1; background: transparent; border: none; color: #8b93b8; font-weight: 700; font-size: 13.5px; padding: 10px 8px; border-radius: 11px; cursor: pointer; transition: color .2s, background .25s, box-shadow .25s; }
+.auth-tab:hover { color: #dbe2ff; }
+.auth-tab.active { background: linear-gradient(135deg, var(--primary-color), #8b5cf6); color: #fff; box-shadow: 0 8px 18px -6px color-mix(in srgb, var(--primary-color) 70%, transparent); }
+.only-signup { display: none; }
+.auth-card[data-mode="signup"] .only-signup { display: block; animation: cardIn .3s ease; }
+.auth-card[data-mode="signup"] .only-login { display: none; }
