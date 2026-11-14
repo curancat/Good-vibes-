@@ -1626,9 +1626,103 @@ setInterval(tickClock, 1000);
     if (toggle) toggle.checked = theme === 'dark';
 })();
 
-/* Service Worker (PWA offline) */
+/* ================= ATUALIZAÇÃO DO APP (NOVA VERSÃO) ================= */
+const APP_VERSION = '2.1.0';
+const appVersionEl = $('#app-version');
+if (appVersionEl) appVersionEl.textContent = `Good Vibes 🌊 · O Refúgio · v${APP_VERSION}`;
+let swRegistration = null;
+let userRequestedUpdate = false;
+
+/* Exibe a "barrinha" de nova versão */
+function showUpdateBanner(notes) {
+    const banner = $('#update-banner');
+    if (!banner) return;
+    $('#update-banner-notes').textContent = notes || 'Melhorias e correções esperando por você.';
+    banner.hidden = false;
+    vibrate([10, 40, 10]);
+}
+function hideUpdateBanner() {
+    const banner = $('#update-banner');
+    if (banner) banner.hidden = true;
+    try { sessionStorage.setItem('gv_update_dismissed', '1'); } catch { /* ignora */ }
+}
+const updateDismissed = () => { try { return sessionStorage.getItem('gv_update_dismissed') === '1'; } catch { return false; } };
+
+/* Aplica a atualização quando o usuário toca em "Atualizar" */
+async function applyUpdate() {
+    const btn = $('#update-banner-btn');
+    if (btn) { btn.textContent = '⏳ Atualizando…'; btn.disabled = true; }
+    userRequestedUpdate = true;
+    try { sessionStorage.removeItem('gv_update_dismissed'); } catch { /* ignora */ }
+
+    // Caminho ideal: existe um Service Worker novo esperando → ativa e recarrega
+    if (swRegistration?.waiting) {
+        swRegistration.waiting.postMessage('SKIP_WAITING');
+        return; // o handler de controllerchange recarrega a página
+    }
+    // Fallback: não há SW esperando (ex.: versão nova ainda não baixada) →
+    // apaga o cache do app shell e recarrega pegando tudo da rede
+    try {
+        const keys = await caches.keys();
+        await Promise.all(keys.filter((k) => k.includes('good-vibes')).map((k) => caches.delete(k)));
+    } catch { /* sem cache API */ }
+    window.location.reload();
+}
+
+/* Confirma a versão remota via version.json (independente do SW) */
+async function checkVersionFile() {
+    if (typeof fetch !== 'function') return;
+    try {
+        const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data?.version && data.version !== APP_VERSION && !updateDismissed()) {
+            showUpdateBanner(data?.notes);
+        }
+    } catch { /* offline: sem avisos */ }
+}
+
+$('#update-banner-btn')?.addEventListener('click', applyUpdate);
+$('#update-banner-close')?.addEventListener('click', hideUpdateBanner);
+
+/* Service Worker (PWA offline) + detecção de nova versão */
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch((err) => console.warn('SW não registrado:', err));
+    // Só recarrega automaticamente se o usuário PEDIU a atualização
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (userRequestedUpdate) window.location.reload();
     });
+
+    window.addEventListener('load', async () => {
+        try {
+            swRegistration = await navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' });
+
+            // Já existe versão nova baixando/esperando?
+            if (swRegistration.waiting && navigator.serviceWorker.controller && !updateDismissed()) showUpdateBanner();
+            swRegistration.addEventListener('updatefound', () => {
+                const newWorker = swRegistration.installing;
+                if (!newWorker) return;
+                newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller && !updateDismissed()) {
+                        showUpdateBanner('Versão baixada! Toque em Atualizar para aplicar.');
+                    }
+                });
+            });
+
+            // Verifica se há deploy novo a cada 1 minuto…
+            setInterval(() => swRegistration.update().catch(() => {}), 60 * 1000);
+            // …e sempre que o usuário volta para o app
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) swRegistration.update().catch(() => {});
+            });
+        } catch (err) {
+            console.warn('SW não registrado:', err);
+        }
+        // Checagem independente do SW (garante o aviso mesmo sem ele)
+        checkVersionFile();
+        setInterval(checkVersionFile, 5 * 60 * 1000);
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVersionFile(); });
+    });
+} else {
+    checkVersionFile();
+    setInterval(checkVersionFile, 5 * 60 * 1000);
 }

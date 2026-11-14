@@ -4,6 +4,9 @@ Uma rede social privada entre amigos, agora com cara de **tela inicial de telefo
 
 ## ✨ O que há de novo na v2.0
 
+🔄 **Aviso de nova versão**
+- O app verifica a cada 1 minuto (e sempre que volta para o primeiro plano) se há deploy novo — via Service Worker e via `version.json` — e mostra uma barrinha “Nova versão disponível!” com o botão **Atualizar 🔄** (e um “✕” para lembrar depois)
+
 👤 **Cadastro aberto**
 - Aba “Criar conta” na tela de login (nome de exibição + e-mail + senha), com criação automática do perfil no Firestore, boas-vindas e tratamento amigável de erros (e-mail já usado, senha fraca etc.)
 
@@ -57,9 +60,27 @@ css/style.css     # Design system: moldura do telefone, temas claro/escuro, anim
 js/app.js         # Lógica (ES module): Firebase, feed, chat, notificações, PWA
 manifest.json     # Manifest PWA
 sw.js             # Service Worker (app shell offline + cache de CDN)
+version.json      # Versão publicada — o app compara com a APP_VERSION local para avisar de deploys
+firestore.rules   # Regras de segurança do Firestore (publicar no Console)
 icons/            # Ícones do app (192/512/maskable/apple-touch/favicon)
 tests/smoke.mjs   # Teste de fumaça offline (jsdom, Firebase stubado)
 ```
+
+## 🔄 Como funciona o aviso de nova versão (e como lançar uma)
+
+O app avisa os usuários quando existe versão nova por **dois canais**:
+
+1. **Service Worker**: o worker novo fica `waiting` (não assume o controle sozinho); o app detecta via `updatefound`/`waiting` e exibe a barrinha. Ao tocar em **Atualizar**, ele envia `SKIP_WAITING` e recarrega na versão nova.
+2. **`version.json`**: o app busca o arquivo a cada 5 minutos (e ao voltar para o primeiro plano) com `cache: 'no-store'`. Se a `version` remota for diferente da `APP_VERSION` do `js/app.js`, a barrinha aparece — mesmo sem Service Worker.
+
+### Para publicar uma atualização
+
+1. `js/app.js` → mude `const APP_VERSION = 'x.y.z'`
+2. `version.json` → `{ "version": "x.y.z", "notes": "o que mudou" }`
+3. `sw.js` → mude `CACHE_VERSION` para `'good-vibes-vX.Y.Z'`
+4. Commit + push no branch de deploy → pronto. Na próxima vez que os usuários abrirem o app (no máx. 1–5 min após o deploy, ou ao voltar para o app), todos verão **“Nova versão disponível!” → Atualizar 🔄**
+
+O botão **✕** adia o aviso só naquela sessão (`sessionStorage`) — na próxima visita ele aparece de novo.
 
 ## 🔐 Firestore: corrigindo "Missing or insufficient permissions"
 

@@ -1,11 +1,13 @@
-/* Good Vibes 🌊 — Service Worker
+/* Good Vibes 🌊 — Service Worker v2.1.0
    Estratégia:
-   - App shell (mesma origem): cache-first com atualização em segundo plano
+   - App shell (mesma origem): cache-first com revalidação em segundo plano
    - Navegação: network-first com fallback offline para index.html
    - CDNs (firebase, crypto-js, fonts): stale-while-revalidate
-   - Firestore/Giphy/APIs dinâmicas: sempre rede (nunca cacheia)
+   - Firestore/Giphy/APIs dinâmicas e version.json: SEMPRE rede (nunca cacheia)
+   - Atualizações: o worker novo ESPERA a escolha do usuário (botão "Atualizar")
+     em vez de assumir o controle silenciosamente
 */
-const CACHE_VERSION = 'good-vibes-v2.0.0';
+const CACHE_VERSION = 'good-vibes-v2.1.0';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -31,7 +33,7 @@ const CDN_HOSTS = [
   'fonts.gstatic.com'
 ];
 
-// Nunca cachear chamadas dinâmicas (dados do usuário)
+// Nunca cachear chamadas dinâmicas (dados do usuário) nem a checagem de versão
 const NEVER_CACHE = [
   'firestore.googleapis.com',
   'firebase.googleapis.com',
@@ -43,9 +45,17 @@ const NEVER_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
+  // Sem skipWaiting automático: quando JÁ EXISTE uma versão rodando, o worker
+  // novo fica "waiting" e o app avisa o usuário (botão Atualizar).
+  // Na PRIMEIRA instalação não há controller ativo, então ele ativa na hora só.
   event.waitUntil(
-    caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL_ASSETS)).then(() => self.skipWaiting())
+    caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL_ASSETS))
   );
+});
+
+// O app pede para ativar a versão nova (quando o usuário toca em "Atualizar")
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -62,8 +72,11 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
 
-  // Dados dinâmicos: sempre rede, sem fallback de cache
+  // Dados dinâmicos: sempre rede
   if (NEVER_CACHE.some((host) => url.hostname.includes(host))) return;
+
+  // version.json: SEMPRE rede (é assim que o app sabe que há atualização)
+  if (url.pathname.endsWith('version.json')) return;
 
   // Navegação: network-first, fallback para o shell offline
   if (request.mode === 'navigate') {

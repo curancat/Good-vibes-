@@ -133,6 +133,13 @@ ta.dispatchEvent(new window.Event('input', { bubbles: true }));
 assert.ok($('#post-char-counter').textContent.startsWith(String('Teste de boas vibrações'.length)), 'contador de caracteres atualiza');
 console.log('✓ compositor: contador de caracteres ok');
 
+// Banner de atualização existe e começa oculto
+const banner = $('#update-banner');
+assert.ok(banner, 'banner de nova versão existe no DOM');
+assert.equal(banner.hidden, true, 'banner começa oculto');
+assert.ok($('#update-banner-btn'), 'banner tem botão de atualizar');
+console.log('✓ banner de nova versão presente e oculto por padrão');
+
 // Escape fecha o app aberto
 window.document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 await new Promise((r) => setTimeout(r, 350));

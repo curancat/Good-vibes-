@@ -451,7 +451,7 @@
                         <button id="logout-btn" class="danger-outline-btn wide">Sair da conta</button>
                         <button id="delete-account-btn" class="danger-btn wide">🗑️ Deletar conta definitivamente</button>
                     </div>
-                    <p class="app-version">Good Vibes 🌊 · O Refúgio · v2.0</p>
+                    <p class="app-version" id="app-version">Good Vibes 🌊 · O Refúgio</p>
                 </div>
             </section>
 
@@ -525,6 +525,17 @@
                 </div>
             </div>
             
+
+            <!-- Banner: nova versão disponível -->
+            <div id="update-banner" class="update-banner" role="alert" hidden>
+                <span class="ub-icon">✨</span>
+                <div class="ub-text">
+                    <strong>Nova versão disponível!</strong>
+                    <span id="update-banner-notes">Melhorias e correções esperando por você.</span>
+                </div>
+                <button id="update-banner-btn" class="ub-btn">Atualizar 🔄</button>
+                <button id="update-banner-close" class="ub-close" aria-label="Lembrar depois">✕</button>
+            </div>
 
             <!-- Toasts -->
             <div id="toast-container" aria-live="assertive"></div>
