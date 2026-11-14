@@ -1,1747 +1,532 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow">
-    <title>Good Vibes</title>
+    <meta name="theme-color" content="#0b1020">
+    <meta name="description" content="Good Vibes 🌊 — o refúgio: uma rede social privada e positiva entre amigos. Publique, converse e espalhe boas vibrações.">
+    <title>Good Vibes 🌊 — O Refúgio</title>
 
-    <style>
-        /* ================= VÁRIAVEIS E TEMA ================= */
-        :root {
-            --primary-color: #6366f1;
-            --primary-hover: #4f46e5;
-            --bg-color: #584a8f;
-            --text-color: #1e293b;
-            --card-bg: rgba(112,114,176);
-            --border-color: rgba(226, 232, 240, 0.8);
-            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            --pix-color: #32bcad;
-            --glass-blur: blur(12px);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Good Vibes">
 
-        [data-theme="dark"] {
-            --bg-color: #0f172a;
-            --text-color: #f1f5f9;
-            --card-bg: rgba(30, 41, 59, 0.7);
-            --border-color: rgba(51, 65, 85, 0.8);
-            --shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
-        }
+    <!-- Aplica tema e cor salvos ANTES da primeira pintura (sem flash) -->
+    <script>
+        (function () {
+            try {
+                var savedTheme = localStorage.getItem('gv_theme');
+                var savedColor = localStorage.getItem('gv_primary_color');
+                if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+                if (savedColor) document.documentElement.style.setProperty('--primary-color', savedColor);
+            } catch (e) { /* modo privado etc. */ }
+        })();
+    </script>
 
-        /* ================= RESET & GERAL ================= */
-        * {
-            box-sizing: border-box;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        body {
-            margin: 0;
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background-color: var(--bg-color);
-            background-image: radial-gradient(circle at top right, var(--primary-color), transparent 20%),
-                              radial-gradient(circle at bottom left, var(--pix-color), transparent 20%);
-            background-attachment: fixed;
-            color: var(--text-color);
-            transition: var(--transition);
-            line-height: 1.5;
-        }
-
-        /* ================= ANIMAÇÕES ================= */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes scaleIn {
-            from { transform: scale(0.95); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-
-        /* ================= HEADER & NAV ================= */
-        .section {
-            display: none; 
-            opacity: 0;
-            transform: translateY(10px);
-            transition: opacity 0.4s ease, transform 0.4s ease;
-            width: 100%;
-        }
-
-        .section.active {
-            display: block;
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .container {
-            position: relative;
-            width: 100%;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            min-height: 80vh;
-        }
-
-        header .nav-buttons button {
-            background: transparent;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 8px;
-            color: var(--text-color);
-            cursor: pointer;
-            transition: var(--transition);
-            font-weight: 500;
-        }
-
-        header .nav-buttons button:hover {
-            background: rgba(99, 102, 241, 0.1);
-            color: var(--primary-color);
-        }
-
-        header {
-            background: var(--card-bg);
-            backdrop-filter: var(--glass-blur);
-            -webkit-backdrop-filter: var(--glass-blur);
-            padding: 0.75rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border-color);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            box-shadow: var(--shadow);
-        }
-
-        .logo {
-            font-size: 1.5rem;
-            font-weight: 800;
-            background: linear-gradient(45deg, var(--primary-color), var(--pix-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -1px;
-        }
-
-        /* ================= FEED & CARDS ================= */
-        .post, .create-post, .auth-card, .modal-content {
-            background: var(--card-bg);
-            backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--border-color);
-            border-radius: 24px;
-            padding: 20px;
-            margin-bottom: 1.5rem;
-            box-shadow: var(--shadow);
-            animation: fadeInUp 0.5s ease-out;
-        }
-
-        .create-post textarea {
-            width: 100%;
-            border: 1px solid var(--border-color);
-            background: rgba(0, 0, 0, 0.05);
-            color: var(--text-color);
-            padding: 15px;
-            border-radius: 16px;
-            font-size: 1rem;
-            transition: var(--transition);
-        }
-
-        .create-post textarea:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .create-post input[type="url"] {
-            width: 100%;
-            padding: 12px;
-            margin-top: 10px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            background: rgba(0,0,0,0.02);
-            color: var(--text-color);
-        }
-
-        #post-btn {
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        #post-btn:hover {
-            filter: brightness(1.1);
-            transform: scale(1.05);
-        }
-
-        .post-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .post-avatar {
-            width: 48px;
-            height: 48px;
-            border-radius: 16px;
-            background: linear-gradient(135deg, #ddd, #999);
-            border: 2px solid var(--primary-color);
-            padding: 2px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            font-weight: bold;
-            color: #666;
-        }
-
-        .post-author {
-            font-weight: 700;
-            font-size: 1.1rem;
-            margin-left: 12px;
-        }
-
-        .post-content {
-            font-size: 1.05rem;
-            line-height: 1.6;
-            margin-bottom: 15px;
-        }
-
-        .post-media img, .post-media video {
-            width: 100%;
-            border-radius: 16px;
-            object-fit: cover;
-            max-height: 450px;
-            transition: var(--transition);
-        }
-
-        .post-media img:hover {
-            transform: scale(1.02);
-        }
-
-        .post-actions {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid var(--border-color);
-        }
-
-        .post-actions button {
-            background: rgba(0, 0, 0, 0.03);
-            border: none;
-            padding: 10px;
-            border-radius: 10px;
-            color: var(--text-color);
-            font-weight: 600;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .post-actions button:hover {
-            background: rgba(0, 0, 0, 0.08);
-        }
-
-        .super-like-btn {
-            color: var(--pix-color) !important;
-            animation: pulse 2s infinite;
-        }
-
-        /* ================= MODAIS & POPUPS ================= */
-        .modal {
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(8px);
-        }
-
-        .modal-content {
-            width: 95%;
-            max-width: 500px;
-            border: 1px solid rgba(255,255,255,0.2);
-            animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        /* ================= SISTEMA NSFW (BLUR) ================= */
-.nsfw-container {
-    position: relative;
-    cursor: pointer;
-    border-radius: 16px;
-    overflow: hidden;
-}
-
-.nsfw-blur {
-    filter: blur(100px);
-    transition: filter 0.4s ease;
-    user-select: none; /* Impede de copiar o texto sem querer */
-}
-
-.nsfw-blur:hover {
-    filter: blur(50px); /* Dá um leve spoiler ao passar o mouse */
-}
-
-.nsfw-warning {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-    padding: 10px 20px;
-    border-radius: 12px;
-    font-weight: bold;
-    text-align: center;
-    z-index: 10;
-    pointer-events: none; /* Deixa o clique passar para a div de baixo */
-}
-    .caixa-voto {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    max-width: 300px;
-    padding: 12px;
-    margin: 8px 0;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
-    color: white;
-    cursor: pointer;
-    transition: 0.3s;
-    font-size: 14px;
-}
-
-.caixa-voto:hover {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: #00d1b2;
-}
-
-.voto-count {
-    background: #00d1b2;
-    color: #000;
-    padding: 2px 8px;
-    border-radius: 15px;
-    font-weight: bold;
-}
-        /* ================= CHAT ================= */
-        .chat-window {
-            background: var(--card-bg);
-            border-radius: 20px;
-            padding: 15px;
-        }
-
-        .chat-messages {
-            border-radius: 15px;
-            border: 1px solid var(--border-color);
-            padding: 15px;
-            background: rgba(0,0,0,0.02);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .chat-tab {
-            flex: 1; padding: 10px; border-radius: 10px; border: none; 
-            background: transparent; color: var(--text-color); cursor: pointer;
-            border: 1px solid var(--border-color); transition: var(--transition);
-        }
-        .chat-tab.active {
-            background: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
-        }
-
-        /* ================= BUSCA DE IMAGENS (GRID) ================= */
-        .image-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .image-item {
-            width: 100%;
-            height: 150px;
-            object-fit: cover;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: transform 0.2s;
-            border: 2px solid transparent;
-        }
-
-        .image-item:hover {
-            transform: scale(1.05);
-            border-color: var(--primary-color);
-        }
-
-        /* ================= FORMULÁRIOS & INPUTS ================= */
-        input[type="text"], input[type="email"], input[type="password"], input[type="url"], select {
-            width: 100%;
-            padding: 12px 16px;
-            margin: 8px 0;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            background: var(--bg-color);
-            color: var(--text-color);
-            transition: var(--transition);
-        }
-
-        input:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-            outline: none;
-        }
-
-        #settings button {
-            margin-top: 10px;
-            padding: 12px 20px;
-            border-radius: 12px;
-            border: none;
-            font-weight: 600;
-            cursor: pointer;
-            background: var(--primary-color);
-            color: white;
-        }
-        /* ================= NOTIFICAÇÕES (BOLINHAS) ================= */
-.nav-btn-wrapper {
-    position: relative;
-    display: inline-block;
-}
-
-.notify-dot {
-    position: absolute;
-    top: -2px;
-    right: -2px;
-    width: 12px;
-    height: 12px;
-    background: #ef4444;
-    border-radius: 50%;
-    border: 2px solid var(--card-bg);
-    display: none; /* Escondido por padrão */
-    z-index: 10;
-    box-shadow: 0 0 5px rgba(239, 68, 68, 0.5);
-}
-        /* ================= RESPONSIVIDADE ================= */
-        @media (max-width: 600px) {
-            header {
-                flex-direction: column;
-                gap: 10px;
-            }
-            .nav-buttons {
-                display: flex;
-                overflow-x: auto;
-                width: 100%;
-                padding-bottom: 5px;
-            }
-            .nav-buttons button {
-                white-space: nowrap;
-                padding: 8px 12px;
-            }
-            .post-actions {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-    </style>
-   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-
-<script>
-    const SECRET_KEY = "B9-0.12p´-09p3en3rjec9"; 
-
-    const encrypt = (text) => {
-        return CryptoJS.AES.encrypt(text, SECRET_KEY).toString();
-    };
-
-    const decrypt = (cipherText) => {
-        try {
-            const bytes = CryptoJS.AES.decrypt(cipherText, SECRET_KEY);
-            const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-            return decrypted ? decrypted : "Mensagem protegida.";
-        } catch (e) {
-            return "Erro ao ler mensagem.";
-        }
-    };
-</script>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div id="auth-section">
-        <div class="auth-card" style="max-width: 400px; margin: 100px auto;">
-            <h1 class="logo" style="text-align: center;">Good Vibes</h1>
-            <p style="text-align: center; color: var(--text-color); margin-bottom: 20px;">eu te conheço?</p>
-            
-            <input type="email" id="email" placeholder="Seu E-mail">
-            <input type="password" id="password" placeholder="Sua Senha">
-            
-            <button onclick="login()" style="width: 100%; margin-top: 10px; padding: 12px; border-radius: 12px; background: var(--primary-color); color: white; border: none; font-weight: bold; cursor: pointer;">Entrar</button>
-        
-        </div>
-    </div>
 
-    <div id="app-section" style="display: none;">
-        
-        <header>
-            <div class="logo">Good Vibes</div>
-            <div class="nav-buttons">
-    <div class="nav-btn-wrapper">
-        <button onclick="navigate('foryou'); clearNotificationDot('foryou')">🏠 For You</button>
-        <div id="dot-foryou" class="notify-dot"></div>
-    </div>
-    
-    <div class="nav-btn-wrapper">
-        <button onclick="navigate('chat'); clearNotificationDot('chat')">💬 Chat</button>
-        <div id="dot-chat" class="notify-dot"></div>
-    </div>
-    <div class="nav-btn-wrapper">
-       <button onclick="navigate('notifications'); clearNotificationDot('notifications'); renderNotificationsList()">🔔 Notificações</button>
-        <div id="dot-notifications" class="notify-dot"></div>
-    </div>
-    <button onclick="navigate('imageSearch')">🖼️ Buscar Mídia</button>
-    <button onclick="navigate('search')">🔍 Pessoas</button>
-    <button onclick="navigate('profile')">👤 Perfil</button>
-    <button onclick="navigate('settings')">⚙️ Ajustes</button>
-</div>
-        </header>
+<div id="stage">
+    <!-- Moldura do telefone (vezada só no desktop; no celular vira tela cheia) -->
+    <div id="phone" aria-label="Good Vibes — telefone">
+        <div class="phone-btn phone-btn-power"></div>
+        <div class="phone-btn phone-btn-vol-up"></div>
+        <div class="phone-btn phone-btn-vol-down"></div>
 
-        <div class="container">
-            
-            <div id="foryou" class="section active">
-                <div class="create-post">
-                    <textarea id="post-text" rows="3" placeholder="O que está rolando de bom hoje?"></textarea>
-                    
-                    <input type="url" id="post-media-url" placeholder="🔗 Opcional: Cole aqui APENAS o link de uma imagem ou GIF...">
-                    <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px; cursor: pointer; color: #ef4444; font-weight: bold; font-size: 0.9rem;">
-                    <input type="checkbox" id="post-nsfw"> 🔞 Marcar como Conteúdo Sensível
-                    </label>
-                    <div class="create-post-actions" style="display: flex; justify-content: flex-end; align-items: center; margin-top: 10px;">
-                        <button id="post-btn" onclick="createPost()">Publicar</button>
-                    </div>
-                </div>
-                
-                <div id="feed-container"></div>
+        <div id="screen">
+            <!-- Papel de parede animado -->
+            <div class="wallpaper" aria-hidden="true">
+                <div class="blob blob-1"></div>
+                <div class="blob blob-2"></div>
+                <div class="blob blob-3"></div>
+                <div class="stars"></div>
             </div>
 
-            <div id="chat" class="section">
-                <h2>Mensagens</h2>
-                <div class="chat-list" style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <button id="tab-global" class="chat-tab active" onclick="openChat('global')">🌐 Global</button>
-                    <button id="tab-groups" class="chat-tab" onclick="openChat('groups')">👥 Grupos</button>
-                    <button id="tab-private" class="chat-tab" onclick="openChat('private')">👤 Privado</button>
-                </div>
-                <div class="chat-window">
-                    <div class="chat-messages" id="chat-messages" style="height: 400px; overflow-y: auto;">
-                        <p style="text-align: center; color: gray; margin-top: 20px;">Carregando chat...</p>
-                    </div>
-                    <div style="display:flex; margin-top:15px; gap: 10px;">
-                        <input type="text" id="chat-input" placeholder="Digite sua mensagem ou cole um link de imagem..." style="flex:1; margin:0;">
-                        <button onclick="sendChatMessage()" style="padding: 12px 20px; border-radius: 12px; background: var(--primary-color); color: white; border: none; cursor: pointer; font-weight: bold;">Enviar</button>
-                    </div>
-                </div>
-            </div>
-             <div id="notifications" class="section">
-    <h2>Histórico de Notificações</h2>
-    
-    <div style="background: var(--card-bg); padding: 20px; border-radius: 16px; border: 1px solid var(--border-color); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
-        <p style="margin: 0; color: gray; font-size: 0.9rem;">Tudo o que aconteceu enquanto você estava fora.</p>
-        <button onclick="clearAllNotifications()" style="padding: 8px 15px; border-radius: 8px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); cursor: pointer; font-weight: bold; transition: var(--transition);">Limpar Histórico</button>
-    </div>
+            <!-- Ilha dinâmica -->
+            <div class="dynamic-island" aria-hidden="true"><div class="island-camera"></div></div>
 
-    <div id="notifications-list" style="display: flex; flex-direction: column; gap: 10px;">
-        </div>
-</div>
-            <div id="imageSearch" class="section">
-                <h2>Buscar Imagens & GIFs</h2>
-                <p style="color: gray; font-size: 0.9rem;">Pesquise aqui, clique na imagem desejada para copiar o link e cole no Chat, no Post ou no seu Perfil!</p>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="media-search-input" placeholder="Buscar memes, reações, paisagens..." style="flex: 1; margin:0;">
-                    <button onclick="fetchMediaFromWeb()" style="padding: 12px 20px; border-radius: 12px; background: var(--primary-color); color: white; border: none; cursor: pointer; font-weight: bold;">Pesquisar</button>
-                </div>
-                <div id="media-results" class="image-grid">
-                    </div>
-                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border-color);">
-                <p style="font-size: 0.8rem; margin-bottom: 8px; opacity: 0.8;">Não achou o GIF? Suba sua própria imagem:</p>
-    
-                <label for="imgbb-upload" style="display: block; background: var(--pix-color); color: white; padding: 10px; border-radius: 12px; text-align: center; cursor: pointer; font-weight: bold; font-size: 0.9rem;">
-                    📤 Converter Foto em Link
-                </label>
-                <input type="file" id="imgbb-upload" accept="image/*" style="display: none;">
-    
-             <div id="upload-status" style="display: none; font-size: 0.7rem; margin-top: 5px; color: var(--primary-color);">
-                Convertendo... aguarde.
-            </div>
-            </div>
-                <div style="margin-top: 25px; padding: 20px; background: var(--card-bg); border-radius: 16px; border: 1px solid var(--border-color);">
-    <h3 style="margin-bottom: 15px;">🎬 Central de Mídia</h3>
-    
-    <div style="margin-bottom: 15px;">
-        <label style="font-size: 0.8rem; opacity: 0.8;">Converter arquivo do dispositivo:</label>
-        <input type="file" id="media-tool-input" accept="video/*,image/*" style="display: none;" onchange="uploadToTool(this.files[0])">
-        <button onclick="document.getElementById('media-tool-input').click()" id="tool-btn" style="width: 100%; margin-top: 5px; padding: 12px; background: var(--primary-color); border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold;">
-            📁 Selecionar Arquivo
-        </button>
-    </div>
-
-    <div id="tool-result-container" style="display: none; margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px dashed var(--primary-color);">
-        <p style="font-size: 0.7rem; color: var(--primary-color);">Link Gerado:</p>
-        <div id="tool-link-display" style="font-size: 0.8rem; word-break: break-all; margin: 5px 0;"></div>
-        <button onclick="copyToolLink()" style="width: 100%; padding: 8px; background: #444; border: none; border-radius: 4px; color: white; font-size: 0.8rem; cursor: pointer;">Copiar Link</button>
-    </div>
-</div>
+            <!-- Barra de status -->
+            <div id="statusbar" aria-hidden="true">
+                <span id="sb-time">00:00</span>
+                <span class="sb-icons">
+                    <svg viewBox="0 0 20 14" class="sb-svg"><rect x="0" y="9" width="3.4" height="4.4" rx="1"/><rect x="5.4" y="6.2" width="3.4" height="7.2" rx="1"/><rect x="10.8" y="3.2" width="3.4" height="10.2" rx="1"/><rect x="16.2" y="0" width="3.4" height="13.4" rx="1"/></svg>
+                    <svg viewBox="0 0 18 14" class="sb-svg"><path d="M9 12.6 6.4 9.8a3.9 3.9 0 0 1 5.2 0L9 12.6z"/><path d="M4.2 7.6a7 7 0 0 1 9.6 0l-1.9 2a4.6 4.6 0 0 0-5.8 0l-1.9-2z" opacity=".85"/><path d="M1.2 4.5a11.4 11.4 0 0 1 15.6 0l-1.9 2a9 9 0 0 0-11.8 0l-1.9-2z" opacity=".6"/></svg>
+                    <svg viewBox="0 0 27 14" class="sb-svg battery"><rect x="0.8" y="0.8" width="21" height="12.4" rx="3.4" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".6"/><rect x="3" y="3" width="13" height="8" rx="1.8"/><path d="M24.5 5v4a2.2 2.2 0 0 0 0-4z" opacity=".7"/></svg>
+                </span>
             </div>
 
-            <div id="search" class="section">
-                <h2>Explorar Comunidade</h2>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="search-input" placeholder="Buscar usuários pelo nome..." style="flex: 1; margin:0;">
-                    <button onclick="performSearch()" style="padding: 12px 20px; border-radius: 12px; background: var(--primary-color); color: white; border: none; cursor: pointer; font-weight: bold;">Buscar</button>
-                </div>
-                <div id="search-results" style="margin-top:20px;">
-                    <p style="color: gray;">Digite algo acima para encontrar pessoas.</p>
-                </div>
-            </div>
+            <!-- Lanterna (modo clarão) -->
+            <div id="flashlight-overlay" aria-hidden="true"></div>
 
-            <div id="profile" class="section">
-                <h2>Meu Perfil</h2>
-                <div style="display:flex; align-items:center; background: var(--card-bg); padding: 20px; border-radius: 16px; border: 1px solid var(--border-color); margin-bottom: 20px;">
-                    <div id="my-avatar-display" style="width:90px; height:90px; border-radius:50%; background: linear-gradient(135deg, var(--primary-color), var(--pix-color)); display: flex; align-items: center; justify-content: center; color: white; font-size: 2.5rem; font-weight: bold; overflow: hidden; border: 3px solid var(--primary-color);">GV</div>
-                    <div style="margin-left: 20px;">
-                        <h3 id="my-name-display" style="margin: 0; font-size: 1.8rem;">Usuário</h3>
-                        <p style="margin: 5px 0 0 0; color: gray;">Pronto para espalhar boas vibrações.</p>
-                        <button onclick="navigate('settings')" style="margin-top: 10px; padding: 8px 15px; border-radius: 8px; border: none; background: rgba(0,0,0,0.05); color: var(--text-color); cursor: pointer; font-weight: 600;">Editar Perfil</button>
-                    </div>
-                </div>
-            </div>
-
-            <div id="settings" class="section">
-                <h2>Configurações</h2>
-                
-                <div style="background: var(--card-bg); padding: 20px; border-radius: 16px; border: 1px solid var(--border-color); margin-bottom: 20px;">
-                    <h3>Aparência</h3>
-                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                        <input type="checkbox" id="dark-mode-toggle" onchange="toggleTheme(this)" style="width: 20px; height: 20px;"> 
-                        <strong>Ativar Modo Escuro</strong>
-                    </label>
-                    <br>
-                    <label style="display: block; margin-top: 10px;"><strong>Cor Principal do Site:</strong> 
-                        <input type="color" id="site-color" value="#6366f1" onchange="changeColor(this)" style="width: 100%; height: 40px; border: none; border-radius: 8px; margin-top: 5px; cursor: pointer;">
-                    </label>
+            <!-- ============ TELA DE BLOQUEIO ============ -->
+            <section id="lockscreen" aria-label="Tela de bloqueio">
+                <div class="lock-top">
+                    <div class="lock-logo"><img src="icons/icon-192.png" alt="Good Vibes"></div>
+                    <div class="lock-date" id="lock-date">Carregando…</div>
+                    <div class="lock-time" id="lock-time">00:00</div>
+                    <div class="lock-quote" id="lock-quote">espalhe boas vibrações ✨</div>
                 </div>
 
-                <div style="background: var(--card-bg); padding: 20px; border-radius: 16px; border: 1px solid var(--border-color); margin-bottom: 20px;">
-                    <h3>Dados da Conta</h3>
-                    
-                    <label style="font-weight: bold; font-size: 0.9rem; display: block; margin-top: 10px;">Nome de Exibição:</label>
-                    <input type="text" id="set-name" placeholder="Como quer ser chamado?">
-
-                    <label style="font-weight: bold; font-size: 0.9rem; display: block; margin-top: 10px;">Link da Foto de Perfil (URL):</label>
-                    <input type="url" id="set-avatar-url" placeholder="Cole o link direto da imagem aqui...">
-                    <small style="color: gray;">Dica: Use a aba 'Buscar Mídia' para encontrar e copiar o link de uma imagem legal!</small>
-                    
-                    <label style="font-weight: bold; font-size: 0.9rem; display: block; margin-top: 15px;">Chave PIX:</label>
-                    <input type="text" id="set-pix" placeholder="Sua Chave PIX (Para receber Super Likes)">
-                    
-                    <button id="save-profile-btn" onclick="updateProfileData()" style="width: 100%; margin-top: 15px;">💾 Salvar Alterações</button>
-                    <div style="margin-top: 25px; padding: 20px; background: var(--card-bg); border-radius: 16px; border: 1px solid var(--border-color);">
-    <h3 style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
-        <span>🔐</span> Segurança da Conta
-    </h3>
-    
-    <div style="margin-bottom: 15px;">
-        <label style="font-size: 0.8rem; opacity: 0.8;">Nova Senha:</label>
-        <input type="password" id="new-password-input" placeholder="Digite a nova senha..." 
-               style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: white; margin-top: 5px;">
-    </div>
-
-    <button onclick="changeUserPassword()" id="change-pass-btn" 
-            style="width: 100%; padding: 12px; background: #28a745; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer;">
-        Atualizar Senha
-    </button>
-    
-    <p style="font-size: 0.7rem; color: #ffc107; margin-top: 10px; text-align: center;">
-        ⚠️ Por segurança, você precisa ter logado recentemente para mudar a senha.
-    </p>
-</div>
+                <div class="lock-bottom">
+                    <button class="lock-shortcut" id="flashlight-btn" aria-label="Lanterna">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6l1 5-2 3v9a3 3 0 0 1-4 0V10L8 7l1-5z"/><line x1="12" y1="15" x2="12" y2="18"/></svg>
+                    </button>
+                    <button class="lock-shortcut" id="lock-camera-btn" aria-label="Abrir câmera (mídia)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h3l2-2.4A1.5 1.5 0 0 1 10.2 4h3.6A1.5 1.5 0 0 1 15 4.6L17 7h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/><circle cx="12" cy="13" r="3.6"/></svg>
+                    </button>
                 </div>
-                <div style="background: var(--card-bg); padding: 20px; border-radius: 16px; border: 1px solid var(--border-color); margin-bottom: 20px;">
-                <h3>Comunidade</h3>
-                <p style="font-size: 0.9rem; color: gray;">Antes de postar, confira o que é permitido por aqui para manter as boas vibrações.</p>
-                 <button onclick="document.getElementById('rules-modal').style.display = 'flex'" style="width: 100%; background: var(--primary-color); color: white; border: none; padding: 12px; border-radius: 12px; font-weight: bold; cursor: pointer;">
-                        📜 Ver Regras e Diretrizes
-                        </button>
-                     <a href="https://wa.me/5584999528925" target="_blank" style="color: var(--primary-color); font-weight: bold; text-decoration: none;">
-                     (Clique para denunciar)
-                    </a>
-                      <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-top: 15px;">
-                        <input type="checkbox" id="setting-blur-nsfw" style="width: 20px; height: 20px;"> 
-                        <strong>Embaçar conteúdos sensíveis</strong>
-                    </label>
-                    </div>
-                <div style="background: rgba(239, 68, 68, 0.1); padding: 20px; border-radius: 16px; border: 1px solid rgba(239, 68, 68, 0.3);">
-                    <h3 style="color: #ef4444; margin-top: 0;">Zona de Perigo</h3>
-                    <button onclick="logout()" style="width: 100%; background: transparent; border: 2px solid var(--text-color); color: var(--text-color); margin-bottom: 10px;">Sair da Conta (Logout)</button>
-                    <button onclick="deleteAccount()" style="width: 100%; background:#ef4444; color:white; border: none;">🗑️ Deletar Conta Definitivamente</button>
-                </div>
-            </div>
 
-        </div>
-    </div>
-
-    <div id="comments-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; align-items: center; justify-content: center; z-index: 2000;">
-        <div class="modal-content" style="position: relative; padding: 25px;">
-            <span class="close-modal" onclick="closeModal('comments-modal')" style="position: absolute; top: 15px; right: 20px; font-size: 1.5rem; cursor: pointer; font-weight: bold;">&times;</span>
-            <h2 style="margin-top: 0;">Debate (Comentários)</h2>
-            
-            <div id="comments-list" style="max-height: 350px; overflow-y: auto; margin-bottom: 15px; padding-right: 5px; display: flex; flex-direction: column; gap: 8px;"></div>
-            
-            <div style="display: flex; gap: 10px; flex-direction: column;">
-                <textarea id="new-comment" rows="2" placeholder="Deixe sua opinião e mantenha as good vibes..." style="width:100%; border-radius: 12px; padding: 10px; border: 1px solid var(--border-color);"></textarea>
-                <button onclick="submitComment()" style="padding: 10px; border-radius: 12px; background: var(--primary-color); color: white; border: none; cursor: pointer; font-weight: bold;">Enviar Comentário</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="pix-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; align-items: center; justify-content: center; z-index: 2000;">
-        <div class="modal-content" style="position: relative; text-align: center; padding: 30px;">
-            <span class="close-modal" onclick="closeModal('pix-modal')" style="position: absolute; top: 15px; right: 20px; font-size: 1.5rem; cursor: pointer; font-weight: bold;">&times;</span>
-            
-            <h2 style="margin-top: 0;">Super Like 💸</h2>
-            <p>Mande boas energias reais para este criador! Toda ajuda incentiva novos conteúdos.</p>
-            
-            <h3 style="color: var(--pix-color); margin-bottom: 5px;">Chave PIX:</h3>
-            <div id="pix-key-display" style="font-size: 18px; font-weight: bold; background: rgba(0,0,0,0.05); border: 2px dashed var(--pix-color); padding: 15px; border-radius: 12px; word-break: break-all;">
-                Carregando...
-            </div>
-            
-            <button onclick="navigator.clipboard.writeText(document.getElementById('pix-key-display').innerText); alert('Chave copiada para a área de transferência!');" style="margin-top: 15px; background: var(--pix-color); color: white; border: none; padding: 12px 20px; border-radius: 12px; font-weight: bold; cursor: pointer;">
-                📋 Copiar Chave PIX
-            </button>
-        </div>
-    </div>
-    
-<div id="rules-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; align-items: center; justify-content: center; z-index: 2000;">
-    <div class="modal-content" style="position: relative; padding: 30px; max-height: 80vh; overflow-y: auto;">
-        <span class="close-modal" onclick="closeModal('rules-modal')" style="position: absolute; top: 15px; right: 20px; font-size: 1.5rem; cursor: pointer; font-weight: bold;">&times;</span>
-        
-        <h2 style="margin-top: 0; color: var(--primary-color);">Diretrizes do Refúgio 🌊</h2>
-        <p>Este é um espaço privado e invisível. Para que ele continue existindo, precisamos seguir alguns combinados:</p>
-        
-        <ul style="text-align: left; line-height: 1.8;">
-            <li><strong>Respeito ao Feed:</strong> <br>Use a aba correta para cada assunto. Se o conteúdo for pesado ou artístico (Furry,NSFW,gore,{entre outros assuntos sensíveis}), ative a função logo a baixo da opção de inserir imagens nas postagens, se você não quer ver ative a opção Embaçar conteúdos sensíveis, para a ativação e desativação clique em salve as alterações</li>
-            <li><strong>Anonimato:</strong> <br>Eu sou o único que sabe quem é quem. Não revele a identidade real dos amigos sem permissão, não estrague a brincadeira</li>
-            <li><strong>Tolerância Zero:</strong><br> Conteúdos criminosos (Fascismo, Pedofilia, Apologia à Violência, Estupro... {entre outros}) resultam em <strong>punições</strong> e em casos extremos <strong>exclusão</strong> da conta sem aviso, se alguém denunciar eu venho intervir</li>
-            <li><strong>Convites:</strong> <br>O limite é de 20 pessoas, afinal a administração é manual e o servidor tem porte máximo de úsuarios. Se quiser chamar alguém,converse comigo primeiro, assim farei o mesmo com um de vocês caso eu queira chamar</li>
-            <li><strong>Moderação:</strong><br> Se algo te incomodar, denuncie no meu pv (<strong>+55 84 999528925</strong>) Eu irei desativar ou excluir contas que não respeitarem o ambiente.</li>
-            <li><strong>Super Like (PIX):</strong> O sistema de Super Like é apenas para dar um "mimo" ou incentivo aos criadores, por favor não abuse desse sistema, porque se abusar eles vão ficar de orelha em pé.  O site não processa o dinheiro, não cobra taxas e não se responsabiliza pelas transferências. <strong>Confira sempre os dados no app do seu banco</strong> antes de confirmar o envio, para garantir que o dinheiro vá para a pessoa certa.</li>
-        </ul>
-        <p style="font-style: italic; opacity: 0.9; border-top: 1px solid var(--border-color); padding-top: 10px;">
-    lembrando que cada regra vale apenas para os casos de desconforto de algum úsuario, podem usar sem medo e abusar
-</p>
-        <h2 style="margin-top: 0; color: var(--primary-color);">Isso é tudo muito obrigado pela atenção</h2>
-        
-        <button onclick="closeModal('rules-modal')" style="margin-top: 15px; width: 100%; background: var(--primary-color); color: white; border: none; padding: 12px; border-radius: 12px; font-weight: bold; cursor: pointer;">Entendido!</button>
-    </div>
-</div>
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, updatePassword,createUserWithEmailAndPassword, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-        // Configuração do Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyBXrIshTVFOD30XPKku_Trk6VKbXv_7Gkg",
-            authDomain: "good-vibes-8a13d.firebaseapp.com",
-            databaseURL: "https://good-vibes-8a13d-default-rtdb.firebaseio.com",
-            projectId: "good-vibes-8a13d",
-            messagingSenderId: "310185051492",
-            appId: "1:310185051492:web:c47435ce7842af9386e671",
-            measurementId: "G-215VPTXGN8"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        let currentUser = null;
-        let currentUserProfile = {};
-        let currentPostIdForComment = null;
-        let currentChatRoom = 'global';
-        let chatUnsubscribe = null;
-
-        // ================= FUNÇÕES AUXILIARES =================
-      function extractLinksAndGeneratePreview(text) {
-    if (!text) return { formattedText: "", previews: "" };
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    let formattedText = text;
-    let previews = '';
-    
-    const links = text.match(urlRegex);
-    if(links) {
-        links.forEach(link => {
-            // Substitui o link no texto por um link clicável
-            formattedText = formattedText.replace(link, `<a href="${link}" target="_blank" style="color: var(--primary-color); word-break: break-all;">[Link]</a>`);
-            
-            // 1. TRATAMENTO PARA YOUTUBE (Novo)
-            const ytMatch = link.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-            if(ytMatch) {
-                const videoId = ytMatch[1];
-                previews += `
-                    <div style="margin-top:10px; border-radius:12px; overflow:hidden; border:1px solid var(--border-color); background:#000;">
-                        <iframe width="100%" height="200" src="https://www.youtube.com/embed/${videoId}" 
-                            frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                            allowfullscreen></iframe>
-                    </div>`;
-            }
-            // 2. TRATAMENTO PARA IMAGENS (Giphy, Unsplash, etc)
-            else if(link.match(/\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i) != null || link.includes("giphy.com/media") || link.includes("images.unsplash.com")) {
-                previews += `<img src="${link}" alt="Preview" style="max-width:100%; max-height: 250px; margin-top:10px; border-radius:8px; object-fit: contain; background: rgba(0,0,0,0.05); display:block;">`;
-            } 
-            // 3. TRATAMENTO PARA VÍDEOS DIRETOS
-            else if(link.match(/\.(mp4|webm|ogg)(\?.*)?$/i) != null) {
-                previews += `<video controls src="${link}" style="max-width:100%; margin-top:10px; border-radius:8px; display:block;"></video>`;
-            }
-            // 4. PREVIEW PARA LINKS COMUNS (Sites)
-            else {
-                previews += `
-                    <div style="margin-top:10px; padding:12px; background:rgba(255,255,255,0.05); border-radius:8px; border-left:4px solid var(--primary-color);">
-                        <div style="font-size:0.7rem; opacity:0.6; text-transform:uppercase;">Site Externo</div>
-                        <div style="font-size:0.85rem; word-break:break-all; color:var(--primary-color);">${link.substring(0, 50)}...</div>
-                    </div>`;
-            }
-        });
-    }
-    return { formattedText, previews };
-}
-        
-        // ================= AUTENTICAÇÃO =================
-        window.login = async () => {
-            const e = document.getElementById('email').value;
-            const p = document.getElementById('password').value;
-            if (!e || !p) return alert("Por favor, preencha e-mail e senha.");
-            try { await signInWithEmailAndPassword(auth, e, p); } 
-            catch (err) { alert("Erro ao logar: " + err.message); }
-        };
-
-        window.logout = () => signOut(auth);
-
-        window.deleteAccount = async () => {
-            if(confirm("Tem certeza que deseja deletar sua conta? Isso não pode ser desfeito.")){
-                try { 
-                    await deleteUser(auth.currentUser); 
-                    alert("Conta deletada com sucesso.");
-                } catch(e) { alert("Erro: Faça login novamente para realizar esta ação."); }
-            }
-        };
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                document.getElementById('auth-section').style.display = 'none';
-                document.getElementById('app-section').style.display = 'block';
-                loadUserProfile();
-                loadFeed();
-                window.openChat('global'); 
-            } else {
-                currentUser = null;
-                document.getElementById('auth-section').style.display = 'flex';
-                document.getElementById('app-section').style.display = 'none';
-            }
-
-            
-        });
-
-window.changeUserPassword = async () => {
-    const auth = getAuth();
-    const user = auth.currentUser;
-    const newPassword = document.getElementById('new-password-input').value;
-    const btn = document.getElementById('change-pass-btn');
-
-    if (!newPassword || newPassword.length < 6) {
-        return alert("A senha deve ter pelo menos 6 caracteres!");
-    }
-
-    btn.innerText = "⏳ Atualizando...";
-    btn.disabled = true;
-
-    try {
-        await updatePassword(user, newPassword);
-        alert("Senha alterada com sucesso! Use a nova senha no próximo login.");
-        document.getElementById('new-password-input').value = "";
-    } catch (error) {
-        console.error(error);
-        if (error.code === 'auth/requires-recent-login') {
-            alert("Erro: Você precisa sair e entrar novamente para confirmar que é você antes de mudar a senha.");
-        } else {
-            alert("Erro ao mudar senha: " + error.message);
-        }
-    } finally {
-        btn.innerText = "Atualizar Senha";
-        btn.disabled = false;
-    }
-};
-                // ================= HISTÓRICO DE NOTIFICAÇÕES =================
- // ================= SISTEMA DE NOTIFICAÇÕES =================
-// Pede permissão para o usuário assim que carregar
-if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
-    Notification.requestPermission();
-}
-
-window.clearNotificationDot = (type) => {
-    document.getElementById(`dot-${type}`).style.display = 'none';
-};
-
-window.sendBrowserNotification = (title, body) => {
-    // Só envia a notificação do navegador se o usuário estiver em outra aba/minimizado (document.hidden)
-    if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
-        new Notification(title, {
-            body: body,
-            icon: "https://cdn-icons-png.flaticon.com/512/3649/3649496.png" // Ícone genérico de sino
-        });
-    }
-};
-        
-// Carrega o histórico salvo no navegador do usuário
-// ================= SISTEMA DE NOTIFICAÇÕES (VERSÃO FINAL) =================
-// ================= SISTEMA DE NOTIFICAÇÕES CORRIGIDO =================
-window.notificationsHistory = JSON.parse(localStorage.getItem('gv_notifications') || '[]');
-window.lastClearedTimestamp = parseInt(localStorage.getItem('gv_last_cleared') || '0');
-window.lastReadChatTimestamp = parseInt(localStorage.getItem('gv_last_chat_read') || Date.now());
-
-window.saveNotification = (title, body, sectionToNavigate, itemTimestamp) => {
-    if (itemTimestamp && itemTimestamp <= window.lastClearedTimestamp) return;
-
-    const newNotif = {
-        id: Date.now(),
-        title: title,
-        body: body,
-        section: sectionToNavigate,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        read: false
-    };
-    
-    window.notificationsHistory.unshift(newNotif); 
-    if(window.notificationsHistory.length > 50) window.notificationsHistory.pop();
-    
-    localStorage.setItem('gv_notifications', JSON.stringify(window.notificationsHistory));
-    
-    if (!document.getElementById('notifications').classList.contains('active')) {
-        const dot = document.getElementById('dot-notifications');
-        if(dot) dot.style.display = 'block';
-    }
-};
-
-// ESSA É A FUNÇÃO QUE ESTAVA DANDO ERRO NO SEU LOG
-window.renderNotificationsList = () => {
-    const list = document.getElementById('notifications-list');
-    if(!list) return;
-    
-    list.innerHTML = '';
-    
-    if(window.notificationsHistory.length === 0) {
-        list.innerHTML = '<p style="text-align: center; color: gray; padding: 20px;">Nenhuma notificação por enquanto.</p>';
-        return;
-    }
-
-    window.notificationsHistory.forEach(notif => {
-        const bg = notif.read ? 'rgba(0,0,0,0.03)' : 'rgba(99, 102, 241, 0.1)';
-        const border = notif.read ? 'var(--border-color)' : 'var(--primary-color)';
-        
-        list.innerHTML += `
-            <div onclick="markAsRead(${notif.id}); navigate('${notif.section}')" style="background: ${bg}; border-left: 4px solid ${border}; padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); cursor: pointer; margin-bottom: 8px;">
-                <div style="display: flex; justify-content: space-between;">
-                    <strong>${notif.title}</strong>
-                    <small>${notif.time}</small>
-                </div>
-                <p style="margin: 5px 0 0 0; font-size: 0.9rem; opacity: 0.8;">${notif.body}</p>
-            </div>`;
-    });
-};
-
-window.clearAllNotifications = () => {
-    if(confirm("Deseja limpar todo o histórico?")) {
-        window.notificationsHistory = [];
-        window.lastClearedTimestamp = Date.now();
-        localStorage.setItem('gv_last_cleared', window.lastClearedTimestamp);
-        localStorage.removeItem('gv_notifications');
-        window.renderNotificationsList();
-        const dot = document.getElementById('dot-notifications');
-        if(dot) dot.style.display = 'none';
-    }
-};
-
-window.markAsRead = (id) => {
-    const index = window.notificationsHistory.findIndex(n => n.id === id);
-    if(index > -1) {
-        window.notificationsHistory[index].read = true;
-        localStorage.setItem('gv_notifications', JSON.stringify(window.notificationsHistory));
-    }
-};
-
-window.clearNotificationDot = (type) => {
-    const dot = document.getElementById(`dot-${type}`);
-    if(dot) dot.style.display = 'none';
-    
-    if(type === 'notifications') {
-        window.notificationsHistory.forEach(n => n.read = true);
-        localStorage.setItem('gv_notifications', JSON.stringify(window.notificationsHistory));
-    }
-    // Se clicou no chat, atualiza o tempo de leitura para a bolinha não voltar
-    if(type === 'chat') {
-        window.lastReadChatTimestamp = Date.now();
-        localStorage.setItem('gv_last_chat_read', window.lastReadChatTimestamp);
-    }
-};
-        // ================= NAVEGAÇÃO =================
-        window.navigate = (sectionId) => {
-            document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
-            const targetSection = document.getElementById(sectionId);
-            if(targetSection) targetSection.classList.add('active');
-        };
-
-        // ================= PERFIL E CONFIGURAÇÕES =================
-      
-        
-        async function loadUserProfile() {
-            if(!currentUser) return;
-            try {
-                const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-                if(userDoc.exists()) {
-                    currentUserProfile = userDoc.data();
-                    const preference = currentUserProfile.blurNsfw ?? true;
-                    document.getElementById('setting-blur-nsfw').checked = preference;
-                    document.getElementById('set-name').value = currentUserProfile.name || "";
-                    document.getElementById('set-pix').value = currentUserProfile.pixKey || "";
-                    document.getElementById('set-avatar-url').value = currentUserProfile.avatarUrl || "";
-                    
-                    document.getElementById('my-name-display').innerText = currentUserProfile.name || "Sem Nome";
-                    const avatarDisplay = document.getElementById('my-avatar-display');
-                    if(currentUserProfile.avatarUrl) {
-                        avatarDisplay.innerHTML = `<img src="${currentUserProfile.avatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
-                    } else {
-                        avatarDisplay.innerHTML = (currentUserProfile.name ? currentUserProfile.name.substring(0,2).toUpperCase() : "GV");
-                    }
-
-                    if(currentUserProfile.theme === 'dark') {
-                        document.documentElement.setAttribute('data-theme', 'dark');
-                        document.getElementById('dark-mode-toggle').checked = true;
-                    } else {
-                        document.documentElement.setAttribute('data-theme', 'light');
-                        document.getElementById('dark-mode-toggle').checked = false;
-                    }
-                    if(currentUserProfile.blurNsfw === false) {
-                        
-                        document.getElementById('setting-blur-nsfw').checked = false;
-                    } else {
-                        document.getElementById('setting-blur-nsfw').checked = true; // Padrão é embaçado
-                    }
-                }
-            } catch(e) { console.error("Erro ao carregar perfil:", e); }
-        }
-
-        window.updateProfileData = async () => {
-            const btn = document.getElementById('save-profile-btn');
-            btn.innerText = "Salvando...";
-            btn.disabled = true;
-
-            const name = document.getElementById('set-name').value;
-            const pix = document.getElementById('set-pix').value;
-            const avatarUrl = document.getElementById('set-avatar-url').value;
-            const blurNsfw = document.getElementById('setting-blur-nsfw').checked;
-            try {
-                await setDoc(doc(db, "users", currentUser.uid), {
-                    name: name,
-                    pixKey: pix,
-                    blurNsfw: blurNsfw,
-                    avatarUrl: avatarUrl
-                }, { merge: true });
-                
-                alert("Perfil atualizado com sucesso!");
-                await loadUserProfile(); 
-            } catch(e) {
-                alert("Erro ao atualizar perfil: " + e.message);
-            } finally {
-                btn.innerText = "💾 Salvar Alterações";
-                btn.disabled = false;
-            }
-        };
-
-        window.toggleTheme = (checkbox) => {
-            const theme = checkbox.checked ? 'dark' : 'light';
-            document.documentElement.setAttribute('data-theme', theme);
-            if(currentUser) {
-                setDoc(doc(db, "users", currentUser.uid), { theme: theme }, { merge: true });
-            }
-        };
-
-        window.changeColor = (input) => { 
-            document.documentElement.style.setProperty('--primary-color', input.value); 
-        };
-
-        // ================= BUSCA DE IMAGENS NA WEB (API PÚBLICA GIPHY) =================
-        
-        window.fetchMediaFromWeb = async () => {
-    const term = document.getElementById('media-search-input').value;
-    const resultsDiv = document.getElementById('media-results');
-    
-    // Sua API Key atualizada
-    const myApiKey = "5Eir9BLVUppJQLNQTNH9K2KHzcblnVJl";
-
-    if(!term) {
-        resultsDiv.innerHTML = "<p>Digite algo para buscar.</p>";
-        return;
-    }
-
-    resultsDiv.innerHTML = "<p>Buscando na internet...</p>";
-
-    try {
-        // Adicionamos parâmetros de segurança e idioma para garantir o retorno
-        const response = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${myApiKey}&q=${encodeURIComponent(term)}&limit=30&rating=g&lang=pt`);
-        const json = await response.json();
-
-        if(json.data && json.data.length > 0) {
-            resultsDiv.innerHTML = "";
-            json.data.forEach(gif => {
-                const imgUrl = gif.images.fixed_height.url;
-                const imgElem = document.createElement('img');
-                imgElem.src = imgUrl;
-                imgElem.className = "image-item";
-                imgElem.title = "Clique para copiar o link!";
-                imgElem.onclick = () => {
-                    navigator.clipboard.writeText(imgUrl);
-                    alert("✅ Link da imagem copiado!");
-                };
-                resultsDiv.appendChild(imgElem);
-            });
-        } else {
-            resultsDiv.innerHTML = "<p>Nenhum GIF encontrado. Tente outro termo!</p>";
-        }
-    } catch (err) {
-        console.error("Erro na busca:", err);
-        resultsDiv.innerHTML = "<p>Erro na conexão. Verifique o Console (F12).</p>";
-    }
-};
-        document.getElementById('imgbb-upload').addEventListener('change', async function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const status = document.getElementById('upload-status');
-    status.style.display = 'block';
-    
-    // FORM DATA para enviar a imagem
-    const formData = new FormData();
-    formData.append("image", file);
-
-    // COLOQUE SUA CHAVE AQUI
-    const apiKey = "1fd4d8fc1d8b3f9bb172de4e42dabe37"; 
-
-    try {
-        const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
-            method: "POST",
-            body: formData
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            const directLink = result.data.url;
-            
-            // Copia o link direto para o campo de mídia do seu post
-            document.getElementById('post-media-url').value = directLink;
-            
-            status.innerHTML = "✅ Link gerado e colado no post!";
-            
-            // Fecha o modal de pesquisa após 1 segundo para o usuário ver que deu certo
-            setTimeout(() => {
-                closeModal('media-modal'); // Use o ID do seu modal de GIFs
-                status.style.display = 'none';
-                status.innerHTML = "Convertendo... aguarde.";
-            }, 1500);
-            
-        } else {
-            alert("Erro ao converter imagem.");
-        }
-    } catch (error) {
-        console.error("Erro no ImgBB:", error);
-        alert("Servidor de conversão fora do ar.");
-    }
-});
-        window.uploadToTool = async (file) => {
-    if (!file) return;
-    
-    const btn = document.getElementById('tool-btn');
-    const resultContainer = document.getElementById('tool-result-container');
-    const linkDisplay = document.getElementById('tool-link-display');
-
-    // CONFIGURAÇÃO DA API (Você pega isso no painel do Cloudinary)
-    const CLOUD_NAME = "ddeahu7n2"; 
-    const UPLOAD_PRESET = "vqa17svu"; 
-
-    btn.innerText = "⏳ Subindo para Nuvem...";
-    btn.disabled = true;
-
-    // Criamos o "pacote" de envio para a API
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", UPLOAD_PRESET);
-
-    try {
-        // Chamada da API Externa (Igual você fez com as imagens)
-        const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`, {
-            method: "POST",
-            body: formData
-        });
-
-        const data = await response.json();
-
-        if (data.secure_url) {
-            // O "link" gerado pela API
-            linkDisplay.innerText = data.secure_url;
-            resultContainer.style.display = 'block';
-            btn.innerText = "✅ Link Gerado!";
-        } else {
-            throw new Error("Erro na API");
-        }
-        
-        setTimeout(() => { 
-            btn.innerText = "📁 Selecionar Outro"; 
-            btn.disabled = false; 
-        }, 2000);
-
-    } catch (e) {
-        console.error(e);
-        alert("Erro ao converter vídeo via API!");
-        btn.innerText = "📁 Selecionar Arquivo";
-        btn.disabled = false;
-    }
-};
-        // ================= POSTAGENS E FEED =================
-        window.createPost = async () => {
-            const text = document.getElementById('post-text').value;
-            const mediaUrl = document.getElementById('post-media-url').value;
-            const isNsfw = document.getElementById('post-nsfw').checked;
-            if (!text.trim() && !mediaUrl.trim()) return alert("Escreva algo ou adicione o link de uma imagem!");
-
-            const postBtn = document.getElementById('post-btn');
-            postBtn.innerText = "Postando...";
-            postBtn.disabled = true;
-
-            try {
-                await addDoc(collection(db, "posts"), {
-                    userId: currentUser.uid,
-                    authorName: currentUserProfile.name || "Usuário",
-                    authorAvatar: currentUserProfile.avatarUrl || "",
-                    text: text,
-                    isNsfw: isNsfw,
-                    mediaUrl: mediaUrl,
-                    timestamp: serverTimestamp(),
-                    likes: 0,
-                    dislikes: 0
-                });
-                document.getElementById('post-text').value = "";
-                document.getElementById('post-media-url').value = "";
-            } catch(e) { alert("Erro ao postar: " + e.message); } 
-            finally {
-                postBtn.innerText = "Publicar";
-                postBtn.disabled = false;
-                document.getElementById('post-nsfw').checked = false;
-            }
-        };
-        async function enviarMensagemComEnquete(textoDigitado) {
-    let enqueteData = null;
-    const regexEnquete = /\(option:(\w+)\{.+?\}\)/g;
-    let match;
-
-    while ((match = regexEnquete.exec(textoDigitado)) !== null) {
-        if (!enqueteData) enqueteData = {};
-        enqueteData[`votos_${match[1]}`] = 0;
-    }
-
-    await addDoc(collection(db, "mensagens"), {
-        texto: textoDigitado,
-        enquete: enqueteData,
-        timestamp: serverTimestamp()
-    });
-}
-        function renderizarConteudo(mensagemObj) {
-    const textoPuro = mensagemObj.texto;
-    const regex = /\(option:(\w+)\{(.+?)\}\)/g;
-
-    return textoPuro.replace(regex, (match, id, rotulo) => {
-        const votos = (mensagemObj.enquete && mensagemObj.enquete[`votos_${id}`]) || 0;
-        return `
-            <div style="margin: 8px 0;">
-                <button class="caixa-voto" onclick="votarEnquete('${mensagemObj.id}', '${id}')">
-                    <span>${rotulo}</span>
-                    <span class="voto-count">${votos}</span>
+                <button class="unlock-hint" id="unlock-btn" aria-label="Desbloquear">
+                    <span class="unlock-chevron">⌃</span>
+                    <span class="unlock-text">Toque ou deslize para cima para desbloquear</span>
                 </button>
-            </div>`;
-    });
-}
-      window.votarEnquete = async (msgId, optId) => {
-    if (sessionStorage.getItem(`voto_${msgId}`)) {
-        alert("Você já votou!");
-        return;
-    }
+            </section>
 
-    try {
-        
-        // IMPORTANTE: db deve ser a variável que você usou no firebase.initializeApp
-        const docRef = doc(db, "posts", msgId); 
-        
-        await updateDoc(docRef, {
-            [`enquete.votos_${optId}`]: increment(1)
-        });
+            <!-- ============ TELA DE LOGIN ============ -->
+            <section id="auth-screen" aria-label="Entrar no Good Vibes">
+                <form class="auth-card" id="auth-form" novalidate>
+                    <img class="auth-logo" src="icons/icon-192.png" alt="Good Vibes">
+                    <h1 class="auth-title">Good Vibes</h1>
+                    <p class="auth-tagline">eu te conheço? 🌊</p>
 
-        sessionStorage.setItem(`voto_${msgId}`, "true");
-        console.log("Voto computado!");
-    } catch (e) {
-        console.error("Erro ao computar voto:", e);
-        alert("Erro ao votar. Verifique o console.");
-    }
-};
-        function loadFeed() {
-            const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
-            onSnapshot(q, (snapshot) => {
-                
-                snapshot.docChanges().forEach((change) => {
-                    // Se foi adicionado um post novo, o timestamp existe, e não fui eu que postei:
-                    if (change.type === "added" && change.doc.data().timestamp && change.doc.data().userId !== currentUser.uid) {
-                        const data = change.doc.data();
-                        
-                        // Se não estou na aba For You, mostra a bolinha
-                        if (!document.getElementById('foryou').classList.contains('active')) {
-                            document.getElementById('dot-foryou').style.display = 'block';
-                        }
-                        
-                        // Dispara a notificação de sistema se estiver em outra aba
-                        window.sendBrowserNotification("Refúgio 🌊", `${data.authorName} publicou algo novo!`);
-                        const postTime = data.timestamp?.toMillis() || Date.now();
-                        window.saveNotification("Novo Post no Feed", `${data.authorName} publicou algo.`, 'foryou', postTime);
-                    }
-                });
-                const feed = document.getElementById('feed-container');
-                
-                feed.innerHTML = '';
-                
-                if(snapshot.empty) {
-                    feed.innerHTML = "<p style='text-align:center; margin-top:20px;'>Nenhum post encontrado. Seja o primeiro a postar!</p>";
-                    return;
-                }
+                    <label class="auth-label" for="email">E-mail</label>
+                    <div class="auth-field">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/></svg>
+                        <input type="email" id="email" placeholder="voce@exemplo.com" autocomplete="email" required>
+                    </div>
 
-               snapshot.forEach((docSnap) => {
-    const data = docSnap.data();
-    const postId = docSnap.id;
-    const parsedContent = extractLinksAndGeneratePreview(data.text || "");
-    const isPostNsfw = data.isNsfw === true;
-    const userWantsBlur = currentUserProfile.blurNsfw !== false;
+                    <label class="auth-label" for="password">Senha</label>
+                    <div class="auth-field">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="4" y="10" width="16" height="10" rx="2.5"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10"/></svg>
+                        <input type="password" id="password" placeholder="Sua senha" autocomplete="current-password" required>
+                        <button type="button" class="toggle-pass" id="toggle-pass" aria-label="Mostrar senha">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3.2"/></svg>
+                        </button>
+                    </div>
 
-    let mediaHtml = "";
-    let blurClass = "";
-    let warningHtml = "";
-    let clickToReveal = "";
-    let nsfwBadge = "";
+                    <p class="auth-error" id="auth-error" role="alert"></p>
 
-    // ----------------------------------------------------
-    // A MÁGICA DA ENQUETE ACONTECE AQUI:
-    // Pega o texto formatado e converte as enquetes em botões
-    const conteudoComEnquetes = renderizarConteudo({ 
-        id: postId, 
-        texto: parsedContent.formattedText, 
-        enquete: data.enquete 
-    });
-    // ----------------------------------------------------
+                    <button type="submit" class="auth-submit" id="login-btn">
+                        <span class="btn-label">Entrar</span>
+                        <span class="btn-spinner" aria-hidden="true"></span>
+                    </button>
 
-    if(data.mediaUrl) {
-        if(data.mediaUrl.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i) || data.mediaUrl.includes('video')) {
-            mediaHtml = `<video controls src="${data.mediaUrl}" style="width:100%; border-radius:16px; margin-top:10px;"></video>`;
-        } else {
-            mediaHtml = `<img src="${data.mediaUrl}" style="width:100%; border-radius:16px; margin-top:10px; object-fit:cover;">`;
-        }
-    }
-    
-    if (isPostNsfw) {
-         nsfwBadge = `<span style="background: #ef4444; color: white; padding: 2px 6px; border-radius: 6px; font-size: 0.7rem; margin-left: 10px;">🔞 NSFW</span>`;  
-        if (userWantsBlur) {
-             blurClass = "nsfw-blur";
-             warningHtml = `<div class="nsfw-warning" id="warning-${postId}">🔞 Conteúdo Sensível<br><small>Clique para revelar</small></div>`;
-            clickToReveal = `onclick="this.querySelector('.nsfw-blur').classList.remove('nsfw-blur'); this.querySelector('.nsfw-warning').style.display='none'; this.style.cursor='default';"`;
-        }
-    }
+                    <button type="button" class="auth-forgot" id="forgot-pass-btn">Esqueci minha senha</button>
+                    <p class="auth-note">🔒 Comunidade por convite — peça acesso ao administrador.</p>
+                </form>
+            </section>
 
-    let avatarHtml = data.authorAvatar 
-        ? `<img src="${data.authorAvatar}" style="width:100%; height:100%; object-fit:cover;">`
-        : (data.authorName ? data.authorName.substring(0,2).toUpperCase() : "GV");
-    
-    feed.innerHTML += `
-    <div class="post">
-        <div class="post-header">
-            <div class="post-avatar">${avatarHtml}</div>
-            <div class="post-author">${data.authorName} ${nsfwBadge}</div>
-        </div>
-        
-        <div class="nsfw-container" ${clickToReveal}>
-            ${warningHtml}
-            <div class="${blurClass}">
-                <div class="post-content">${conteudoComEnquetes}</div>
-                <div class="post-media">${parsedContent.previews} ${mediaHtml}</div>
-            </div>
-        </div>
+            <!-- ============ TELA INICIAL (HOME) ============ -->
+            <section id="home-screen" aria-label="Tela inicial">
+                <!-- Widget de relógio / saudação -->
+                <div class="home-widget">
+                    <div class="hw-greeting"><span id="hw-greeting-text">Boa noite</span><span id="hw-greeting-emoji">🌙</span></div>
+                    <div class="hw-name" id="hw-name">Good Vibes</div>
+                    <div class="hw-time" id="hw-time">00:00</div>
+                    <div class="hw-date" id="hw-date">—</div>
+                    <div class="hw-quote"><span class="hw-quote-mark">“</span><span id="hw-quote">espalhe boas vibrações ✨</span></div>
+                </div>
 
-        <div class="post-actions">
-            <button onclick="likePost('${postId}')">👍 Curtir (${data.likes || 0})</button>
-            <button onclick="dislikePost('${postId}')" style="color: #ff4444;">👎 (${data.dislikes || 0})</button>
-            <button class="super-like-btn" onclick="openPixModal('${data.userId}')">💸 Super Like</button>
-            <button onclick="openComments('${postId}')">💬 Comentar</button>
-            <button onclick="sharePost('${postId}')">↗️ Compartilhar</button>
-        </div>
-    </div>
-    `;
+                <!-- Grade de aplicativos -->
+                <div class="app-grid" id="app-grid"></div>
 
-window.likePost = async (postId) => {
-    if(!currentUser) { alert("Entre para curtir!"); return; }
-    try {
-        const postRef = doc(db, "posts", postId);
-        await updateDoc(postRef, { likes: increment(1) });
-    } catch (e) {
-        console.error("Erro ao curtir:", e);
-    }
-};
+                <!-- Marcador de página -->
+                <div class="page-dots" aria-hidden="true"><span class="page-dot active"></span></div>
 
-// Função para Descurtir
-window.dislikePost = async (postId) => {
-    if(!currentUser) { alert("Entre para dar deslike!"); return; }
-    try {
-        const postRef = doc(db, "posts", postId);
-        await updateDoc(postRef, { dislikes: increment(1) });
-    } catch (e) {
-        console.error("Erro ao descurtir:", e);
-    }
-};
+                <!-- Dock -->
+                <div class="dock" id="dock"></div>
+            </section>
 
-// Função de Votar na Enquete
-window.votarEnquete = async (msgId, optId) => {
-    if (sessionStorage.getItem(`voto_${msgId}`)) {
-        alert("Você já votou!");
-        return;
-    }
-    try {
-        const docRef = doc(db, "posts", msgId);
-        await updateDoc(docRef, {
-            [`enquete.votos_${optId}`]: increment(1)
-        });
-        sessionStorage.setItem(`voto_${msgId}`, "true");
-    } catch (e) {
-        console.error("Erro ao votar:", e);
-    }
-};
-
-// Função de Compartilhar
-window.sharePost = (postId) => {
-    const url = window.location.origin + window.location.pathname + "?post=" + postId;
-    if (navigator.share) {
-        navigator.share({ title: 'Good Vibes', url: url }).catch(console.error);
-    } else {
-        navigator.clipboard.writeText(url);
-        alert("Link copiado!");
-    }
-};
-});
-});
-}
-        // ================= INTERAÇÕES E MODAIS =================
-
-        window.openPixModal = async (authorId) => {
-            document.getElementById('pix-modal').style.display = 'flex';
-            document.getElementById('pix-key-display').innerText = "Buscando chave PIX...";
-            try {
-                const userDoc = await getDoc(doc(db, "users", authorId));
-                if(userDoc.exists() && userDoc.data().pixKey) {
-                    document.getElementById('pix-key-display').innerText = userDoc.data().pixKey;
-                } else {
-                    document.getElementById('pix-key-display').innerText = "Usuário não cadastrou chave PIX.";
-                }
-            } catch(e) { document.getElementById('pix-key-display').innerText = "Erro ao carregar PIX."; }
-        };
-
-        window.openComments = (postId) => {
-            currentPostIdForComment = postId;
-            document.getElementById('comments-modal').style.display = 'flex';
-            
-            const commentsList = document.getElementById('comments-list');
-            commentsList.innerHTML = "<p>Carregando comentários...</p>";
-            
-            const q = query(collection(db, `posts/${postId}/comments`), orderBy("timestamp", "asc"));
-            onSnapshot(q, (snapshot) => {
-                commentsList.innerHTML = '';
-                if(snapshot.empty) {
-                    commentsList.innerHTML = "<p>Nenhum comentário ainda. Inicie o debate!</p>";
-                    return;
-                }
-                snapshot.forEach(docSnap => {
-                    const data = docSnap.data();
-                    commentsList.innerHTML += `
-                        <div style="background: rgba(0,0,0,0.03); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color);">
-                            <strong style="color: var(--primary-color);">${data.authorName}:</strong> 
-                            <span style="margin-left: 5px;">${data.text}</span>
+            <!-- ============ APP: FEED ============ -->
+            <section class="app-window" id="app-feed" data-app="feed" aria-label="Feed">
+                <header class="app-header">
+                    <button class="app-back" data-close-app aria-label="Voltar para a tela inicial">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+                        <span>Início</span>
+                    </button>
+                    <h2 class="app-title">🏠 Feed</h2>
+                    <span class="app-header-spacer"></span>
+                </header>
+                <div class="app-body">
+                    <div class="create-post card">
+                        <textarea id="post-text" rows="3" maxlength="500" placeholder="O que está rolando de bom hoje?"></textarea>
+                        <div class="composer-row">
+                            <input type="url" id="post-media-url" placeholder="🔗 Cole um link de imagem, GIF ou vídeo…" inputmode="url">
+                            <button class="composer-gallery-btn" id="gallery-post-btn" aria-label="Escolher foto da galeria" title="Escolher da galeria">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17 5-5 4 4 3.5-3.5L21 17"/></svg>
+                                <span>Galeria</span>
+                            </button>
                         </div>
-                    `;
-                });
-                commentsList.scrollTop = commentsList.scrollHeight;
-            });
-        };
+                        <div class="post-media-preview" id="post-media-preview" hidden>
+                            <img id="post-media-preview-img" alt="Pré-visualização da mídia">
+                            <div class="pmp-info"><strong>Mídia anexada ✅</strong><span>O link foi colado automaticamente.</span></div>
+                            <button class="pmp-remove" id="post-media-preview-remove" aria-label="Remover mídia">✕</button>
+                        </div>
+                        <label class="nsfw-check">
+                            <input type="checkbox" id="post-nsfw">
+                            <span class="nsfw-box"></span>
+                            🔞 Marcar como Conteúdo Sensível
+                        </label>
+                        <div class="composer-footer">
+                            <span class="char-counter" id="post-char-counter">0/500</span>
+                            <button id="post-btn" class="primary-btn"><span class="btn-label">Publicar</span><span class="btn-spinner" aria-hidden="true"></span></button>
+                        </div>
+                        <p class="poll-hint">💡 Enquete? Use <code>(option:a{Opção A}) (option:b{Opção B})</code> no texto.</p>
+                    </div>
+                    <div id="feed-container" aria-live="polite"></div>
+                </div>
+            </section>
 
-        window.submitComment = async () => {
-            const text = document.getElementById('new-comment').value;
-            if(!text.trim() || !currentPostIdForComment) return;
+            <!-- ============ APP: CHAT ============ -->
+            <section class="app-window" id="app-chat" data-app="chat" aria-label="Mensagens">
+                <header class="app-header">
+                    <button class="app-back" data-close-app aria-label="Voltar para a tela inicial">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+                        <span>Início</span>
+                    </button>
+                    <h2 class="app-title">💬 Mensagens</h2>
+                    <span class="app-header-spacer"></span>
+                </header>
+                <div class="app-body chat-body">
+                    <div class="chat-tabs" role="tablist">
+                        <button id="tab-global" class="chat-tab active" role="tab" onclick="openChat('global')">🌐 Global</button>
+                        <button id="tab-groups" class="chat-tab" role="tab" onclick="openChat('groups')">👥 Grupos</button>
+                        <button id="tab-private" class="chat-tab" role="tab" onclick="openChat('private')">👤 Privado</button>
+                    </div>
+                    <div class="chat-window">
+                        <div class="chat-messages" id="chat-messages" aria-live="polite">
+                            <p class="chat-placeholder">Carregando chat…</p>
+                        </div>
+                        <div class="chat-input-area" id="chat-input-area">
+                            <button class="chat-attach-btn" id="gallery-chat-btn" aria-label="Enviar foto da galeria" title="Enviar foto da galeria">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17 5-5 4 4 3.5-3.5L21 17"/></svg>
+                            </button>
+                            <input type="text" id="chat-input" placeholder="Mensagem ou link de imagem…" autocomplete="off">
+                            <button class="chat-send-btn" id="chat-send-btn" aria-label="Enviar mensagem">
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4 21.6 12 3.4 3.6 3.4 10l13 2-13 2 0 6.4z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-            try {
-                await addDoc(collection(db, `posts/${currentPostIdForComment}/comments`), {
-                    userId: currentUser.uid,
-                    authorName: currentUserProfile.name || "Usuário",
-                    text: text,
-                    timestamp: serverTimestamp()
-                });
-                document.getElementById('new-comment').value = '';
-            } catch(e) { alert("Erro ao comentar: " + e.message); }
-        };
+            <!-- ============ APP: NOTIFICAÇÕES ============ -->
+            <section class="app-window" id="app-notifications" data-app="notifications" aria-label="Notificações">
+                <header class="app-header">
+                    <button class="app-back" data-close-app aria-label="Voltar para a tela inicial">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+                        <span>Início</span>
+                    </button>
+                    <h2 class="app-title">🔔 Notificações</h2>
+                    <span class="app-header-spacer"></span>
+                </header>
+                <div class="app-body">
+                    <div class="notif-toolbar card">
+                        <div class="notif-toolbar-text">
+                            <strong>Central de avisos</strong>
+                            <span>Tudo o que aconteceu enquanto você estava fora.</span>
+                        </div>
+                        <div class="notif-toolbar-actions">
+                            <button class="chip-btn" id="notif-markall-btn">✓ Ler todas</button>
+                            <button class="chip-btn danger" id="notif-clear-btn">🗑️ Limpar</button>
+                        </div>
+                    </div>
+                    <div class="notif-filters" role="tablist">
+                        <button class="notif-filter active" data-filter="all">Todas</button>
+                        <button class="notif-filter" data-filter="unread">Não lidas</button>
+                    </div>
+                    <button class="notif-permission" id="notif-permission-btn" hidden>
+                        🔕 Ativar notificações do sistema neste aparelho
+                    </button>
+                    <div id="notifications-list" class="notifications-list" aria-live="polite"></div>
+                </div>
+            </section>
 
-        window.closeModal = (modalId) => { document.getElementById(modalId).style.display = 'none'; };
-        window.onclick = function(event) {
-            if (event.target == document.getElementById('comments-modal')) closeModal('comments-modal');
-            if (event.target == document.getElementById('pix-modal')) closeModal('pix-modal');
-        };
+            <!-- ============ APP: MÍDIA ============ -->
+            <section class="app-window" id="app-media" data-app="media" aria-label="Buscar mídia">
+                <header class="app-header">
+                    <button class="app-back" data-close-app aria-label="Voltar para a tela inicial">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+                        <span>Início</span>
+                    </button>
+                    <h2 class="app-title">🖼️ Buscar Mídia</h2>
+                    <span class="app-header-spacer"></span>
+                </header>
+                <div class="app-body">
+                    <p class="app-subtitle">Toque em um GIF para <strong>copiar o link</strong> — ou envie direto da galeria para o seu post.</p>
+                    <div class="search-row">
+                        <input type="text" id="media-search-input" placeholder="Buscar memes, reações, paisagens…" autocomplete="off">
+                        <button id="media-search-btn" class="primary-btn compact"><span class="btn-label">Buscar</span></button>
+                    </div>
+                    <div id="media-results" class="image-grid"></div>
 
-        // ================= CHAT REAL-TIME =================
-       // ================= CHAT REAL-TIME =================
-    window.openChat = async (type) => {
-    currentChatRoom = type;
-    
-    window.lastReadChatTimestamp = Date.now();
-    localStorage.setItem('gv_last_chat_read', window.lastReadChatTimestamp);
-    document.getElementById('dot-chat').style.display = 'none';
+                    <div class="card media-tool-card">
+                        <h3>📤 Foto da galeria → link</h3>
+                        <p class="card-sub">A imagem é enviada e o link vai <strong>direto para o input do post</strong>.</p>
+                        <button class="big-upload-btn" id="imgbb-upload-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 17v2a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-2"/></svg>
+                            Escolher da galeria
+                        </button>
+                        <input type="file" id="imgbb-upload" accept="image/*" hidden>
+                        <div id="upload-status" class="upload-status" hidden>Convertendo… aguarde.</div>
+                    </div>
 
-    document.querySelectorAll('.chat-tab').forEach(btn => btn.classList.remove('active'));
-    if(document.getElementById('tab-' + type)) document.getElementById('tab-' + type).classList.add('active');
+                    <div class="card media-tool-card">
+                        <h3>🎬 Central de Mídia</h3>
+                        <p class="card-sub">Converta vídeos ou imagens do aparelho em link direto.</p>
+                        <input type="file" id="media-tool-input" accept="video/*,image/*" hidden>
+                        <button id="tool-btn" class="primary-btn wide">📁 Selecionar Arquivo</button>
+                        <div id="tool-result-container" class="tool-result" hidden>
+                            <span class="tool-result-label">Link gerado:</span>
+                            <div id="tool-link-display" class="tool-link"></div>
+                            <button id="copy-tool-link-btn" class="chip-btn">📋 Copiar Link</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-    const chatBox = document.getElementById('chat-messages');
-    
-    // SE FOR PRIVADO: Mostra a lista de usuários
-    if (type === 'private') {
-        chatBox.innerHTML = `<p style="text-align: center; color: gray; margin-top: 20px;">Carregando contatos...</p>`;
-        document.getElementById('chat-input').parentElement.style.display = 'none'; // Esconde o input por enquanto
-        
-        if (chatUnsubscribe) chatUnsubscribe(); // Para de ouvir o chat antigo
+            <!-- ============ APP: PESSOAS ============ -->
+            <section class="app-window" id="app-people" data-app="people" aria-label="Explorar pessoas">
+                <header class="app-header">
+                    <button class="app-back" data-close-app aria-label="Voltar para a tela inicial">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+                        <span>Início</span>
+                    </button>
+                    <h2 class="app-title">🔍 Pessoas</h2>
+                    <span class="app-header-spacer"></span>
+                </header>
+                <div class="app-body">
+                    <div class="search-row">
+                        <input type="text" id="search-input" placeholder="Buscar usuários pelo nome…" autocomplete="off">
+                        <button id="search-btn" class="primary-btn compact"><span class="btn-label">Buscar</span></button>
+                    </div>
+                    <div id="search-results" class="people-results"><p class="muted">Digite algo acima para encontrar pessoas.</p></div>
+                </div>
+            </section>
 
-        try {
-            const usersSnap = await getDocs(collection(db, "users"));
-            let html = "<h3 style='margin-top:0;'>Escolha com quem conversar:</h3>";
-            
-            usersSnap.forEach(d => {
-                const data = d.data();
-                // Não mostra você mesmo na lista
-                if (d.id !== currentUser.uid) {
-                    let avatarHtml = data.avatarUrl 
-                        ? `<img src="${data.avatarUrl}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">`
-                        : `<div style="width:40px; height:40px; border-radius:50%; background:var(--primary-color); color:white; display:flex; align-items:center; justify-content:center; font-weight:bold;">${(data.name || "U").substring(0,2).toUpperCase()}</div>`;
+            <!-- ============ APP: PERFIL ============ -->
+            <section class="app-window" id="app-profile" data-app="profile" aria-label="Meu perfil">
+                <header class="app-header">
+                    <button class="app-back" data-close-app aria-label="Voltar para a tela inicial">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+                        <span>Início</span>
+                    </button>
+                    <h2 class="app-title">👤 Perfil</h2>
+                    <span class="app-header-spacer"></span>
+                </header>
+                <div class="app-body">
+                    <div class="profile-card card">
+                        <div class="profile-avatar-wrap">
+                            <div id="my-avatar-display" class="profile-avatar">GV</div>
+                            <button class="avatar-camera-btn" id="profile-gallery-btn" aria-label="Trocar foto pela galeria" title="Trocar foto pela galeria">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h3l2-2.4A1.5 1.5 0 0 1 10.2 4h3.6A1.5 1.5 0 0 1 15 4.6L17 7h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/><circle cx="12" cy="13" r="3.4"/></svg>
+                            </button>
+                        </div>
+                        <h3 id="my-name-display" class="profile-name">Usuário</h3>
+                        <p class="profile-tagline">Pronto para espalhar boas vibrações. ✨</p>
+                        <div class="profile-stats">
+                            <div class="pstat"><strong id="stat-posts">–</strong><span>posts</span></div>
+                            <div class="pstat-divider"></div>
+                            <div class="pstat"><strong id="stat-member">2026</strong><span>na casa</span></div>
+                        </div>
+                        <button class="primary-btn wide" data-open-app="settings">✏️ Editar Perfil</button>
+                    </div>
+                </div>
+            </section>
 
-                    html += `
-                    <div onclick="startPrivateChat('${d.id}', '${data.name}')" style="display: flex; align-items: center; gap: 15px; padding: 12px; background: rgba(0,0,0,0.05); border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 10px; cursor: pointer; transition: 0.2s;">
-                        ${avatarHtml}
-                        <strong style="font-size: 1.1rem;">${data.name}</strong>
-                    </div>`;
-                }
-            });
-            chatBox.innerHTML = html;
-        } catch(e) {
-            chatBox.innerHTML = "<p>Erro ao carregar usuários.</p>";
-        }
-        return; // Sai da função aqui, pois o chat privado tem sua própria lógica
-    }
+            <!-- ============ APP: AJUSTES ============ -->
+            <section class="app-window" id="app-settings" data-app="settings" aria-label="Ajustes">
+                <header class="app-header">
+                    <button class="app-back" data-close-app aria-label="Voltar para a tela inicial">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+                        <span>Início</span>
+                    </button>
+                    <h2 class="app-title">⚙️ Ajustes</h2>
+                    <span class="app-header-spacer"></span>
+                </header>
+                <div class="app-body">
 
-    // SE FOR GLOBAL OU GRUPO: Lógica normal
-    document.getElementById('chat-input').parentElement.style.display = 'flex'; // Mostra o input
-    chatBox.innerHTML = `<p style="text-align: center; color: gray; margin-top: 20px;">Conectando...</p>`;
-
-    if (chatUnsubscribe) chatUnsubscribe();
-
-    const q = query(collection(db, `chats_${type}`), orderBy("timestamp", "asc"));
-    
-    chatUnsubscribe = onSnapshot(q, (snapshot) => {
-        
-        // --- 1. PARTE DAS NOTIFICAÇÕES (AGORA COM TRADUÇÃO) ---
-        snapshot.docChanges().forEach((change) => {
-            const data = change.doc.data();
-            const msgTime = data.timestamp?.toMillis() || Date.now();
-
-            if (change.type === "added" && data.userId !== currentUser.uid && msgTime > window.lastReadChatTimestamp) {
-                
-                if (!document.getElementById('chat').classList.contains('active')) {
-                    document.getElementById('dot-chat').style.display = 'block';
-                }
-                
-                let roomName = type === 'global' ? 'Global' : 'Privado';
-                
-                // TRADUZ A NOTIFICAÇÃO ANTES DE AVISAR O USUÁRIO
-                const textoNotificacao = decrypt(data.text || "");
-                
-                window.sendBrowserNotification(`Mensagem em ${roomName}`, `${data.authorName}: ${textoNotificacao}`);
-                window.saveNotification(`Chat ${roomName}`, `${data.authorName}: ${textoNotificacao}`, 'chat', msgTime);
-            }
-        });
-
-        // --- 2. PARTE DO DESENHO DAS MENSAGENS ---
-        chatBox.innerHTML = '';
-        
-        snapshot.forEach(docSnap => {
-            const data = docSnap.data();
-            const isMe = data.userId === currentUser.uid;
-
-            // DESCRIPTOGRAFAR: Transforma o código cifrado em texto real
-            const textoDecifrado = decrypt(data.text || ""); 
-
-            // PROCESSAR MÍDIA: Extrai links e gera o HTML
-            const conteudo = extractLinksAndGeneratePreview(textoDecifrado);
-
-            const alignClass = isMe 
-                ? `margin-left: auto; background: var(--primary-color); color: white;` 
-                : `margin-right: auto; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-color);`;
-
-            // EXIBIR NA TELA
-            chatBox.innerHTML += `
-                <div style="padding:10px 15px; border-radius:16px; width: fit-content; max-width: 85%; margin-bottom: 10px; ${alignClass}">
-                    <div style="font-size: 0.75rem; opacity: 0.8; margin-bottom: 4px;">${data.authorName || 'Usuário'}</div>
-                    <div style="word-break: break-word;">${conteudo.formattedText}</div>
-                    ${conteudo.previews}
-                </div>`;
-        });
-        
-        // Mantive a rolagem de tela FORA do forEach para não dar lag, mas DENTRO do onSnapshot
-        chatBox.scrollTop = chatBox.scrollHeight;
-    });
-};
-        
-    window.sendChatMessage = async () => {
-    const chatInput = document.getElementById('chat-input');
-    if (!chatInput) return;
-
-    const messageText = chatInput.value.trim();
-    if (!messageText) return;
-
-    // Limpa o campo imediatamente para dar sensação de velocidade
-    chatInput.value = ''; 
-
-    try {
-        // Se o currentChatRoom já for 'global' ou 'grupo', usamos o prefixo chats_
-        // Se for uma DM, usamos o ID da sala direto
-        const collectionName = currentChatRoom.startsWith('dm_') 
-            ? currentChatRoom 
-            : `chats_${currentChatRoom}`;
-
-        await addDoc(collection(db, collectionName), {
-            userId: currentUser.uid,
-            authorName: currentUserProfile.name || "Usuário",
-            // Enviando o texto CRIPTOGRAFADO
-            text: encrypt(messageText),
-            timestamp: serverTimestamp()
-        });
-    } catch(e) { 
-        console.error("Erro ao enviar mensagem:", e); 
-    }
-};
-        window.startPrivateChat = (otherUid, otherName) => {
-    // 1. Define a sala única entre os dois usuários
-    const roomHash = [currentUser.uid, otherUid].sort().join('_');
-    currentChatRoom = 'dm_' + roomHash;
-
-    const chatBox = document.getElementById('chat-messages');
-    const chatInputArea = document.getElementById('chat-input').parentElement;
-    
-    // Mostra o campo de texto (caso estivesse escondido na lista de contatos)
-    chatInputArea.style.display = 'flex';
-    
-    // Cancela escutas anteriores para não duplicar mensagens
-    if (chatUnsubscribe) chatUnsubscribe();
-
-    const q = query(collection(db, currentChatRoom), orderBy("timestamp", "asc"));
-    
-    chatUnsubscribe = onSnapshot(q, (snapshot) => {
-        // Limpa a tela e coloca o botão de voltar e o cabeçalho
-        chatBox.innerHTML = `
-            <button onclick="openChat('private')" style="margin-bottom: 10px; background: transparent; color: var(--primary-color); border: 1px solid var(--primary-color); padding: 5px 10px; border-radius: 8px; cursor: pointer;">⬅️ Voltar aos contatos</button>
-            <p style="text-align: center; color: gray; font-size: 0.8rem; margin-bottom: 15px;">Conversa segura com <strong>${otherName}</strong></p>
-        `;
-        
-        snapshot.forEach(docSnap => {
-            const messageData = docSnap.data();
-            const isMe = messageData.userId === currentUser.uid;
-            
-            // A MÁGICA DA SEGURANÇA:
-            // Primeiro traduzimos o código estranho (U2Fsd...) para texto real
-            const textoDecifrado = decrypt(messageData.text || ""); 
-            
-            // Depois passamos o texto limpo para gerar os links/vídeos/imagens
-            const conteudoProcessado = extractLinksAndGeneratePreview(textoDecifrado);
-
-            const alignStyle = isMe 
-                ? `margin-left: auto; background: var(--primary-color); color: white;` 
-                : `margin-right: auto; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-color);`;
-
-            chatBox.innerHTML += `
-                <div style="padding:10px 15px; border-radius:16px; width: fit-content; max-width: 85%; margin-bottom: 10px; ${alignStyle}">
-                    <div style="word-break: break-word;">${conteudoProcessado.formattedText}</div>
-                    ${conteudoProcessado.previews}
-                </div>`;
-        });
-        
-        // Rola o chat para a última mensagem
-        chatBox.scrollTop = chatBox.scrollHeight;
-    });
-};
-        // ================= PESQUISA DE PESSOAS =================
-        window.performSearch = async () => {
-            const term = document.getElementById('search-input').value.toLowerCase();
-            const resultsDiv = document.getElementById('search-results');
-            
-            if(!term) {
-                resultsDiv.innerHTML = "<p style='color: gray;'>Digite algo para buscar.</p>";
-                return;
-            }
-            
-            resultsDiv.innerHTML = "<p>Buscando usuários...</p>";
-            
-            try {
-                const usersSnap = await getDocs(collection(db, "users"));
-                let html = "<h3>Usuários encontrados:</h3>";
-                let found = false;
-                
-                usersSnap.forEach(d => {
-                    const data = d.data();
-                    if(data.name && data.name.toLowerCase().includes(term)) {
-                        let avatarHtml = data.avatarUrl 
-                            ? `<img src="${data.avatarUrl}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">`
-                            : `<div style="width:40px; height:40px; border-radius:50%; background:var(--primary-color); color:white; display:flex; align-items:center; justify-content:center; font-weight:bold;">${data.name.substring(0,2).toUpperCase()}</div>`;
-
-                        html += `
-                        <div style="display: flex; align-items: center; gap: 15px; padding: 15px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; margin-top: 10px;">
-                            ${avatarHtml}
-                            <div>
-                                <strong style="font-size: 1.1rem;">${data.name}</strong>
+                    <div class="settings-card card" id="install-card" hidden>
+                        <div class="settings-row">
+                            <div class="settings-icon install">📲</div>
+                            <div class="settings-text">
+                                <strong>Instalar o Good Vibes</strong>
+                                <span>Vire um app de verdade na tela inicial do seu celular.</span>
                             </div>
-                        </div>`;
-                        found = true;
-                    }
-                });
-                
-                resultsDiv.innerHTML = found ? html : "<p>Nenhum usuário encontrado com esse nome.</p>";
-            } catch(e) {
-                resultsDiv.innerHTML = "<p>Erro ao buscar: " + e.message + "</p>";
-            }
-        };
+                            <button class="chip-btn accent" id="install-app-btn">Instalar</button>
+                        </div>
+                    </div>
 
-    </script>
+                    <div class="settings-card card">
+                        <h3>🎨 Aparência</h3>
+                        <label class="switch-row" for="dark-mode-toggle">
+                            <div class="settings-text"><strong>Modo Escuro</strong><span>Visual noturno e aconchegante.</span></div>
+                            <span class="switch"><input type="checkbox" id="dark-mode-toggle"><span class="slider"></span></span>
+                        </label>
+                        <label class="color-row" for="site-color">
+                            <div class="settings-text"><strong>Cor principal</strong><span>Mude a cor de destaque do app.</span></div>
+                            <input type="color" id="site-color" value="#6366f1">
+                        </label>
+                    </div>
+
+                    <div class="settings-card card">
+                        <h3>🔔 Notificações</h3>
+                        <label class="switch-row" for="setting-browser-notif">
+                            <div class="settings-text"><strong>Notificações do sistema</strong><span>Avise mesmo com o app fechado/minimizado.</span></div>
+                            <span class="switch"><input type="checkbox" id="setting-browser-notif"><span class="slider"></span></span>
+                        </label>
+                        <label class="switch-row" for="setting-sound-notif">
+                            <div class="settings-text"><strong>Sons de alerta</strong><span>Um “ding” suave a cada notificação.</span></div>
+                            <span class="switch"><input type="checkbox" id="setting-sound-notif" checked><span class="slider"></span></span>
+                        </label>
+                    </div>
+
+                    <div class="settings-card card">
+                        <h3>👤 Dados da Conta</h3>
+                        <label class="field-label" for="set-name">Nome de exibição</label>
+                        <input type="text" id="set-name" placeholder="Como quer ser chamado?" maxlength="60">
+
+                        <label class="field-label" for="set-avatar-url">Foto de perfil (URL)</label>
+                        <div class="avatar-url-row">
+                            <input type="url" id="set-avatar-url" placeholder="Cole o link direto da imagem…" inputmode="url">
+                            <button class="composer-gallery-btn small" id="set-avatar-gallery-btn" aria-label="Enviar foto da galeria">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17 5-5 4 4 3.5-3.5L21 17"/></svg>
+                            </button>
+                        </div>
+                        <small class="field-hint">Dica: “🖼️ Buscar Mídia” encontra um GIF legal, ou envie direto da galeria.</small>
+
+                        <label class="field-label" for="set-pix">Chave PIX</label>
+                        <input type="text" id="set-pix" placeholder="Sua chave PIX (para receber Super Likes 💸)" maxlength="140">
+
+                        <button id="save-profile-btn" class="primary-btn wide">💾 Salvar Alterações</button>
+                    </div>
+
+                    <div class="settings-card card">
+                        <h3>🔐 Segurança</h3>
+                        <label class="field-label" for="new-password-input">Nova senha</label>
+                        <input type="password" id="new-password-input" placeholder="Digite a nova senha…" autocomplete="new-password">
+                        <button id="change-pass-btn" class="secondary-btn wide">Atualizar senha</button>
+                        <p class="field-hint warn">⚠️ Por segurança, faça login de novo antes de trocar a senha.</p>
+                    </div>
+
+                    <div class="settings-card card">
+                        <h3>🌊 Comunidade</h3>
+                        <p class="field-hint">Antes de postar, confira o que é permitido para manter as boas vibrações.</p>
+                        <button class="primary-btn wide" data-open-app="rules">📜 Ver Regras e Diretrizes</button>
+                        <a class="report-link" href="https://wa.me/5584999528925" target="_blank" rel="noopener">🚩 (Clique para denunciar)</a>
+                        <label class="switch-row" for="setting-blur-nsfw">
+                            <div class="settings-text"><strong>Embaçar conteúdos sensíveis</strong><span>Borra posts marcados como 18+ até você tocar.</span></div>
+                            <span class="switch"><input type="checkbox" id="setting-blur-nsfw" checked><span class="slider"></span></span>
+                        </label>
+                    </div>
+
+                    <div class="settings-card danger-card">
+                        <h3>⚠️ Zona de Perigo</h3>
+                        <button id="logout-btn" class="danger-outline-btn wide">Sair da conta</button>
+                        <button id="delete-account-btn" class="danger-btn wide">🗑️ Deletar conta definitivamente</button>
+                    </div>
+                    <p class="app-version">Good Vibes 🌊 · O Refúgio · v2.0</p>
+                </div>
+            </section>
+
+            <!-- ============ APP: REGRAS ============ -->
+            <section class="app-window" id="app-rules" data-app="rules" aria-label="Regras e diretrizes">
+                <header class="app-header">
+                    <button class="app-back" data-close-app aria-label="Voltar para a tela inicial">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+                        <span>Início</span>
+                    </button>
+                    <h2 class="app-title">📜 Regras</h2>
+                    <span class="app-header-spacer"></span>
+                </header>
+                <div class="app-body">
+                    <div class="rules-hero">
+                        <span class="rules-hero-emoji">🌊</span>
+                        <h3>Diretrizes do Refúgio</h3>
+                        <p>Espaço privado e invisível. Para ele continuar existindo, seguimos alguns combinados:</p>
+                    </div>
+                    <div class="rules-list">
+                        <div class="rule-item card"><span class="rule-emoji">🧹</span><div><strong>Respeito ao Feed</strong><p>Se o conteúdo for pesado ou artístico (Furry, NSFW, gore…), ative o aviso “🔞 Conteúdo Sensível” abaixo do texto. Não quer ver? Ligue <em>Embaçar conteúdos sensíveis</em> nos Ajustes.</p></div></div>
+                        <div class="rule-item card"><span class="rule-emoji">🕶️</span><div><strong>Anonimato</strong><p>Eu sou o único que sabe quem é quem. Não revele a identidade real dos amigos sem permissão — não estrague a brincadeira.</p></div></div>
+                        <div class="rule-item card"><span class="rule-emoji">🚫</span><div><strong>Tolerância Zero</strong><p>Conteúdos criminosos (fascismo, pedofilia, apologia à violência, estupro…) resultam em <strong>punição</strong> e, em casos extremos, <strong>exclusão sem aviso</strong>. Denunciou, a gente intervém.</p></div></div>
+                        <div class="rule-item card"><span class="rule-emoji">🎟️</span><div><strong>Convites</strong><p>Limite de 20 pessoas — a moderação é manual e o servidor tem porte máximo. Quer chamar alguém? Converse comigo antes.</p></div></div>
+                        <div class="rule-item card"><span class="rule-emoji">🛡️</span><div><strong>Moderação</strong><p>Algo te incomodou? Denuncie no PV: <a href="https://wa.me/5584999528925" target="_blank" rel="noopener">+55 84 99952-8925</a>. Contas que não respeitarem o ambiente serão desativadas ou excluídas.</p></div></div>
+                        <div class="rule-item card"><span class="rule-emoji">💸</span><div><strong>Super Like (PIX)</strong><p>É apenas um “mimo” para os criadores — não abuse. O site não processa o dinheiro, não cobra taxas e não se responsabiliza pelas transferências. <strong>Confira sempre os dados no app do seu banco</strong> antes de confirmar.</p></div></div>
+                    </div>
+                    <p class="rules-footnote">Lembrando: as regras valem para casos de desconforto de algum usuário — no geral, usem sem medo e abusem. 💜</p>
+                    <p class="rules-thanks">Isso é tudo — muito obrigado pela atenção. 🙏</p>
+                </div>
+            </section>
+
+            <!-- ============ MODAL: COMENTÁRIOS ============ -->
+            <div id="comments-modal" class="modal" role="dialog" aria-modal="true" aria-label="Comentários">
+                <div class="modal-content card">
+                    <button class="close-modal" data-close-modal="comments-modal" aria-label="Fechar">&times;</button>
+                    <h2 class="modal-title">💬 Debate</h2>
+                    <div id="comments-list" class="comments-list"></div>
+                    <div class="comment-input-row">
+                        <textarea id="new-comment" rows="2" maxlength="300" placeholder="Deixe sua opinião e mantenha as good vibes…"></textarea>
+                        <button id="submit-comment-btn" class="primary-btn"><span class="btn-label">Enviar</span></button>
+                    </div>
+                </div>
+            </div>
+            
+
+            <!-- ============ MODAL: SUPER LIKE / PIX ============ -->
+            <div id="pix-modal" class="modal" role="dialog" aria-modal="true" aria-label="Super Like via PIX">
+                <div class="modal-content card pix-modal-content">
+                    <button class="close-modal" data-close-modal="pix-modal" aria-label="Fechar">&times;</button>
+                    <div class="pix-hero">💸</div>
+                    <h2 class="modal-title center">Super Like</h2>
+                    <p class="modal-sub center">Mande boas energias reais para este criador! Toda ajuda incentiva novos conteúdos.</p>
+                    <div class="pix-key-label">CHAVE PIX</div>
+                    <div id="pix-key-display" class="pix-key-box">Carregando…</div>
+                    <button id="copy-pix-btn" class="pix-copy-btn">📋 Copiar chave PIX</button>
+                </div>
+            </div>
+            
+
+            <!-- ============ MODAL: CONFIRMAÇÃO GENÉRICA ============ -->
+            <div id="confirm-modal" class="modal" role="dialog" aria-modal="true" aria-label="Confirmação">
+                <div class="modal-content card confirm-content">
+                    <div class="confirm-emoji" id="confirm-emoji">⚠️</div>
+                    <h2 class="modal-title center" id="confirm-title">Tem certeza?</h2>
+                    <p class="modal-sub center" id="confirm-message">Essa ação não pode ser desfeita.</p>
+                    <div class="confirm-actions">
+                        <button class="secondary-btn" id="confirm-cancel-btn">Cancelar</button>
+                        <button class="danger-btn" id="confirm-ok-btn">Confirmar</button>
+                    </div>
+                </div>
+            </div>
+            
+
+            <!-- Toasts -->
+            <div id="toast-container" aria-live="assertive"></div>
+        </div><!-- /screen -->
+    </div><!-- /phone -->
+</div><!-- /stage -->
+
+<!-- Inputs de arquivo globais (galeria) -->
+<input type="file" id="file-gallery-post" accept="image/*" hidden>
+<input type="file" id="file-gallery-chat" accept="image/*" hidden>
+<input type="file" id="file-gallery-avatar" accept="image/*" hidden>
+
+
+
+
+<script type="module" src="js/app.js"></script>
 </body>
 </html>
