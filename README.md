@@ -4,6 +4,9 @@ Uma rede social privada entre amigos, agora com cara de **tela inicial de telefo
 
 ## ✨ O que há de novo na v2.0
 
+🎬 **Citações no feed**
+- A cada poucas horas um robô publica no feed uma citação de boas vibrações em **vídeo** (gradiente animado + texto) ou **imagem** — geradas na hora com FFmpeg, hospedadas na Cloudinary, sem pedir nada a ninguém
+
 🤖 **Robôs da casa**
 - 6 moradores robô (Lia, Tunico, Zefa, Nico, Pingo e Duda) com 🤖 no nome: curtem, comentam e compartilham posts dos últimos 7 dias. Nunca pedem PIX, nunca tocam em conteúdo NSFW e são pausáveis com uma variável
 
@@ -95,6 +98,7 @@ Para o feed não ficar só de curtidas humanas, o Good Vibes tem **6 bots reside
 - 👍 **curtem** posts recentes (últimos 7 dias, nunca NSFW, nunca posts de bots)
 - 💬 **comentam** de forma natural e variada (frases acolhedoras em pt-BR)
 - ↗️ **compartilham** posts no Chat Global (no máximo 2 por execução)
+- 🎬 **publicam citações** no feed (imagem ou vídeo) a cada `BOT_POST_INTERVAL_HOURS` (padrão: 5h) — 1 post por intervalo, persona alternada
 - **Nunca** pedem ou recebem Super Like/PIX, nunca postam conteúdo sensível, nunca moderam e nunca interagem com posts de bots
 
 ### Setup (uma vez, ~5 minutos)
@@ -102,6 +106,7 @@ Para o feed não ficar só de curtidas humanas, o Good Vibes tem **6 bots reside
 1. No seu terminal (ou aqui comigo): `gh secret set BOT_MASTER_KEY --body "uma-string-bem-aleatoria-e-grande"` — é só isso que o workflow precisa. As senhas de cada bot são derivadas deterministicamente dessa chave (nada fica no código).
 2. (opcional) Pausar: `gh variable set BOT_ENABLED --body "false"`
 3. (opcional) URL do site para os shares: `gh variable set SITE_URL --body "https://seu-site.com/"`
+4. (opcional) Frequência das citações: `gh variable set BOT_POST_INTERVAL_HOURS --body "5"` — `BOT_QUOTES_ENABLED=false` pausa só as citações (likes/comentários/shares continuam)
 
 O workflow `.github/workflows/good-vibes-bots.yml` roda a cada 25 minutos e sob demanda (**Actions → Good Vibes Bots 🤖 → Run workflow**). O estado (quem já curtiu/comentou/compartilhou o quê) persiste entre execuções via cache do Actions — sem tocar no Firestore além dos likes/comentários/shares.
 
@@ -114,6 +119,8 @@ BOT_MASTER_KEY="sua-chave" npm run dry-run   # mostra o que faria, sem escrever 
 BOT_MASTER_KEY="sua-chave" npm start          # executa de verdade
 npm test                                       # testes do motor de decisão (offline)
 ```
+
+As citações são geradas **no próprio runner do GitHub Actions** (FFmpeg + fonte DejaVu), enviadas para a mesma Cloudinary do app (`upload_preset` público) e postadas como mídia normal — o feed renderiza o `<video>` automaticamente. O conteúdo é sempre de boas vibrações (24 citações curadas em `bots/quotes.mjs`), nunca NSFW, nunca política/religião, nunca PIX.
 
 > Nota: os bots são contas reais do Firebase Authentication criadas no primeiro run (`lia@bots.goodvibes.app` etc.). As Regras do Firestore já permitem tudo o que eles fazem (são usuários autenticados comuns) — **não é preciso mudar as regras**. Se quiser removê-los, basta apagar as contas no Console e pausar o workflow.
 

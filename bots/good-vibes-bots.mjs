@@ -2,8 +2,8 @@
    GOOD VIBES 🤖 — Robôs da casa
    Roda via GitHub Actions (cron) ou localmente.
 
-   O que fazem: curtem, comentam e compartilham posts recentes
-   para manter a casa animada. NUNCA pedem/recebem PIX, nunca
+   O que fazem: curtem, comentam, compartilham posts recentes
+   e publicam citações em imagem/vídeo no feed a cada poucas horas. NUNCA pedem/recebem PIX, nunca
    interagem com conteúdo sensível (NSFW) e SEMPRE aparecem com 🤖.
 
    Setup (uma vez):
@@ -19,6 +19,7 @@ import { getFirestore, collection, query, orderBy, limit, getDocs, doc, setDoc, 
 import CryptoJS from 'crypto-js';
 import { PERSONAS } from './personas.mjs';
 import { planEngagement } from './engage.mjs';
+import { generateQuoteMedia } from './media.mjs';
 
 const firebaseConfig = {
     apiKey: "AIzaSyBXrIshTVFOD30XPKku_Trk6VKbXv_7Gkg",
@@ -37,6 +38,12 @@ const MAX_LIKES = Number(process.env.MAX_LIKES || 12);
 const MAX_COMMENTS = Number(process.env.MAX_COMMENTS || 5);
 const MAX_SHARES = Number(process.env.MAX_SHARES || 2);
 const SITE_URL = process.env.SITE_URL || 'https://curancat.github.io/Good-vibes-/';
+
+/* Cloudinary — mesma config pública do app (upload sem assinatura) */
+const CLOUDINARY_CLOUD = 'ddeahu7n2';
+const CLOUDINARY_PRESET = 'vqa17svu';
+const POST_INTERVAL_HOURS = Number(process.env.BOT_POST_INTERVAL_HOURS || 5);
+const QUOTE_POSTS_ENABLED = process.env.BOT_QUOTES_ENABLED !== 'false';
 
 if (process.env.BOT_ENABLED === 'false') {
     console.log('😴 Robôs pausados (BOT_ENABLED=false). Nada a fazer.');
@@ -85,6 +92,57 @@ async function botSession(persona, runId) {
         console.warn(`⚠️ Perfil de ${persona.name} não salvo:`, err?.message);
     }
     return { persona, app, db, uid: cred.user.uid };
+}
+
+/* ---------- Citação em imagem/vídeo (1 a cada BOT_POST_INTERVAL_HOURS) ---------- */
+async function uploadToCloudinary(filePath, mime, resourceType) {
+    const buffer = readFileSync(filePath);
+    const form = new FormData();
+    form.append('file', new Blob([buffer], { type: mime }), resourceType === 'video' ? 'citacao.mp4' : 'citacao.png');
+    form.append('upload_preset', CLOUDINARY_PRESET);
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/${resourceType}/upload`, { method: 'POST', body: form });
+    const data = await res.json();
+    if (!data?.secure_url) throw new Error(data?.error?.message || 'Falha no upload para a Cloudinary');
+    return data.secure_url;
+}
+
+async function maybeCreateQuotePost(session, state) {
+    if (!QUOTE_POSTS_ENABLED) { console.log('🖼️ Citações pausadas (BOT_QUOTES_ENABLED=false).'); return; }
+    const now = Date.now();
+    const last = Number(state.lastQuotePostAt || 0);
+    const dueInMs = POST_INTERVAL_HOURS * 3600_000;
+    if (last && now - last < dueInMs) {
+        const mins = Math.round((dueInMs - (now - last)) / 60000);
+        console.log(`⏰ Próxima citação em ~${mins} min.`);
+        return;
+    }
+
+    const postIndex = Number(state.quoteIndex || 0);
+    const personaIndex = Number(state.quotePersonaIndex || 0) % PERSONAS.length;
+    const persona = PERSONAS[personaIndex];
+    const kind = postIndex % 3 === 2 ? 'image' : 'video'; // vídeo por padrão, imagem a cada 3ª
+
+    console.log(`🎬 Gerando citação em ${kind === 'video' ? 'vídeo' : 'imagem'} por ${persona.name}…`);
+    const media = generateQuoteMedia({ quoteIndex: postIndex, personaName: persona.name, kind });
+    const mediaUrl = await uploadToCloudinary(media.path, media.mime, kind === 'video' ? 'video' : 'image');
+    console.log(`☁️ Mídia no ar: ${mediaUrl}`);
+
+    await addDoc(collection(session.db, 'posts'), {
+        userId: session.uid,
+        authorName: persona.name,
+        authorAvatar: '',
+        text: `${media.quote}  #GoodVibes`,
+        isNsfw: false,
+        mediaUrl,
+        timestamp: serverTimestamp(),
+        likes: 0,
+        dislikes: 0
+    });
+
+    state.lastQuotePostAt = now;
+    state.quoteIndex = postIndex + 1;
+    state.quotePersonaIndex = (personaIndex + 1) % PERSONAS.length;
+    console.log(`📰 Citação publicada por ${persona.name} (${kind}).`);
 }
 
 async function main() {
@@ -157,6 +215,14 @@ async function main() {
         } catch (err) {
             console.error(`   ✗ ${action.bot.name} → ${action.type} falhou:`, err?.message);
         }
+    }
+
+    // 5) Citação periódica (imagem/vídeo) no feed
+    const poster = byId[PERSONAS[Number((nextState.quotePersonaIndex ?? 0) % PERSONAS.length)]?.id] || sessions[0];
+    try {
+        await maybeCreateQuotePost(poster, nextState);
+    } catch (err) {
+        console.error('❌ Citação não publicada:', err?.message);
     }
 
     saveState(nextState);

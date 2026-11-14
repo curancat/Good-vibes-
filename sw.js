@@ -1,4 +1,4 @@
-/* Good Vibes 🌊 — Service Worker v2.3.0
+/* Good Vibes 🌊 — Service Worker v2.4.0
    Estratégia:
    - App shell (mesma origem): cache-first com revalidação em segundo plano
    - Navegação: network-first com fallback offline para index.html
@@ -7,7 +7,7 @@
    - Atualizações: o worker novo ESPERA a escolha do usuário (botão "Atualizar")
      em vez de assumir o controle silenciosamente
 */
-const CACHE_VERSION = 'good-vibes-v2.3.0';
+const CACHE_VERSION = 'good-vibes-v2.4.0';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 

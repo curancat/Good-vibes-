@@ -27,6 +27,11 @@ jobs:
         working-directory: bots
         run: npm install --no-audit --no-fund
 
+      - name: Garantir FFmpeg e fonte DejaVu (para gerar citações em imagem/vídeo)
+        run: |
+          command -v ffmpeg >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y ffmpeg fonts-dejavu-core)
+          fc-list | grep -i dejavu >/dev/null 2>&1 || sudo apt-get install -y fonts-dejavu-core || true
+
       - name: Restaurar estado dos bots (dedup de likes/comentários/shares)
         uses: actions/cache@v4
         with:
@@ -46,4 +51,7 @@ jobs:
           MAX_LIKES: ${{ vars.MAX_LIKES || '12' }}
           MAX_COMMENTS: ${{ vars.MAX_COMMENTS || '5' }}
           MAX_SHARES: ${{ vars.MAX_SHARES || '2' }}
+          # Citações em imagem/vídeo no feed (padrão: 1 post a cada 5h)
+          BOT_POST_INTERVAL_HOURS: ${{ vars.BOT_POST_INTERVAL_HOURS || '5' }}
+          BOT_QUOTES_ENABLED: ${{ vars.BOT_QUOTES_ENABLED || 'true' }}
         run: node good-vibes-bots.mjs
