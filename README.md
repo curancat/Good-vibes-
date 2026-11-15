@@ -2,15 +2,16 @@
 
 Uma rede social privada entre amigos, agora com cara de **tela inicial de telefone**: cada menu é um aplicativo. Feita em HTML/CSS/JS puro (sem build), com Firebase (Auth + Firestore), instalável como **PWA** no celular.
 
-## ⚔️ Arena — crie suas cartas e batalhe ao vivo (v4.5.0)
+## ⚔️ Arena — crie suas cartas e batalhe ao vivo (v4.6.0)
 
 O 16º aplicativo (ícone ⚔️ no grid): uma arena de cartas **criadas por quem joga**, com deck de 30 pontos, árvore de poder e **batalha PvP ao vivo** (turnos em tempo real, direto no Firestore).
 
-### 🃏 Criando cartas
+### 🃏 Criando cartas (Forja)
 
-- Nome, **emoji OU arte por imagem** (envie do celular/PC ou cole a URL), categoria, custo em pontos e poder do efeito
-- **10 categorias de efeito**: 🗡️ Dano · 🔥 Dano mágico de Fogo · 💧 de Água · 🌪️ de Ar · 🪨 de Terra · 💚 Cura · 🛡️ Defesa (escudo físico) · 🔮 Defesa Mágica · 🗿 Invocação (criatura que ataca nos próximos 3 turnos) · 🏗️ Estrutura (dano imediato + dano por turno, permanente)
-- Teto de **30 cartas** por jogador; cada carta é única e pode ser apagada quando quiser (some do deck junto)
+- Nome, **arte por imagem** (envie do celular/PC ou cole a URL — sem imagem, a carta usa o **emblema SVG da categoria**), categoria, custo em pontos e poder do efeito
+- **Custo e poder escolhidos com "pips"** (1 a 5), com **dica de efeito ao vivo** ("Causa 14 de dano físico…"), contador de flavor (120) e **preview ao vivo** da carta
+- **10 categorias de efeito**: Dano · Dano de Fogo · de Água · de Ar · de Terra · Cura · Defesa (escudo físico) · Defesa Mágica · Invocação (criatura que ataca nos próximos 3 turnos) · Estrutura (dano imediato + dano por turno, permanente)
+- Teto de **30 cartas** por jogador; cada carta é única (nome não repete) e pode ser apagada quando quiser (some do deck junto)
 
 ### 🎴 Deck: 30 pontos, singleton, sem repetir
 

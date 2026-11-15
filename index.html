@@ -708,137 +708,249 @@
                 </div>
             </section>
 
-            <!-- ============ APP: ARENA ⚔️ ============ -->
-            <section class="app-window" id="app-arena" data-app="arena" aria-label="Arena">
-                <header class="app-header">
+            <!-- ============ APP: ARENA ============ -->
+            <section class="app-window arena-window" id="app-arena" data-app="arena" aria-label="Arena">
+                <header class="app-header arena-header">
                     <button class="app-back" data-close-app aria-label="Voltar para a tela inicial">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
                         <span>Início</span>
                     </button>
-                    <h2 class="app-title">⚔️ Arena</h2>
+                    <h2 class="app-title arena-title">
+                        <svg class="arena-title-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-swords"></use></svg>
+                        Arena
+                    </h2>
                     <span class="app-header-spacer"></span>
                 </header>
-                <div class="app-body">
-                    <div class="eco-balance card"><div><span class="eco-balance-label">💰 Seu saldo</span><strong class="eco-balance-value" id="arena-gold">0 gold</strong></div><span class="eco-rate">PvP ao vivo · crie cartas · aposte o que quiser</span></div>
+                <div class="app-body arena-body">
 
                     <!-- ARENA HUB -->
                     <div id="arena-hub">
-                        <div class="eco-tabs" role="tablist" aria-label="Seções da Arena">
-                            <button class="eco-tab active" data-arena-tab="deck" role="tab">🎴 Deck</button>
-                            <button class="eco-tab" data-arena-tab="cards" role="tab">🃏 Minhas Cartas</button>
-                            <button class="eco-tab" data-arena-tab="create" role="tab">✨ Criar Carta</button>
-                            <button class="eco-tab" data-arena-tab="battle" role="tab">⚔️ Batalhar</button>
+                        <div class="arena-hero">
+                            <div class="arena-hero-emblem" aria-hidden="true">
+                                <svg viewBox="0 0 24 24"><use href="#arena-swords"></use></svg>
+                            </div>
+                            <div class="arena-hero-info">
+                                <span class="arena-hero-kicker">PvP ao vivo · turnos reais</span>
+                                <h3>Arena do Refúgio</h3>
+                                <p>Crie cartas, monte seu deck de 30 pontos e vença o pote.</p>
+                            </div>
+                            <div class="arena-hero-gold" title="Seu saldo">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-coin"></use></svg>
+                                <strong id="arena-gold">0</strong>
+                            </div>
                         </div>
 
-                        <div class="eco-pane" id="arena-pane-deck" role="tabpanel">
-                            <div class="arena-points card"><span>🎴 Pontos do deck</span><strong id="arena-deck-points">0/30</strong></div>
-                            <p class="card-sub">Sem repetir carta, no máximo 30 pontos. Toque numa carta da lista abaixo pra tirar do deck; monte na aba <strong>Minhas Cartas</strong>.</p>
-                            <div class="arena-deck-list" id="arena-deck-list"><p class="muted">Deck vazio — crie cartas primeiro ✨</p></div>
-                            <h3 class="eco-h3">🌳 A Árvore do Refúgio <span class="eco-h3-count">30 pontos pra espalhar</span></h3>
-                            <p class="card-sub">Cada ponto investido num ramo turbinha as cartas dele em <strong>+6%</strong> pra sempre. Cada carta daquele tipo no seu deck soma <strong>+2%</strong> de afinidade. Mexa ao vivo — o deck é seu.</p>
-                            <div class="arena-tree-total">Árvore: <strong id="arena-tree-points">0/30</strong> pontos</div>
-                            <div class="arena-tree" id="arena-tree"></div>
+                        <div class="arena-tabs" role="tablist" aria-label="Seções da Arena">
+                            <button class="arena-tab active" data-arena-tab="deck" role="tab" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-layers"></use></svg><span>Deck</span></button>
+                            <button class="arena-tab" data-arena-tab="cards" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-cards"></use></svg><span>Cartas</span></button>
+                            <button class="arena-tab" data-arena-tab="create" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-sparkles"></use></svg><span>Forja</span></button>
+                            <button class="arena-tab" data-arena-tab="battle" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-swords"></use></svg><span>Duelo</span></button>
                         </div>
 
-                        <div class="eco-pane" id="arena-pane-cards" role="tabpanel" hidden>
-                            <p class="eco-count" id="arena-cards-count">0/30 cartas criadas</p>
+                        <!-- PANE: DECK + ÁRVORE -->
+                        <div class="eco-pane arena-pane" id="arena-pane-deck" role="tabpanel">
+                            <div class="arena-deck-summary">
+                                <div class="arena-deck-orb" aria-hidden="true"><strong id="arena-deck-points">0</strong><span>/30 pts</span></div>
+                                <div class="arena-deck-summary-info">
+                                    <div class="arena-deck-summary-top"><strong id="arena-deck-count">0 cartas</strong><span class="arena-singleton-chip">Singles · sem repetidas</span></div>
+                                    <div class="arena-meter"><div class="arena-meter-fill" id="arena-deck-meter" style="width:0%"></div></div>
+                                    <small class="arena-note-inline">Toque numa carta do seu deck pra tirá-la dele. Monte em <b>Cartas</b>.</small>
+                                </div>
+                            </div>
+
+                            <div class="arena-section-head">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-layers"></use></svg>
+                                <h4>Seu deck</h4>
+                                <span class="arena-section-count" id="arena-deck-size"></span>
+                            </div>
+                            <div class="arena-deck-list" id="arena-deck-list"></div>
+
+                            <div class="arena-tree-card">
+                                <div class="arena-tree-head">
+                                    <div class="arena-tree-emblem" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#arena-tree"></use></svg></div>
+                                    <div class="arena-tree-title">
+                                        <h4>Árvore do Refúgio</h4>
+                                        <p>Cada ponto soma <b>+6%</b> no ramo. Cada carta do ramo no deck soma <b>+2%</b> de afinidade.</p>
+                                    </div>
+                                    <div class="arena-tree-total" title="Pontos investidos na árvore"><strong id="arena-tree-points">0</strong><span>/30</span></div>
+                                </div>
+                                <div class="arena-meter arena-meter-tree"><div class="arena-meter-fill" id="arena-tree-meter" style="width:0%"></div></div>
+                                <div class="arena-tree" id="arena-tree"></div>
+                                <p class="arena-tree-foot">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-sparkles"></use></svg>
+                                    O bônus vale pra tudo que a carta faz — dano, cura, escudo, invocação e estrutura.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- PANE: MINHAS CARTAS -->
+                        <div class="eco-pane arena-pane" id="arena-pane-cards" role="tabpanel" hidden>
+                            <div class="arena-pane-head">
+                                <div class="arena-pane-head-title">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-cards"></use></svg>
+                                    <h4>Minhas cartas</h4>
+                                    <span class="arena-section-count" id="arena-cards-count">0/30</span>
+                                </div>
+                                <button class="arena-btn arena-btn-ghost arena-btn-sm" data-arena-tab="create" type="button">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-plus"></use></svg>
+                                    Nova carta
+                                </button>
+                            </div>
                             <div class="arena-cards-grid" id="arena-cards-grid"></div>
                         </div>
 
-                        <div class="eco-pane" id="arena-pane-create" role="tabpanel" hidden>
+                        <!-- PANE: FORJA (CRIAR CARTA) -->
+                        <div class="eco-pane arena-pane" id="arena-pane-create" role="tabpanel" hidden>
+                            <div class="arena-pane-head">
+                                <div class="arena-pane-head-title">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-hammer"></use></svg>
+                                    <h4>Forja de cartas</h4>
+                                </div>
+                            </div>
                             <div class="arena-create-wrap">
-                                <div class="arena-create-form">
-                                    <label class="arena-field">Nome da carta
-                                        <input id="ac-name" maxlength="40" placeholder="Ex.: Fúria do Tietê" autocomplete="off">
+                                <form class="arena-create-form" id="ac-form" autocomplete="off" novalidate>
+                                    <label class="arena-field">
+                                        <span class="arena-field-label">Nome da carta</span>
+                                        <input id="ac-name" maxlength="40" placeholder="Ex.: Fúria do Tietê" autocomplete="off" enterkeyhint="go">
                                     </label>
-                                    <label class="arena-field">Emoji da arte (usado se não enviar imagem)
-                                        <div class="ac-emoji-row" id="ac-emoji-row"></div>
-                                    </label>
-                                    <label class="arena-field">Arte por imagem (opcional)
-                                        <div class="gift-amount-row">
-                                            <input id="ac-art-url" type="url" placeholder="https://… (cole o link)" autocomplete="off">
-                                            <button class="chip-btn" id="ac-art-upload" type="button">📷 Enviar</button>
+                                    <label class="arena-field">
+                                        <span class="arena-field-label">Arte da carta</span>
+                                        <button type="button" class="arena-art-drop" id="ac-art-upload">
+                                            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-image"></use></svg>
+                                            <span class="arena-art-drop-text"><b>Enviar imagem</b><small>ou cole um link abaixo — sem imagem, ela usa o emblema da categoria</small></span>
+                                        </button>
+                                        <div class="arena-art-urlrow">
+                                            <input id="ac-art-url" type="url" placeholder="https://… link da imagem (opcional)" autocomplete="off" inputmode="url">
+                                            <button class="arena-iconbtn" id="ac-art-clear" type="button" hidden aria-label="Remover arte"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-x"></use></svg></button>
                                         </div>
                                     </label>
-                                    <label class="arena-field">Categoria
+                                    <label class="arena-field">
+                                        <span class="arena-field-label">Categoria</span>
                                         <select id="ac-category"></select>
                                     </label>
-                                    <div class="arena-field-row">
-                                        <label class="arena-field">Custo no deck
-                                            <select id="ac-cost"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select>
-                                        </label>
-                                        <label class="arena-field">Poder do efeito
-                                            <select id="ac-power"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select>
-                                        </label>
+                                    <div class="arena-field-pair">
+                                        <div class="arena-field" role="radiogroup" aria-label="Custo no deck">
+                                            <span class="arena-field-label">Custo no deck<small>cabe no limite de 30 pts</small></span>
+                                            <div class="arena-pips" id="ac-cost-row" data-pip-group="cost">
+                                                <button type="button" class="arena-pip" data-pip="cost" data-value="1"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-hex"></use></svg><b>1</b></button>
+                                                <button type="button" class="arena-pip" data-pip="cost" data-value="2"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-hex"></use></svg><b>2</b></button>
+                                                <button type="button" class="arena-pip is-active" data-pip="cost" data-value="3"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-hex"></use></svg><b>3</b></button>
+                                                <button type="button" class="arena-pip" data-pip="cost" data-value="4"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-hex"></use></svg><b>4</b></button>
+                                                <button type="button" class="arena-pip" data-pip="cost" data-value="5"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-hex"></use></svg><b>5</b></button>
+                                            </div>
+                                        </div>
+                                        <div class="arena-field" role="radiogroup" aria-label="Poder do efeito">
+                                            <span class="arena-field-label">Poder<small>força do efeito na mesa</small></span>
+                                            <div class="arena-pips" id="ac-power-row" data-pip-group="power">
+                                                <button type="button" class="arena-pip" data-pip="power" data-value="1"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-bolt"></use></svg><b>1</b></button>
+                                                <button type="button" class="arena-pip" data-pip="power" data-value="2"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-bolt"></use></svg><b>2</b></button>
+                                                <button type="button" class="arena-pip is-active" data-pip="power" data-value="3"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-bolt"></use></svg><b>3</b></button>
+                                                <button type="button" class="arena-pip" data-pip="power" data-value="4"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-bolt"></use></svg><b>4</b></button>
+                                                <button type="button" class="arena-pip" data-pip="power" data-value="5"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-bolt"></use></svg><b>5</b></button>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <label class="arena-field">Texto de flavor (opcional, até 120)
+                                    <label class="arena-field">
+                                        <span class="arena-field-label">Flavor <em class="arena-field-counter" id="ac-flavor-count">0/120</em></span>
                                         <input id="ac-flavor" maxlength="120" placeholder="“Não é sorte, é peixada.”" autocomplete="off">
                                     </label>
-                                    <button class="primary-btn wide" id="ac-save-btn"><span class="btn-label">Criar carta ✨</span></button>
-                                </div>
+                                    <div class="arena-effect-hint" id="ac-effect-hint">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-info"></use></svg>
+                                        <span id="ac-effect-hint-text">Causa 11 de dano.</span>
+                                    </div>
+                                    <button class="arena-btn arena-btn-primary arena-btn-wide arena-forge-btn" id="ac-save-btn" type="submit">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-sparkles"></use></svg>
+                                        <span class="btn-label">Forjar carta</span>
+                                    </button>
+                                </form>
                                 <div class="arena-create-preview">
+                                    <span class="arena-preview-label">Preview</span>
                                     <div class="card-face" id="ac-preview"></div>
-                                    <p class="card-sub center">É assim que ela vai aparecer na mesa</p>
+                                    <p class="arena-preview-note">Assim ela aparece na mesa — com a moldura que você estiver usando.</p>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="eco-pane" id="arena-pane-battle" role="tabpanel" hidden>
-                            <div class="arena-deck-check card" id="arena-deck-check"></div>
+                        <!-- PANE: DUELO -->
+                        <div class="eco-pane arena-pane" id="arena-pane-battle" role="tabpanel" hidden>
+                            <div class="arena-deck-check" id="arena-deck-check"></div>
                             <div id="arena-settle-banner"></div>
-                            <button class="primary-btn wide" id="arena-create-challenge-btn"><span class="btn-label">Criar desafio ⚔️</span></button>
-                            <h3 class="eco-h3">🎯 Desafios abertos <span class="eco-h3-count" id="arena-open-count"></span></h3>
-                            <div class="arena-challenge-list" id="arena-challenge-list"><p class="muted">Carregando desafios…</p></div>
-                            <h3 class="eco-h3">📜 Minhas partidas recentes</h3>
+                            <button class="arena-btn arena-btn-primary arena-btn-wide arena-challenge-btn" id="arena-create-challenge-btn" type="button">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-swords"></use></svg>
+                                <span class="arena-challenge-btn-text"><b>Criar desafio</b><small>com ou sem aposta — quem vencer leva o pote</small></span>
+                            </button>
+                            <div class="arena-section-head">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-broadcast"></use></svg>
+                                <h4>Desafios abertos</h4>
+                                <span class="arena-section-count" id="arena-open-count"></span>
+                            </div>
+                            <div class="arena-challenge-list" id="arena-challenge-list"></div>
+                            <div class="arena-section-head">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-history"></use></svg>
+                                <h4>Suas partidas</h4>
+                            </div>
                             <div class="arena-history-list" id="arena-history-list"></div>
                         </div>
                     </div>
 
-                    <!-- ARENA DE BATALHA (tela cheia por cima do hub) -->
+                    <!-- ARENA DE BATALHA (tela por cima do hub) -->
                     <div id="arena-match" hidden>
-                        <div class="am-opponent card">
+                        <div class="am-panel am-panel-opponent">
                             <img class="am-avatar" id="am-opponent-avatar" alt="" onerror="this.style.visibility='hidden'">
-                            <div class="am-opponent-info">
-                                <strong id="am-opponent-name">Oponente</strong>
+                            <div class="am-panel-info">
+                                <div class="am-name-row"><strong id="am-opponent-name">Oponente</strong><span class="am-turn-tag" id="am-turn-tag-opp" hidden>vez do rival</span></div>
                                 <div class="am-hp-track"><div class="am-hp-fill" id="am-opponent-hp" style="width:100%"></div></div>
-                                <span class="am-meta" id="am-opponent-meta"></span>
+                                <div class="am-chips">
+                                    <span class="am-chip am-chip-phys" title="Escudo físico"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-shield"></use></svg><b id="am-opponent-shield-phys">0</b></span>
+                                    <span class="am-chip am-chip-mag" title="Escudo mágico"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-shield-mag"></use></svg><b id="am-opponent-shield-mag">0</b></span>
+                                    <span class="am-chip" title="Cartas na mão"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-cards"></use></svg><b id="am-opponent-hand">0</b></span>
+                                    <span class="am-chip" title="Cartas no deck"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-layers"></use></svg><b id="am-opponent-deck">0</b></span>
+                                </div>
                             </div>
-                            <div class="am-opponent-hpnum" id="am-opponent-hpnum">60</div>
+                            <div class="am-hp-num" id="am-opponent-hpnum">60</div>
                         </div>
 
-                        <div class="am-board" id="am-board-opponent"></div>
+                        <div class="am-board" id="am-board-opponent" aria-label="Criaturas do oponente"></div>
                         <div class="am-structures" id="am-structures-opponent"></div>
 
-                        <div class="am-table" id="arena-table">
-                            <span class="am-table-hint" id="am-table-hint">solte a carta aqui pra jogar 🃏</span>
+                        <div class="am-table" id="arena-table" role="button" aria-label="Mesa — solte a carta aqui para jogar">
+                            <svg class="am-table-watermark" viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-swords"></use></svg>
+                            <span class="am-table-hint" id="am-table-hint">solte a carta aqui pra jogar</span>
                         </div>
 
-                        <div class="am-board" id="am-board-me"></div>
+                        <div class="am-board" id="am-board-me" aria-label="Suas criaturas"></div>
                         <div class="am-structures" id="am-structures-me"></div>
 
-                        <div class="am-log" id="arena-log"></div>
+                        <div class="am-log" id="arena-log" aria-live="polite"></div>
 
-                        <div class="am-me card">
-                            <div class="am-opponent-info">
-                                <strong>Você <span class="am-turn-tag" id="am-turn-tag"></span></strong>
+                        <div class="am-panel am-panel-me">
+                            <div class="am-panel-info">
+                                <div class="am-name-row"><strong>Você</strong><span class="am-turn-tag is-mine" id="am-turn-tag" hidden>sua vez</span></div>
                                 <div class="am-hp-track mine"><div class="am-hp-fill mine" id="am-me-hp" style="width:100%"></div></div>
-                                <span class="am-meta" id="am-me-meta"></span>
+                                <div class="am-chips">
+                                    <span class="am-chip am-chip-phys" title="Escudo físico"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-shield"></use></svg><b id="am-me-shield-phys">0</b></span>
+                                    <span class="am-chip am-chip-mag" title="Escudo mágico"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-shield-mag"></use></svg><b id="am-me-shield-mag">0</b></span>
+                                    <span class="am-chip" title="Turno atual"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-history"></use></svg><b id="am-me-turn">1</b></span>
+                                </div>
                             </div>
-                            <div class="am-opponent-hpnum" id="am-me-hpnum">60</div>
+                            <div class="am-hp-num" id="am-me-hpnum">60</div>
                         </div>
 
                         <div class="am-hand" id="arena-hand"></div>
                         <div class="am-actions">
-                            <button class="secondary-btn" id="arena-pass-btn">Passar ⏭️</button>
-                            <button class="danger-btn" id="arena-forfeit-btn">Desistir 🏳️</button>
+                            <button class="arena-btn arena-btn-ghost am-action-btn" id="arena-pass-btn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-forward"></use></svg>Passar</button>
+                            <button class="arena-btn arena-btn-danger am-action-btn" id="arena-forfeit-btn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-flag"></use></svg>Desistir</button>
                         </div>
 
-                        <div class="am-finish" id="arena-finish" hidden>
-                            <div class="am-finish-emoji" id="am-finish-emoji">🏆</div>
-                            <h3 id="am-finish-title">Você venceu!</h3>
-                            <p id="am-finish-sub" class="card-sub center"></p>
-                            <button class="primary-btn wide" id="am-settle-btn"><span class="btn-label">Receber pote 🏆</span></button>
-                            <button class="secondary-btn wide" id="am-leave-btn">Voltar pro hub</button>
+                        <div class="am-finish" id="arena-finish" hidden role="dialog" aria-modal="true" aria-label="Fim da partida">
+                            <div class="am-finish-panel card">
+                                <div class="am-finish-ring" id="am-finish-ring"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-trophy" id="am-finish-icon-use"></use></svg></div>
+                                <h3 class="am-finish-title" id="am-finish-title">Você venceu!</h3>
+                                <p class="am-finish-sub" id="am-finish-sub"></p>
+                                <div class="am-finish-pot" id="am-finish-pot"></div>
+                                <button class="arena-btn arena-btn-primary arena-btn-wide" id="am-settle-btn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-coin"></use></svg><span class="btn-label">Receber pote</span></button>
+                                <button class="arena-btn arena-btn-ghost arena-btn-wide" id="am-leave-btn" type="button">Voltar pro hub</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1052,5 +1164,44 @@
 
 <script src="js/economy-data.js"></script>
 <script type="module" src="js/app.js"></script>
+    <!-- ============ ÍCONES DA ARENA (SVG vetorial inline — sem emojis) ============ -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <defs>
+            <symbol id="arena-swords" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" y1="19" x2="19" y2="13"/><line x1="16" y1="16" x2="20" y2="20"/><line x1="19" y1="21" x2="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" y1="14" x2="9" y2="18"/><line x1="7" y1="17" x2="4" y2="20"/><line x1="3" y1="19" x2="5" y2="21"/></symbol>
+            <symbol id="arena-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 12 12 17 22 12"/><polyline points="2 17 12 22 22 17"/></symbol>
+            <symbol id="arena-cards" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="12.5" height="17" rx="2.5"/><path d="M8.5 1.8h10a2 2 0 0 1 2 2v15.7"/></symbol>
+            <symbol id="arena-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/><path d="M18.6 14.5l.8 2.1 2.1.8-2.1.8-.8 2.1-.8-2.1-2.1-.8 2.1-.8.8-2.1z"/></symbol>
+            <symbol id="arena-hammer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 4.2l6.3 6.3-2.8 2.8-6.3-6.3 2.8-2.8z"/><path d="M10.7 10.7L4.4 17l2.8 2.8 6.3-6.3"/><path d="M4.5 20.5h3"/></symbol>
+            <symbol id="arena-tree" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="5.5" r="2.3"/><circle cx="17.5" cy="5.5" r="2.3"/><circle cx="12" cy="12.5" r="2.3"/><circle cx="12" cy="21" r="1.9"/><path d="M7.8 7.4l3 3.6"/><path d="M16.2 7.4l-3 3.6"/><path d="M12 14.8v4.3"/></symbol>
+            <symbol id="arena-coin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="3.6"/></symbol>
+            <symbol id="arena-hex" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.4l8.2 4.8v9.6L12 21.6l-8.2-4.8V7.2L12 2.4z"/></symbol>
+            <symbol id="arena-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.2 2L5 13.6h5.6L9 22l8.2-11.6h-5.6L13.2 2z"/></symbol>
+            <symbol id="arena-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v6a5 5 0 0 1-10 0V4z"/><path d="M7 6H4.5A1.5 1.5 0 0 0 3 7.5 4.5 4.5 0 0 0 7.5 12H8"/><path d="M17 6h2.5A1.5 1.5 0 0 1 21 7.5 4.5 4.5 0 0 1 16.5 12H16"/></symbol>
+            <symbol id="arena-x-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.2l5.6 5.6M14.8 9.2l-5.6 5.6"/></symbol>
+            <symbol id="arena-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4.5h13l-2.6 4 2.6 4H5"/></symbol>
+            <symbol id="arena-forward" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15"/><path d="M13.5 6l6 6-6 6"/></symbol>
+            <symbol id="arena-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 2.8v5.4c0 4.6-3 8.6-7 10-4-1.4-7-5.4-7-10V5.8L12 3z"/></symbol>
+            <symbol id="arena-shield-mag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 2.8v5.4c0 4.6-3 8.6-7 10-4-1.4-7-5.4-7-10V5.8L12 3z"/><path d="M12 9v5M9.5 11.5h5"/></symbol>
+            <symbol id="arena-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.2S3.6 15 3.6 9.4A4.9 4.9 0 0 1 12 6.2a4.9 4.9 0 0 1 8.4 3.2c0 5.6-8.4 10.8-8.4 10.8z"/></symbol>
+            <symbol id="arena-sword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" y1="19" x2="19" y2="13"/><line x1="16" y1="16" x2="20" y2="20"/><line x1="19" y1="21" x2="21" y2="19"/></symbol>
+            <symbol id="arena-flame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></symbol>
+            <symbol id="arena-droplet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6.2 6.6 6.2 11.2a6.2 6.2 0 0 1-12.4 0C5.8 9.6 12 3 12 3z"/></symbol>
+            <symbol id="arena-wind" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5h8.5a3 3 0 1 0-3-3"/><path d="M3 12.5h13.5a3 3 0 1 1-3 3"/><path d="M3 16.5h6"/></symbol>
+            <symbol id="arena-mountain" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18.5l5.5-9 4 6.5 3-4.5 5.5 7z"/></symbol>
+            <symbol id="arena-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7.6"/><path d="M12 7.2l4.9 8.4H7.1L12 7.2z"/></symbol>
+            <symbol id="arena-tower" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 21V9.2L12 4.5l5.5 4.7V21"/><path d="M3.5 21h17"/><path d="M10 21v-3.6h4V21"/></symbol>
+            <symbol id="arena-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.3 12.4l2.6 2.6 5-5.7"/></symbol>
+            <symbol id="arena-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6L21 20H3L12 3.6z"/><path d="M12 10v4.6"/><path d="M12 17.4h.01"/></symbol>
+            <symbol id="arena-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v5.2h5.2"/><path d="M4.6 10.2a8 8 0 1 1 1.9 6.6"/><path d="M12 8v4.4l3 1.8"/></symbol>
+            <symbol id="arena-broadcast" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M8.6 8.6a4.8 4.8 0 0 0 0 6.8"/><path d="M15.4 8.6a4.8 4.8 0 0 1 0 6.8"/><path d="M5.7 5.7a9 9 0 0 0 0 12.6"/><path d="M18.3 5.7a9 9 0 0 1 0 12.6"/></symbol>
+            <symbol id="arena-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.2"/><circle cx="9" cy="10.2" r="1.6"/><path d="M4.8 16.8l5-5 4.2 4.2 3.2-3.2 4.5 4.5"/></symbol>
+            <symbol id="arena-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+            <symbol id="arena-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.2"/><path d="M12 7.8h.01"/></symbol>
+            <symbol id="arena-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol>
+            <symbol id="arena-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></symbol>
+            <symbol id="arena-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6h17"/><path d="M9 6V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V6"/><path d="M6.5 6l1.4 13.6a2 2 0 0 0 2 1.9h4.2a2 2 0 0 0 2-1.9L17.5 6"/></symbol>
+        </defs>
+    </svg>
+
 </body>
 </html>

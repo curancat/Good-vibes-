@@ -1572,119 +1572,360 @@ button.chat-bubble-name:hover { color: #7dd3fc; text-decoration: underline; }
 .artifact-owned { position: absolute; top: -6px; right: -6px; background: #fbbf24; color: #111; font-size: 10px; font-weight: 900; border-radius: 999px; padding: 1px 6px; }
 .artifact-card { position: relative; overflow: visible; }
 
-/* ============ ARENA ⚔️ (cartas, deck, árvore, PvP ao vivo) ============ */
+/* ============ ARENA (cartas, deck, árvore, duelo) ============ */
+[hidden] { display: none !important; }
 .tile-arena { background: linear-gradient(145deg, #a855f7, #e11d48); }
-.arena-points { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; margin-bottom: 10px; }
-.arena-points strong { font-size: 18px; color: #fbbf24; }
-.arena-deck-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
-.arena-deck-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--card-bg, rgba(255,255,255,.03)); color: inherit; font: inherit; text-align: left; cursor: pointer; }
-.arena-deck-row:hover { border-color: rgba(248,113,113,.5); }
-.arena-deck-emoji { font-size: 22px; }
-.arena-deck-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.arena-deck-name { font-size: 12px; font-weight: 800; }
-.arena-deck-meta { font-size: 10px; color: var(--text-muted); }
-.arena-deck-cost { font-size: 11px; font-weight: 800; color: #93c5fd; }
+.arena-title { display: inline-flex; align-items: center; gap: 8px; }
+.arena-title-icon { width: 19px; height: 19px; stroke: #e2e8f0; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-/* Árvore */
-.arena-tree-total { font-size: 13px; margin: 6px 2px 10px; color: var(--text-muted); }
-.arena-tree-total strong { color: #c4b5fd; font-size: 15px; }
-.arena-tree { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-.arena-tree-row { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 12px; border: 1px solid var(--border); background: var(--card-bg, rgba(255,255,255,.03)); }
-.tree-emoji { font-size: 20px; width: 26px; text-align: center; }
-.tree-name { flex: 1; min-width: 0; font-size: 12px; font-weight: 700; display: flex; flex-direction: column; }
-.tree-bonus { font-size: 9.5px; color: #86efac; font-weight: 600; }
-.tree-controls { display: flex; align-items: center; gap: 6px; }
-.tree-btn { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--border); background: var(--chip-bg); color: var(--text-muted); font-size: 15px; font-weight: 800; cursor: pointer; line-height: 1; }
-.tree-btn:disabled { opacity: .35; cursor: not-allowed; }
-.tree-pts { min-width: 26px; text-align: center; font-weight: 900; color: #c4b5fd; font-variant-numeric: tabular-nums; }
+/* ---------- Hero ---------- */
+.arena-hero { position: relative; display: flex; align-items: center; gap: 12px; padding: 13px 14px; margin: 2px 0 12px; border-radius: 20px; overflow: hidden; border: 1px solid rgba(196, 181, 253, .28); background: linear-gradient(135deg, #3b0764 0%, #4c1d95 38%, #7f1d3f 100%); box-shadow: 0 14px 34px -14px rgba(88, 28, 135, .65), inset 0 1px 0 rgba(255,255,255,.18); }
+.arena-hero::before { content: ""; position: absolute; width: 220px; height: 220px; border-radius: 50%; top: -110px; right: -70px; background: radial-gradient(circle, rgba(251,191,36,.28), transparent 65%); pointer-events: none; }
+.arena-hero-emblem { flex: 0 0 58px; height: 58px; border-radius: 16px; display: flex; align-items: center; justify-content: center; background: linear-gradient(160deg, rgba(255,255,255,.22), rgba(255,255,255,.06)); border: 1px solid rgba(255,255,255,.35); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 6px 16px -6px rgba(0,0,0,.6); }
+.arena-hero-emblem svg { width: 32px; height: 32px; stroke: #fde68a; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 2px 4px rgba(0,0,0,.5)); }
+.arena-hero-info { flex: 1; min-width: 0; position: relative; }
+.arena-hero-kicker { font-size: 8.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #f5d0fe; opacity: .9; }
+.arena-hero-info h3 { margin: 1px 0 2px; font-size: 17px; font-weight: 900; color: #fff; letter-spacing: -.01em; }
+.arena-hero-info p { margin: 0; font-size: 10px; line-height: 1.35; color: #e9d5ff; opacity: .92; }
+.arena-hero-gold { position: relative; flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 12px; border-radius: 14px; background: rgba(2,6,23,.42); border: 1px solid rgba(253,230,138,.35); backdrop-filter: blur(4px); }
+.arena-hero-gold svg { width: 17px; height: 17px; stroke: #fde047; fill: none; stroke-width: 2; opacity: .95; }
+.arena-hero-gold strong { font-size: 14px; font-weight: 900; color: #fde047; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 
-/* Cartas */
-.arena-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
-.card-face { --f1: #fbbf24; --f2: #f97316; position: relative; width: 172px; min-height: 236px; border-radius: 16px; border: 3px solid transparent; background: linear-gradient(165deg, #1e293b, #0b1220) padding-box, linear-gradient(160deg, var(--f1), var(--f2)) border-box; box-shadow: 0 6px 18px rgba(0,0,0,.45), inset 0 0 24px rgba(0,0,0,.35); display: flex; flex-direction: column; padding: 8px; user-select: none; -webkit-user-select: none; }
-.card-face.mini { width: 92px; min-height: 130px; padding: 5px; border-width: 2px; border-radius: 12px; }
-.card-face .cf-name { font-size: 12px; font-weight: 900; text-align: center; color: #fde68a; text-shadow: 0 1px 2px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.card-face.mini .cf-name { font-size: 8px; }
-.card-face .cf-art { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 56px; border-radius: 10px; margin: 6px 0; background: radial-gradient(circle at 50% 40%, rgba(255,255,255,.10), rgba(0,0,0,.25)); overflow: hidden; }
-.card-face.mini .cf-art { font-size: 32px; margin: 3px 0; }
-.card-face .cf-art img { width: 100%; height: 100%; object-fit: cover; }
-.card-face .cf-flavor { font-size: 8px; font-style: italic; color: #a8a29e; text-align: center; min-height: 20px; line-height: 1.25; padding: 0 2px; }
-.card-face.mini .cf-flavor { display: none; }
-.card-face .cf-bottom { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
-.cf-gem { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; border: 2px solid rgba(255,255,255,.25); }
-.card-face.mini .cf-gem { width: 17px; height: 17px; font-size: 9px; border-width: 1px; }
-.cf-cost { background: radial-gradient(circle at 35% 30%, #7dd3fc, #0369a1); color: #082f3f; }
-.cf-power { background: radial-gradient(circle at 35% 30%, #fca5a5, #b91c1c); color: #450a0a; }
-.cf-cat { flex: 1; text-align: center; font-size: 9.5px; font-weight: 800; border-radius: 999px; padding: 2px 4px; background: rgba(255,255,255,.07); color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.card-face.mini .cf-cat { font-size: 6.5px; }
-.card-in-grid { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.card-in-grid .card-face { width: 100%; min-height: 0; aspect-ratio: 5/7; }
-.card-in-grid .card-face .cf-art { font-size: 30px; }
-.card-in-grid .card-delete { font-size: 10px; background: none; border: none; color: #f87171; cursor: pointer; }
-.card-in-grid .card-deck-toggle { font-size: 9.5px; padding: 3px 8px; border-radius: 8px; border: 1px solid rgba(52,211,153,.5); background: rgba(52,211,153,.12); color: #6ee7b7; cursor: pointer; font-weight: 800; }
-.card-in-grid .card-deck-toggle.indk { border-color: rgba(248,113,113,.5); background: rgba(248,113,113,.12); color: #fca5a5; }
+/* ---------- Tabs (segmented control) ---------- */
+.arena-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px; margin-bottom: 12px; border-radius: 16px; background: var(--input-bg); border: 1px solid var(--border-color); }
+.arena-tab { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 4px 7px; border: 1px solid transparent; background: transparent; border-radius: 12px; color: var(--text-muted); cursor: pointer; transition: background .18s, color .18s, border-color .18s, transform .18s; }
+.arena-tab svg { width: 19px; height: 19px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.arena-tab span { font-size: 9.5px; font-weight: 800; letter-spacing: .03em; }
+.arena-tab:hover { color: var(--text-color); background: var(--chip-bg); }
+.arena-tab.active { color: #fff; background: linear-gradient(160deg, #7c3aed, #a21caf 55%, #be123d); border-color: rgba(255,255,255,.25); box-shadow: 0 6px 16px -6px rgba(124,58,237,.7), inset 0 1px 0 rgba(255,255,255,.3); transform: translateY(-1px); }
+.arena-pane { padding: 2px 1px 14px; }
 
-/* Criar carta */
-.arena-create-wrap { display: flex; flex-direction: column; gap: 14px; }
-.arena-create-form { display: flex; flex-direction: column; gap: 10px; }
-.arena-field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; color: var(--text-muted); }
-.arena-field input, .arena-field select { font: inherit; font-size: 13px; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--input-bg, rgba(255,255,255,.05)); color: var(--text); }
-.arena-field-row { display: flex; gap: 10px; }
-.arena-field-row .arena-field { flex: 1; }
-.ac-emoji-row { display: flex; flex-wrap: wrap; gap: 5px; }
-.ac-emoji-pick { width: 38px; height: 38px; font-size: 20px; border-radius: 10px; border: 1px solid var(--border); background: var(--card-bg, rgba(255,255,255,.04)); cursor: pointer; }
-.ac-emoji-pick.selected { border-color: #fbbf24; box-shadow: 0 0 0 2px rgba(251,191,36,.4); }
-.arena-create-preview { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+/* ---------- Deck summary ---------- */
+.arena-deck-summary { display: flex; align-items: center; gap: 14px; padding: 12px 14px; margin-bottom: 12px; border-radius: 18px; background: var(--card-bg); border: 1px solid var(--border-color); box-shadow: var(--shadow-soft); }
+.arena-deck-orb { flex: 0 0 74px; height: 74px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle at 35% 30%, #fef3c7, #f59e0b 55%, #92400e); box-shadow: 0 8px 18px -8px rgba(245,158,11,.75), inset 0 -4px 8px rgba(120,53,15,.55), inset 0 2px 2px rgba(255,255,255,.6); color: #451a03; }
+.arena-deck-orb strong { font-size: 21px; line-height: 1; font-weight: 900; font-variant-numeric: tabular-nums; }
+.arena-deck-orb span { font-size: 8px; font-weight: 800; letter-spacing: .04em; opacity: .8; }
+.arena-deck-summary-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.arena-deck-summary-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.arena-deck-summary-top strong { font-size: 13px; font-weight: 800; }
+.arena-singleton-chip { font-size: 8px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #a5b4fc; background: rgba(99,102,241,.16); border: 1px solid rgba(165,180,252,.3); border-radius: 999px; padding: 3px 8px; white-space: nowrap; }
+.arena-note-inline { font-size: 10px; color: var(--text-muted); line-height: 1.4; }
+.arena-note-inline b { color: var(--text-color); }
 
-/* Batalhar — lobby */
-.arena-deck-check { padding: 12px 14px; font-size: 12.5px; margin-bottom: 8px; }
-.arena-deck-check.ok { border-color: rgba(52,211,153,.4); }
-.arena-deck-check.bad { border-color: rgba(248,113,113,.4); }
-.arena-challenge-list, .arena-history-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
-.arena-challenge { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--border); background: var(--card-bg); }
-.arena-challenge-info { flex: 1; min-width: 0; font-size: 11.5px; }
-.arena-challenge-info strong { font-size: 12.5px; }
-.arena-pot { color: #fbbf24; font-weight: 800; font-size: 11px; }
-.arena-history-row { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--text-muted); padding: 6px 10px; }
-.arena-bet-cosmetics { max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin: 6px 0 12px; }
-.arena-bet-cosm-title { font-size: 11px; color: var(--text-muted); font-weight: 700; margin: 4px 0 4px; }
-.arena-bet-cosm { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--border); cursor: pointer; }
-.arena-bet-cosm input { accent-color: #fbbf24; }
-.arena-settle { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 14px; border: 1px solid rgba(251,191,36,.5); background: rgba(251,191,36,.1); margin-bottom: 10px; font-size: 12px; }
+/* Meters */
+.arena-meter { height: 7px; border-radius: 999px; background: rgba(2,6,23,.45); border: 1px solid var(--border-color); overflow: hidden; }
+.arena-meter-fill { height: 100%; width: 0%; border-radius: inherit; background: linear-gradient(90deg, #fde047, #f59e0b); box-shadow: 0 0 10px rgba(250,204,21,.55); transition: width .45s cubic-bezier(.32,.9,.35,1); }
+.arena-meter-tree .arena-meter-fill { background: linear-gradient(90deg, #6ee7b7, #10b981); box-shadow: 0 0 10px rgba(52,211,153,.5); }
 
-/* Batalha — mesa */
-#arena-match { display: flex; flex-direction: column; gap: 6px; position: relative; }
-.am-opponent, .am-me { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
-.am-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; background: rgba(255,255,255,.08); border: 1px solid var(--border); }
-.am-opponent-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; }
-.am-hp-track { height: 10px; border-radius: 999px; background: rgba(2,6,23,.6); border: 1px solid var(--border); overflow: hidden; }
-.am-hp-fill { height: 100%; background: linear-gradient(90deg, #f87171, #ef4444); transition: width .35s ease; }
-.am-hp-fill.mine { background: linear-gradient(90deg, #4ade80, #16a34a); }
-.am-opponent-hpnum, #am-me-hpnum { font-size: 26px; font-weight: 900; font-variant-numeric: tabular-nums; }
-.am-meta { font-size: 9.5px; color: var(--text-muted); }
-.am-turn-tag { font-size: 9px; background: #fbbf24; color: #111; border-radius: 6px; padding: 1px 6px; font-weight: 900; vertical-align: middle; }
-.am-board { display: flex; gap: 6px; min-height: 46px; align-items: center; padding: 2px 4px; flex-wrap: wrap; }
-.am-token { position: relative; width: 44px; height: 54px; border-radius: 9px; background: rgba(148,163,184,.14); border: 1px solid rgba(148,163,184,.4); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 19px; }
-.am-token small { font-size: 7px; color: #fda4a4; font-weight: 800; line-height: 1; }
-.am-token b { font-size: 8px; color: #fde68a; line-height: 1; }
-.am-structures { display: flex; gap: 6px; padding: 0 4px; min-height: 0; flex-wrap: wrap; }
-.am-struct { font-size: 10px; border-radius: 8px; padding: 2px 7px; background: rgba(52,211,153,.12); border: 1px solid rgba(52,211,153,.35); color: #a7f3d0; }
-.am-table { position: relative; display: flex; align-items: center; justify-content: center; min-height: 58px; border-radius: 14px; border: 2px dashed rgba(251,191,36,.35); background: radial-gradient(120% 140% at 50% 0%, rgba(251,191,36,.07), transparent); transition: border-color .15s, transform .15s; }
-.am-table.drop-target { border-color: #fbbf24; transform: scale(1.02); }
-.am-table-hint { font-size: 11px; color: var(--text-muted); }
-.am-log { min-height: 34px; font-size: 9.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 1px; padding: 0 4px; }
-.am-log div:last-child { color: #e2e8f0; }
-.am-hand { display: flex; gap: 8px; overflow-x: auto; padding: 6px 2px 10px; scroll-snap-type: x proximity; align-items: flex-end; }
-.am-hand .card-face { flex: 0 0 auto; scroll-snap-align: start; cursor: pointer; transition: transform .12s; }
-.am-hand .card-face:hover { transform: translateY(-6px); }
-.am-hand .card-face.disabled { opacity: .45; filter: grayscale(.5); cursor: not-allowed; }
+/* ---------- Section heads ---------- */
+.arena-section-head { display: flex; align-items: center; gap: 8px; margin: 16px 2px 8px; }
+.arena-section-head svg { width: 16px; height: 16px; stroke: #c4b5fd; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
+.arena-section-head h4 { margin: 0; font-size: 11px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; color: var(--text-color); flex: 1; }
+.arena-section-count { font-size: 10px; font-weight: 800; color: var(--text-muted); background: var(--chip-bg); border: 1px solid var(--border-color); border-radius: 999px; padding: 2px 9px; font-variant-numeric: tabular-nums; }
+
+/* ---------- Painel genérico (pane head com ação) ---------- */
+.arena-pane-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 4px 2px 10px; }
+.arena-pane-head-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.arena-pane-head-title svg { width: 18px; height: 18px; stroke: #c4b5fd; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.arena-pane-head-title h4 { margin: 0; font-size: 12px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+
+/* ---------- Deck list ---------- */
+.arena-deck-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 4px; }
+.arena-deck-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px 7px 7px; border-radius: 14px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); font: inherit; text-align: left; cursor: pointer; transition: border-color .15s, transform .15s, background .15s; }
+.arena-deck-row:hover { border-color: rgba(196,181,253,.45); transform: translateX(3px); }
+.arena-deck-thumb { flex: 0 0 42px; width: 42px; height: 56px; border-radius: 9px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 35%, rgba(255,255,255,.14), rgba(2,6,23,.5)); border: 1px solid rgba(255,255,255,.14); }
+.arena-deck-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.arena-deck-thumb svg { width: 22px; height: 22px; stroke: var(--tint, #c4b5fd); fill: none; stroke-width: 1.8; }
+.arena-deck-thumb .arena-legacy-emoji { font-size: 22px; }
+.arena-deck-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.arena-deck-name { font-size: 11.5px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.arena-deck-meta { display: flex; align-items: center; gap: 5px; font-size: 9px; color: var(--text-muted); }
+.arena-deck-meta svg { width: 11px; height: 11px; stroke: var(--tint, #a5b4fc); fill: none; stroke-width: 2; }
+.arena-deck-cost { display: flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 900; color: #7dd3fc; font-variant-numeric: tabular-nums; }
+.arena-deck-cost svg { width: 13px; height: 13px; stroke: #7dd3fc; fill: none; stroke-width: 2; }
+.arena-deck-empty { padding: 16px 12px; text-align: center; color: var(--text-muted); font-size: 11px; border: 1px dashed var(--border-color); border-radius: 14px; }
+
+/* ---------- Árvore do Refúgio ---------- */
+.arena-tree-card { position: relative; margin-top: 14px; padding: 14px; border-radius: 20px; border: 1px solid rgba(110, 231, 183, .22); background: linear-gradient(180deg, rgba(6, 35, 28, .55), var(--card-bg) 55%), var(--card-bg); box-shadow: var(--shadow-soft); overflow: hidden; }
+.arena-tree-card::before { content: ""; position: absolute; width: 190px; height: 190px; top: -95px; left: 50%; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(circle, rgba(52,211,153,.22), transparent 65%); pointer-events: none; }
+.arena-tree-head { position: relative; display: flex; align-items: center; gap: 11px; margin-bottom: 8px; }
+.arena-tree-emblem { flex: 0 0 44px; height: 44px; border-radius: 13px; display: flex; align-items: center; justify-content: center; background: linear-gradient(160deg, #10b981, #065f46); border: 1px solid rgba(167,243,208,.4); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 6px 14px -6px rgba(16,185,129,.6); }
+.arena-tree-emblem svg { width: 24px; height: 24px; stroke: #ecfdf5; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.arena-tree-title { flex: 1; min-width: 0; }
+.arena-tree-title h4 { margin: 0 0 2px; font-size: 14.5px; font-weight: 900; letter-spacing: -.01em; }
+.arena-tree-title p { margin: 0; font-size: 9.5px; line-height: 1.45; color: var(--text-muted); }
+.arena-tree-title b { color: #6ee7b7; }
+.arena-tree-total { flex: 0 0 auto; display: flex; align-items: baseline; gap: 2px; padding: 7px 10px; border-radius: 13px; background: rgba(6,78,59,.4); border: 1px solid rgba(110,231,183,.3); }
+.arena-tree-total strong { font-size: 17px; font-weight: 900; color: #6ee7b7; font-variant-numeric: tabular-nums; }
+.arena-tree-total span { font-size: 10px; font-weight: 800; color: rgba(110,231,183,.7); }
+.arena-meter-tree { margin: 2px 0 10px; }
+.arena-tree { display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; border: 1px solid var(--border-color); }
+.arena-tree-row { position: relative; display: grid; grid-template-columns: 38px 1fr auto; align-items: center; gap: 10px; padding: 7px 9px; background: var(--card-bg); border-top: 1px solid var(--border-color); transition: background .2s; }
+.arena-tree-row:first-child { border-top: none; }
+.arena-tree-row.has-points { background: linear-gradient(90deg, var(--tint-soft, rgba(110,231,183,.08)), transparent 70%); box-shadow: inset 2.5px 0 0 var(--tint, #34d399); }
+.tree-badge { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: var(--tint-badge, rgba(148,163,184,.14)); border: 1px solid var(--tint-border, rgba(148,163,184,.3)); }
+.tree-badge svg { width: 19px; height: 19px; stroke: var(--tint, #cbd5e1); fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.tree-info { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tree-name { font-size: 10.5px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tree-bonus { display: inline-flex; align-items: center; gap: 4px; font-size: 8px; color: var(--text-muted); }
+.tree-bonus b { color: var(--tint, #6ee7b7); font-weight: 800; font-size: 9px; }
+.tree-controls { display: flex; align-items: center; gap: 7px; }
+.tree-btn { width: 27px; height: 27px; border-radius: 9px; border: 1px solid var(--border-color); background: var(--chip-bg); color: var(--text-color); font-size: 15px; font-weight: 700; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .15s, transform .15s, border-color .15s; }
+.tree-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; }
+.tree-btn:hover:not(:disabled) { background: var(--tint-badge, rgba(110,231,183,.18)); border-color: var(--tint-border, rgba(110,231,183,.4)); transform: translateY(-1px); }
+.tree-btn:disabled { opacity: .3; cursor: not-allowed; }
+.tree-pts { min-width: 22px; text-align: center; font-weight: 900; font-size: 13px; color: var(--tint, #a7f3d0); font-variant-numeric: tabular-nums; }
+.arena-tree-foot { display: flex; align-items: flex-start; gap: 7px; margin: 10px 2px 0; font-size: 9px; line-height: 1.5; color: var(--text-muted); }
+.arena-tree-foot svg { flex: 0 0 12px; width: 12px; height: 12px; margin-top: 1px; stroke: #6ee7b7; fill: none; stroke-width: 2; }
+
+/* Tints por categoria */
+.tint-dano          { --tint: #93c5fd; --tint-soft: rgba(147,197,253,.1);  --tint-badge: rgba(147,197,253,.13); --tint-border: rgba(147,197,253,.35); }
+.tint-dano_fogo     { --tint: #fb923c; --tint-soft: rgba(251,146,60,.1);   --tint-badge: rgba(251,146,60,.13);  --tint-border: rgba(251,146,60,.35); }
+.tint-dano_agua     { --tint: #38bdf8; --tint-soft: rgba(56,189,248,.1);   --tint-badge: rgba(56,189,248,.13);  --tint-border: rgba(56,189,248,.35); }
+.tint-dano_ar       { --tint: #c4b5fd; --tint-soft: rgba(196,181,253,.1);  --tint-badge: rgba(196,181,253,.13); --tint-border: rgba(196,181,253,.35); }
+.tint-dano_terra    { --tint: #d6a05a; --tint-soft: rgba(214,160,90,.1);   --tint-badge: rgba(214,160,90,.14);  --tint-border: rgba(214,160,90,.38); }
+.tint-cura          { --tint: #4ade80; --tint-soft: rgba(74,222,128,.1);   --tint-badge: rgba(74,222,128,.13);  --tint-border: rgba(74,222,128,.35); }
+.tint-defesa        { --tint: #a8b6c9; --tint-soft: rgba(168,182,201,.1);  --tint-badge: rgba(168,182,201,.13); --tint-border: rgba(168,182,201,.35); }
+.tint-defesa_magica { --tint: #d8b4fe; --tint-soft: rgba(216,180,254,.1);  --tint-badge: rgba(216,180,254,.13); --tint-border: rgba(216,180,254,.35); }
+.tint-invocacao     { --tint: #fde047; --tint-soft: rgba(253,224,71,.1);   --tint-badge: rgba(253,224,71,.13);  --tint-border: rgba(253,224,71,.35); }
+.tint-estrutura     { --tint: #34d399; --tint-soft: rgba(52,211,153,.1);   --tint-badge: rgba(52,211,153,.13);  --tint-border: rgba(52,211,153,.35); }
+
+/* ---------- Botões (design system da Arena) ---------- */
+.arena-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid transparent; border-radius: 13px; padding: 11px 16px; font-family: inherit; font-size: 12.5px; font-weight: 800; cursor: pointer; transition: transform .16s, filter .16s, background .16s, border-color .16s; white-space: nowrap; }
+.arena-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
+.arena-btn:active:not(:disabled) { transform: scale(.97); }
+.arena-btn:disabled { opacity: .45; cursor: not-allowed; }
+.arena-btn-primary { background: linear-gradient(160deg, #f59e0b, #d97706); color: #451a03; border-color: rgba(255,255,255,.35); box-shadow: 0 10px 22px -8px rgba(245,158,11,.65), inset 0 1px 0 rgba(255,255,255,.5); }
+.arena-btn-primary:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+.arena-btn-ghost { background: var(--chip-bg); color: var(--text-color); border-color: var(--border-color); }
+.arena-btn-ghost:hover:not(:disabled) { border-color: var(--tint-border, rgba(196,181,253,.45)); }
+.arena-btn-danger { background: rgba(239,68,68,.14); color: #fda4a4; border-color: rgba(248,113,113,.35); }
+.arena-btn-danger:hover:not(:disabled) { background: rgba(239,68,68,.22); }
+.arena-btn-wide { width: 100%; }
+.arena-btn-sm { padding: 8px 12px; font-size: 11px; border-radius: 11px; }
+
+/* ---------- Card face (a carta em si) ---------- */
+.card-face { --f1: #fbbf24; --f2: #f97316; position: relative; display: flex; flex-direction: column; width: 100%; max-width: 184px; min-height: 238px; border-radius: 17px; border: 3px solid transparent; background: linear-gradient(168deg, #1e293b 0%, #0b1220 100%) padding-box, linear-gradient(160deg, var(--f1), var(--f2)) border-box; box-shadow: 0 10px 26px -10px rgba(0,0,0,.65), inset 0 0 26px rgba(0,0,0,.35); padding: 9px; user-select: none; -webkit-user-select: none; }
+.card-face--mini { max-width: none; min-height: 0; aspect-ratio: 5/7; border-width: 2px; border-radius: 12px; padding: 5px; }
+.cf-name { font-size: 11.5px; font-weight: 900; text-align: center; color: #fde68a; letter-spacing: .01em; text-shadow: 0 1px 2px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 2px; }
+.card-face--mini .cf-name { font-size: 8px; color: #fef3c7; }
+.cf-art { position: relative; flex: 1; min-height: 0; margin: 6px 0; border-radius: 11px; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 38%, var(--tint-badge, rgba(255,255,255,.1)), rgba(2,6,23,.35)); overflow: hidden; }
+.card-face--mini .cf-art { margin: 3px 0; border-radius: 8px; }
+.cf-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cf-emblem { width: 62%; height: 62%; stroke: var(--tint, #e2e8f0); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 12px var(--tint-soft, rgba(255,255,255,.3))); }
+.card-face--mini .cf-emblem { width: 56%; height: 56%; }
+.cf-legacy-emoji { font-size: 46px; line-height: 1; filter: drop-shadow(0 2px 6px rgba(0,0,0,.6)); }
+.card-face--mini .cf-legacy-emoji { font-size: 30px; }
+.cf-flavor { font-size: 7.5px; font-style: italic; line-height: 1.35; text-align: center; color: #a8a29e; min-height: 20px; padding: 0 3px; }
+.card-face--mini .cf-flavor { display: none; }
+.cf-bottom { display: flex; align-items: center; gap: 4px; }
+.cf-gem { flex: 0 0 26px; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
+.card-face--mini .cf-gem { flex-basis: 17px; width: 17px; height: 17px; font-size: 8.5px; }
+.cf-cost { background: linear-gradient(160deg, #7dd3fc, #0369a1); color: #082f3f; }
+.cf-power { background: linear-gradient(160deg, #fca5a5, #b91c1c); color: #450a0a; }
+.cf-cat { flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 3px; font-size: 7px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; border-radius: 999px; padding: 3px 4px; background: rgba(255,255,255,.07); color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cf-cat svg { flex: 0 0 10px; width: 10px; height: 10px; stroke: var(--tint, #e2e8f0); fill: none; stroke-width: 2.2; }
+.card-face--mini .cf-cat { font-size: 5px; letter-spacing: .04em; padding: 2px 2px; }
+.card-face--mini .cf-cat svg { width: 7px; height: 7px; flex-basis: 7px; }
+
+/* ---------- Minhas cartas (grade) ---------- */
+.arena-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 9px; }
+.card-in-grid { display: flex; flex-direction: column; align-items: stretch; gap: 5px; }
+.card-in-grid .card-face { max-width: none; }
+.card-in-grid-actions { display: flex; gap: 5px; }
+.card-deck-toggle { flex: 1; font-family: inherit; font-size: 8.5px; font-weight: 800; letter-spacing: .02em; padding: 5px 4px; border-radius: 9px; border: 1px solid rgba(52,211,153,.45); background: rgba(52,211,153,.13); color: #6ee7b7; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.card-deck-toggle.indk { border-color: rgba(248,113,113,.45); background: rgba(248,113,113,.13); color: #fca5a5; }
+.card-delete { flex: 0 0 30px; display: flex; align-items: center; justify-content: center; border-radius: 9px; border: 1px solid var(--border-color); background: transparent; color: var(--text-muted); cursor: pointer; transition: color .15s, border-color .15s; }
+.card-delete svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+.card-delete:hover { color: #f87171; border-color: rgba(248,113,113,.4); }
+.arena-empty { padding: 26px 14px; text-align: center; border: 1px dashed var(--border-color); border-radius: 16px; color: var(--text-muted); font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 9px; }
+.arena-empty svg { width: 34px; height: 34px; stroke: var(--text-muted); fill: none; stroke-width: 1.6; opacity: .75; }
+.arena-empty b { color: var(--text-color); font-size: 12px; }
+
+/* ---------- Forja (criar carta) ---------- */
+.arena-create-wrap { display: grid; gap: 14px; }
+@media (min-width: 620px) { .arena-create-wrap { grid-template-columns: 1.05fr .95fr; align-items: start; } }
+.arena-create-form { display: flex; flex-direction: column; gap: 12px; }
+.arena-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.arena-field-label { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+.arena-field-label small { font-size: 8px; font-weight: 600; letter-spacing: .02em; text-transform: none; opacity: .75; }
+.arena-field-counter { font-style: normal; font-variant-numeric: tabular-nums; color: #c4b5fd; font-size: 9px; letter-spacing: 0; text-transform: none; }
+.arena-field input, .arena-field select { font: inherit; font-size: 13px; padding: 10px 12px; border-radius: 11px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-color); outline: none; transition: border-color .15s, box-shadow .15s; }
+.arena-field input:focus-visible, .arena-field select:focus-visible { border-color: #a78bfa; box-shadow: 0 0 0 3px rgba(167,139,250,.25); }
+.arena-art-drop { display: flex; align-items: center; gap: 11px; width: 100%; padding: 10px 12px; border-radius: 13px; border: 1.5px dashed rgba(196,181,253,.4); background: rgba(124,58,237,.08); color: var(--text-color); font: inherit; text-align: left; cursor: pointer; transition: border-color .15s, background .15s; }
+.arena-art-drop:hover { border-color: rgba(196,181,253,.75); background: rgba(124,58,237,.14); }
+.arena-art-drop svg { flex: 0 0 30px; width: 30px; height: 30px; stroke: #c4b5fd; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.arena-art-drop-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.arena-art-drop-text b { font-size: 11.5px; font-weight: 800; }
+.arena-art-drop-text small { font-size: 8.5px; color: var(--text-muted); line-height: 1.4; }
+.arena-art-urlrow { display: flex; gap: 6px; }
+.arena-art-urlrow input { flex: 1; min-width: 0; }
+.arena-iconbtn { flex: 0 0 40px; display: flex; align-items: center; justify-content: center; border-radius: 11px; border: 1px solid var(--border-color); background: var(--chip-bg); color: var(--text-muted); cursor: pointer; }
+.arena-iconbtn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+.arena-iconbtn:hover { color: #fca5a5; border-color: rgba(248,113,113,.4); }
+.arena-field-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.arena-pips { display: flex; gap: 5px; }
+.arena-pip { position: relative; flex: 1; height: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; border-radius: 11px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-muted); cursor: pointer; transition: border-color .15s, background .15s, color .15s, transform .15s; }
+.arena-pip svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 2; opacity: .8; }
+.arena-pip b { font-size: 12.5px; font-weight: 900; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.arena-pip:hover { transform: translateY(-1px); border-color: rgba(196,181,253,.4); }
+.arena-pip.is-active[data-pip="cost"] { background: linear-gradient(160deg, rgba(125,211,252,.28), rgba(3,105,161,.35)); border-color: #38bdf8; color: #bae6fd; box-shadow: 0 0 0 3px rgba(56,189,248,.18), 0 6px 14px -8px rgba(56,189,248,.6); }
+.arena-pip.is-active[data-pip="power"] { background: linear-gradient(160deg, rgba(252,165,165,.28), rgba(185,28,28,.35)); border-color: #f87171; color: #fecaca; box-shadow: 0 0 0 3px rgba(248,113,113,.18), 0 6px 14px -8px rgba(248,113,113,.6); }
+.arena-effect-hint { display: flex; align-items: flex-start; gap: 8px; padding: 9px 11px; border-radius: 12px; background: rgba(99,102,241,.1); border: 1px solid rgba(165,180,252,.25); font-size: 10px; line-height: 1.45; color: #c7d2fe; }
+.arena-effect-hint svg { flex: 0 0 14px; width: 14px; height: 14px; margin-top: 1px; stroke: #a5b4fc; fill: none; stroke-width: 2; }
+.arena-forge-btn { padding: 13px; font-size: 13px; }
+.arena-create-preview { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 8px; border-radius: 18px; border: 1px dashed var(--border-color); background: var(--card-bg); }
+.arena-preview-label { font-size: 9px; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; color: var(--text-muted); }
+.arena-preview-note { margin: 0; font-size: 9px; color: var(--text-muted); text-align: center; max-width: 190px; line-height: 1.5; }
+
+/* ---------- Duelo (lobby) ---------- */
+.arena-deck-check { display: flex; align-items: center; gap: 9px; padding: 10px 13px; margin-bottom: 9px; border-radius: 13px; font-size: 11px; line-height: 1.45; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); }
+.arena-deck-check svg { flex: 0 0 18px; width: 18px; height: 18px; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.arena-deck-check.ok { border-color: rgba(52,211,153,.4); background: rgba(16,185,129,.1); }
+.arena-deck-check.ok svg { stroke: #34d399; }
+.arena-deck-check.bad { border-color: rgba(248,113,113,.35); background: rgba(239,68,68,.08); }
+.arena-deck-check.bad svg { stroke: #f87171; }
+.arena-deck-check b { font-weight: 800; }
+
+.arena-settle { display: flex; align-items: center; gap: 10px; padding: 11px 13px; margin-bottom: 9px; border-radius: 13px; border: 1px solid rgba(253,224,71,.45); background: linear-gradient(135deg, rgba(253,224,71,.16), rgba(245,158,11,.1)); font-size: 11px; color: var(--text-color); }
+.arena-settle svg { flex: 0 0 22px; width: 22px; height: 22px; stroke: #fde047; fill: none; stroke-width: 1.8; }
+.arena-settle span { flex: 1; line-height: 1.45; }
+.arena-claim-btn { padding: 8px 13px; font-size: 11px; }
+
+.arena-challenge-btn { justify-content: space-between; text-align: left; padding: 14px 16px; border-radius: 16px; }
+.arena-challenge-btn-text { display: flex; flex-direction: column; gap: 2px; }
+.arena-challenge-btn-text b { font-size: 14px; }
+.arena-challenge-btn-text small { font-size: 8.5px; font-weight: 600; opacity: .75; }
+.arena-challenge-btn svg { width: 24px; height: 24px; }
+
+.arena-challenge-list, .arena-history-list { display: flex; flex-direction: column; gap: 7px; }
+.arena-challenge { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 14px; border: 1px solid var(--border-color); background: var(--card-bg); }
+.arena-challenge-avatar { flex: 0 0 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: linear-gradient(160deg, #4c1d95, #1e1b4b); border: 1px solid rgba(196,181,253,.35); }
+.arena-challenge-avatar svg { width: 20px; height: 20px; stroke: #e9d5ff; fill: none; stroke-width: 1.8; }
+.arena-challenge-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.arena-challenge-info strong { font-size: 11.5px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.arena-pot { display: flex; align-items: center; gap: 4px; font-size: 8.5px; font-weight: 800; letter-spacing: .02em; color: #fde047; }
+.arena-pot svg { width: 11px; height: 11px; stroke: #fde047; fill: none; stroke-width: 2; }
+.arena-accept-btn { width: auto; padding: 9px 14px; font-size: 11px; }
+.arena-history-row { display: flex; align-items: center; gap: 10px; padding: 8px 11px; border-radius: 13px; border: 1px solid transparent; background: transparent; }
+.arena-history-row + .arena-history-row { border-top-color: var(--border-color); }
+.arena-result { flex: 0 0 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.arena-result svg { width: 17px; height: 17px; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.arena-result.win { background: rgba(52,211,153,.14); border: 1px solid rgba(52,211,153,.4); }
+.arena-result.win svg { stroke: #34d399; }
+.arena-result.lose { background: rgba(248,113,113,.12); border: 1px solid rgba(248,113,113,.32); }
+.arena-result.lose svg { stroke: #f87171; }
+.arena-history-text { flex: 1; min-width: 0; font-size: 10.5px; color: var(--text-muted); line-height: 1.4; }
+.arena-history-text strong { color: var(--text-color); }
+.arena-history-pot { font-size: 9.5px; font-weight: 800; color: #fde047; white-space: nowrap; }
+.arena-list-empty { padding: 14px 10px; text-align: center; font-size: 10.5px; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: 13px; }
+
+/* ---------- Mesa de batalha ---------- */
+#arena-match { display: flex; flex-direction: column; gap: 7px; position: relative; }
+.am-panel { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 16px; border: 1px solid var(--border-color); background: var(--card-bg); box-shadow: var(--shadow-soft); }
+.am-panel-opponent { border-left: 3px solid #f87171; }
+.am-panel-me { border-left: 3px solid #34d399; }
+.am-avatar { width: 46px; height: 46px; border-radius: 13px; object-fit: cover; background: var(--chip-bg); border: 1px solid var(--border-color); }
+.am-panel-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.am-name-row { display: flex; align-items: center; gap: 8px; }
+.am-name-row strong { font-size: 12.5px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.am-turn-tag { font-size: 7px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; border-radius: 6px; padding: 2px 7px; background: rgba(253,224,71,.18); border: 1px solid rgba(253,224,71,.4); color: #fde047; }
+.am-turn-tag.is-mine { background: rgba(52,211,153,.15); border-color: rgba(52,211,153,.4); color: #6ee7b7; }
+.am-hp-track { height: 11px; border-radius: 999px; overflow: hidden; background: rgba(2,6,23,.55); border: 1px solid var(--border-color); }
+.am-hp-fill { height: 100%; transition: width .4s cubic-bezier(.32,.9,.35,1); background: linear-gradient(90deg, #f87171, #dc2626); box-shadow: 0 0 10px rgba(248,113,113,.5); }
+.am-hp-fill.mine { background: linear-gradient(90deg, #4ade80, #15803d); box-shadow: 0 0 10px rgba(74,222,128,.5); }
+.am-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.am-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 9px; font-weight: 800; color: var(--text-muted); background: var(--chip-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 2px 6px 2px 4px; font-variant-numeric: tabular-nums; }
+.am-chip svg { width: 11px; height: 11px; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; stroke: var(--text-muted); }
+.am-chip-phys svg { stroke: #cbd5e1; }
+.am-chip-mag svg { stroke: #d8b4fe; }
+.am-hp-num { flex: 0 0 auto; font-size: 30px; font-weight: 900; letter-spacing: -.03em; font-variant-numeric: tabular-nums; color: var(--text-color); text-shadow: 0 2px 8px rgba(0,0,0,.35); min-width: 48px; text-align: center; }
+.am-board { display: flex; gap: 6px; min-height: 44px; align-items: center; flex-wrap: wrap; padding: 0 2px; }
+.am-token { position: relative; width: 48px; height: 62px; border-radius: 10px; overflow: hidden; border: 1px solid rgba(253,224,71,.35); background: radial-gradient(circle at 50% 35%, rgba(253,224,71,.12), rgba(2,6,23,.6)); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.am-token img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .85; }
+.am-token-emoji { font-size: 21px; }
+.am-token svg { width: 20px; height: 20px; stroke: #fde047; fill: none; stroke-width: 1.8; }
+.am-token-turns { position: absolute; bottom: 0; left: 0; right: 0; font-size: 7px; font-weight: 900; text-align: center; padding: 1px; background: rgba(2,6,23,.75); color: #fde68a; letter-spacing: .04em; }
+.am-structures { display: flex; gap: 5px; flex-wrap: wrap; padding: 0 2px; }
+.am-struct { display: inline-flex; align-items: center; gap: 5px; font-size: 8.5px; font-weight: 700; border-radius: 8px; padding: 3px 8px 3px 6px; background: rgba(52,211,153,.1); border: 1px solid rgba(52,211,153,.3); color: #a7f3d0; }
+.am-struct svg { width: 11px; height: 11px; stroke: #34d399; fill: none; stroke-width: 2; }
+
+.am-table { position: relative; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 62px; border-radius: 15px; border: 2px dashed rgba(196,181,253,.35); background: radial-gradient(120% 150% at 50% 0%, rgba(139,92,246,.1), transparent); transition: border-color .15s, transform .15s, box-shadow .15s; cursor: pointer; }
+.am-table.drop-target { border-color: #fbbf24; transform: scale(1.02); box-shadow: 0 0 26px -6px rgba(251,191,36,.4); }
+.am-table-watermark { width: 30px; height: 30px; stroke: rgba(196,181,253,.35); fill: none; stroke-width: 1.6; }
+.am-table-hint { font-size: 10px; font-weight: 700; color: var(--text-muted); letter-spacing: .02em; }
+
+.am-log { min-height: 30px; display: flex; flex-direction: column; gap: 1px; padding: 0 3px; }
+.am-log div { font-size: 8.5px; line-height: 1.5; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.am-log div:last-child { color: var(--text-color); font-weight: 600; }
+
+.am-hand { display: flex; gap: 7px; overflow-x: auto; padding: 5px 2px 9px; scroll-snap-type: x proximity; align-items: flex-end; scrollbar-width: thin; }
+.am-hand .card-face { flex: 0 0 104px; scroll-snap-align: start; cursor: pointer; transition: transform .15s, box-shadow .15s; touch-action: none; }
+.am-hand .card-face:hover { transform: translateY(-7px); }
+.am-hand .card-face.disabled { opacity: .42; filter: grayscale(.6); cursor: not-allowed; }
+.am-hand .card-face.disabled:hover { transform: none; }
+.card-face.selected { outline: 3px solid #fbbf24; outline-offset: 2px; box-shadow: 0 0 24px -4px rgba(251,191,36,.55) !important; }
 .am-actions { display: flex; gap: 8px; }
-.am-actions .secondary-btn { flex: 1; }
-.am-actions .danger-btn { flex: .7; }
-.arena-ghost { position: fixed; z-index: 999; font-size: 38px; pointer-events: none; filter: drop-shadow(0 8px 12px rgba(0,0,0,.6)); transform: translate(-50%, -50%); }
-.am-finish { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; border-radius: 18px; background: rgba(2,6,23,.88); backdrop-filter: blur(6px); padding: 20px; }
-.am-finish-emoji { font-size: 64px; }
-.am-finish h3 { margin: 0; font-size: 22px; }
-.am-hand .card-face { touch-action: none; }
-.card-face.selected { outline: 3px solid #fbbf24; outline-offset: 2px; }
-.arena-accept-btn { width: auto; padding: 9px 16px; }
-.arena-claim-btn { width: auto; padding: 9px 16px; white-space: nowrap; }
+.am-action-btn { flex: 1; padding: 11px; }
+.am-action-btn:last-child { flex: .72; }
+.arena-ghost { position: fixed; z-index: 999; width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; pointer-events: none; background: rgba(76,29,149,.85); border: 2px solid rgba(196,181,253,.6); box-shadow: 0 10px 24px -6px rgba(0,0,0,.6); transform: translate(-50%, -50%); }
+.arena-ghost svg { width: 24px; height: 24px; stroke: #e9d5ff; fill: none; stroke-width: 2; }
+
+/* ---------- Fim de jogo ---------- */
+.am-finish { position: absolute; inset: -7px; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 16px; border-radius: 18px; background: rgba(2,6,23,.78); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); animation: amFinishIn .38s var(--spring); }
+@keyframes amFinishIn { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: scale(1); } }
+.am-finish-panel { width: 100%; max-width: 330px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 20px 18px 16px; border-radius: 20px; border: 1px solid var(--border-color); background: var(--card-solid); box-shadow: 0 30px 60px -20px rgba(0,0,0,.7); }
+.am-finish-ring { width: 82px; height: 82px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.am-finish-ring svg { width: 40px; height: 40px; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.am-finish--win .am-finish-ring { background: radial-gradient(circle at 35% 30%, #fef3c7, #f59e0b 60%, #78350f); box-shadow: 0 0 44px -6px rgba(251,191,36,.6), inset 0 -4px 10px rgba(120,53,15,.6); }
+.am-finish--win .am-finish-ring svg { stroke: #451a03; }
+.am-finish--lose .am-finish-ring { background: linear-gradient(160deg, #334155, #0f172a); border: 1px solid #475569; }
+.am-finish--lose .am-finish-ring svg { stroke: #94a3b8; }
+.am-finish--cancel .am-finish-ring { background: var(--chip-bg); border: 1px solid var(--border-color); }
+.am-finish--cancel .am-finish-ring svg { stroke: var(--text-muted); }
+.am-finish-title { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -.01em; }
+.am-finish-sub { margin: 0; font-size: 11px; line-height: 1.5; color: var(--text-muted); }
+.am-finish-pot { width: 100%; display: flex; flex-direction: column; border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
+.am-finish-pot-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 12px; font-size: 10.5px; background: var(--input-bg); }
+.am-finish-pot-row + .am-finish-pot-row { border-top: 1px solid var(--border-color); }
+.am-finish-pot-row span { color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px; }
+.am-finish-pot-row b { font-variant-numeric: tabular-nums; }
+.am-finish-pot-row.is-total { background: rgba(253,224,71,.09); }
+.am-finish-pot-row.is-total span, .am-finish-pot-row.is-total b { color: #fde047; font-weight: 800; }
+.am-finish-pot:empty { display: none; }
+
+/* ---------- Bet modal (cosméticos) ---------- */
+.arena-bet-cosm-title { font-size: 9.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); margin: 2px 0 5px; }
+.arena-bet-cosmetics { max-height: 172px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; padding-right: 2px; }
+.arena-bet-cosm { display: flex; align-items: center; gap: 8px; font-size: 10.5px; padding: 7px 9px; border-radius: 10px; border: 1px solid var(--border-color); cursor: pointer; transition: border-color .15s, background .15s; }
+.arena-bet-cosm:hover { border-color: rgba(253,224,71,.4); }
+.arena-bet-cosm input { accent-color: #f59e0b; margin: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+    .am-finish { animation: none; }
+    .arena-meter-fill, .am-hp-fill { transition: none; }
+    .am-hand .card-face { transition: none; }
+}
+.app-icon-svg { width: 30px; height: 30px; stroke: #fff; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 2px 3px rgba(0,0,0,.45)); }
+
+/* Ajuste fino: linhas/abas dinâmicas da Arena */
+.arena-deck-remove { flex: 0 0 auto; width: 24px; height: 24px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: rgba(239,68,68,.12); border: 1px solid rgba(248,113,113,.32); color: #fda4a4; }
+.arena-deck-remove svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; }
+.arena-deck-empty svg { width: 26px; height: 26px; stroke: var(--text-muted); fill: none; stroke-width: 1.6; opacity: .8; margin-bottom: 4px; }
+.arena-deck-empty b { display: block; color: var(--text-color); font-size: 11.5px; margin-bottom: 2px; }
+.arena-deck-empty span { display: block; margin-bottom: 8px; }
+.arena-deck-empty .arena-btn { margin-top: 2px; }
+.arena-empty span { font-size: 10.5px; line-height: 1.4; }
+
+/* Ícones inline na Forja/Duelo */
+.am-finish-pot-row svg { width: 12px; height: 12px; stroke: #fde047; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.arena-check-ico { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
+.arena-challenge-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.arena-history-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; font-size: 10.5px; color: var(--text-muted); }
+.arena-history-info strong { color: var(--text-color); font-size: 11px; }
+.arena-history-info small { font-size: 8.5px; }
+
+/* Token de criatura: layout completo (ícone + nome + poder) */
+.am-token { width: 58px; height: 70px; gap: 1px; padding: 4px 3px; }
+.am-token small { font-size: 6.4px; font-weight: 800; color: #fef3c7; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.am-token b { font-size: 6px; font-weight: 800; color: #fde68a; letter-spacing: .02em; }

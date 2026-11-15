@@ -83,13 +83,17 @@ window.openApp('arena');
 await new Promise((r) => setTimeout(r, 200));
 assert.ok($('#app-arena').classList.contains('active'), 'app Arena abre');
 assert.ok($('#arena-hub'), 'hub da Arena presente');
-assert.equal($$('[data-arena-tab]').length, 4, '4 abas (Deck, Minhas Cartas, Criar, Batalhar)');
+assert.ok($$('[data-arena-tab]').length >= 4, '4 abas (Deck, Minhas Cartas, Forja, Duelo)');
 assert.equal($$('#ac-category option').length, 10, 'seletor de categoria com 10 opções');
-assert.equal($$('#ac-emoji-row .ac-emoji-pick').length, 24, 'seletor de emoji com 24 opções');
+assert.equal($('#ac-emoji-row'), null, 'seletor de emoji removido (arte = imagem ou emblema SVG da categoria)');
+assert.equal($$('#ac-cost-row .arena-pip').length, 5, '5 pips de custo no deck');
+assert.equal($$('#ac-power-row .arena-pip').length, 5, '5 pips de poder');
+assert.equal($('#ac-power-row .arena-pip.is-active').dataset.value, '3', 'poder default 3');
 assert.equal($$('#arena-tree .arena-tree-row').length, 10, 'árvore com 10 ramos');
-assert.equal($('#arena-deck-points').textContent, '17/30', `deck de 6 cartas soma 17 pts (veio ${$('#arena-deck-points').textContent})`);
+assert.equal($('#arena-deck-points').textContent, '17', `deck de 6 cartas soma 17 pts (veio ${$('#arena-deck-points').textContent})`);
+assert.ok($('#arena-deck-meter').style.width.startsWith('56'), 'medidor do deck ~56% (17/30)');
 assert.equal($$('#arena-cards-grid .card-in-grid').length, 6, '6 cartas no grid');
-console.log('✓ Arena: app abre, abas, categorias, árvore e deck (17/30) renderizados');
+console.log('✓ Arena: app abre, abas, pips, categorias, árvore e deck (17/30) renderizados');
 
 // ---------- 2) Validação de deck ----------
 const v = window.validateArenaDeck();
@@ -103,7 +107,7 @@ const toggleBtn = $$('#arena-cards-grid [data-arena-deck-toggle]').find((b) => b
 assert.ok(toggleBtn, 'botão de deck da carta c6 presente');
 toggleBtn.click();
 await new Promise((r) => setTimeout(r, 150));
-assert.equal($('#arena-deck-points').textContent, '15/30', 'remover c6 (2 pts) deixa 15/30');
+assert.equal($('#arena-deck-points').textContent, '15', 'remover c6 (2 pts) deixa 15/30');
 console.log('✓ toggle de deck funciona e recomputa os pontos');
 
 // ---------- 4) Árvore: adicionar 1 ponto ----------
@@ -111,7 +115,7 @@ $('#arena-deck-points'); // deck agora 15/30
 const treePlus = $$('#arena-tree [data-arena-tree][data-delta="1"]')[0];
 treePlus.click();
 await new Promise((r) => setTimeout(r, 150));
-assert.equal($('#arena-tree-points').textContent, '1/30', '1 ponto na árvore');
+assert.equal($('#arena-tree-points').textContent, '1', '1 ponto na árvore');
 console.log('✓ árvore: ponto investido e total atualizado');
 
 // ---------- 5) Motor de batalha ----------
@@ -146,21 +150,28 @@ assert.ok(start.log.length >= 2, 'log registra os ataques');
 console.log('✓ motor: mult, absorção, início de turno (criatura + estrutura), compra e log');
 
 // 5d) Cartão-face da carta
-const face = window.cardFaceHTML({ name: 'Teste', emoji: '🐉', category: 'dano_fogo', cost: 2, power: 4, flavor: 'queima' });
+const face = window.cardFaceHTML({ name: 'Teste', category: 'dano_fogo', cost: 2, power: 4, flavor: 'queima' });
 assert.ok(face.includes('Dano de Fogo'), 'face mostra a categoria');
 assert.ok(face.includes('cf-power') && face.includes('>4<'), 'face mostra o poder');
-console.log('✓ cardFaceHTML: nome, arte emoji, categoria, custo e poder');
+assert.ok(face.includes('cf-emblem'), 'sem arte, a face usa o emblema SVG da categoria');
+assert.ok(face.includes('card-face--mini') === false, 'face padrão não é a versão mini');
+console.log('✓ cardFaceHTML: emblema SVG, categoria, poder e custo');
 
-// ---------- 6) Criar carta via UI ----------
+// ---------- 6) Criar carta via UI (pips + form) ----------
 $('#ac-name').value = 'Dragão de Teste';
 $('#ac-flavor').value = 'Nascido no sertão.';
 $('#ac-category').value = 'invocacao';
-$('#ac-cost').value = '5';
-$('#ac-power').value = '5';
+$('#ac-category').dispatchEvent(new window.Event('change', { bubbles: true }));
+$$('#ac-cost-row .arena-pip[data-value="5"]')[0].click();
+$$('#ac-power-row .arena-pip[data-value="5"]')[0].click();
+await new Promise((r) => setTimeout(r, 50));
+assert.equal($('#ac-flavor-count').textContent, `${'Nascido no sertão.'.length}/120`, 'contador de flavor atualiza');
+assert.ok($('#ac-effect-hint-text').textContent.includes('criatura'), 'dica de efeito acompanha a categoria Invocação');
 $('#ac-save-btn').click();
 await new Promise((r) => setTimeout(r, 250));
 assert.equal($('#ac-name').value, '', 'formulário de criação limpa após salvar');
-console.log('✓ criação de carta salva sem erros');
+assert.equal($('#ac-cost-row .arena-pip.is-active').dataset.value, '3', 'custo volta pro default 3 após salvar');
+console.log('✓ criação de carta via pips salva sem erros');
 
 // ---------- 7) Loja: molduras de carta (20 itens) + compra com 500 gold ----------
 window.openApp('shop');

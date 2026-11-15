@@ -437,15 +437,18 @@ const APPS = [
     { id: 'construction', label: 'Obras', icon: '🏗️', tile: 'tile-construction' },
     { id: 'work', label: 'Trabalho', icon: '💼', tile: 'tile-work' },
     { id: 'market', label: 'Mercado', icon: '🛒', tile: 'tile-market' },
-    { id: 'arena', label: 'Arena', icon: '⚔️', tile: 'tile-arena' },
+    { id: 'arena', label: 'Arena', icon: '', iconSvg: 'arena-swords', tile: 'tile-arena' },
     { id: 'settings', label: 'Ajustes', icon: '⚙️', tile: 'tile-settings' },
 ];
 const DOCK_IDS = ['feed', 'chat', 'notifications', 'profile'];
 
 function appIconHTML(appDef) {
     const badge = appDef.badge ? `<span class="app-badge" data-badge="${appDef.badge}"></span>` : '';
+    const glyph = appDef.iconSvg
+        ? `<svg class="app-icon-svg" viewBox="0 0 24 24" aria-hidden="true"><use href="#${appDef.iconSvg}"></use></svg>`
+        : appDef.icon;
     return `<button class="app-icon" data-open-app="${appDef.id}" aria-label="Abrir ${escapeHtml(appDef.label)}">
-        <span class="app-icon-tile ${appDef.tile}">${badge}${appDef.icon}</span>
+        <span class="app-icon-tile ${appDef.tile}">${badge}${glyph}</span>
         <span class="app-icon-label">${escapeHtml(appDef.label)}</span>
     </button>`;
 }
@@ -3531,20 +3534,26 @@ let arenaOpenMatchId = null;
 let arenaOpenMatchCache = null;
 let arenaBetMode = null;                 // { type: 'create' } | { type: 'accept', matchId }
 let arenaBetSelected = new Set();        // ids de cosméticos na aposta
-let arenaDraft = { artUrl: '', emoji: '🐲' };
+let arenaDraft = { artUrl: '', cost: 3, power: 3 };
+let arenaSaveBusy = false;
 let arenaHandDrag = null;
 let arenaSelectedHand = null;
 let arenaPollTimer = null;
 
-const ARENA_EMOJI_POOL = ['🐲','🔥','💧','🌪️','🪨','⚡','🌙','☀️','🐺','🦁','🐍','🦅','🐢','🦂','🗡️','🛡️','🔮','💚','🏗️','🗿','🌊','🌋','💫','🍃'];
 const ARENA_DECK_MIN = 5;               // mínimo de cartas pra formar deck
 const ARENA_DECK_MAX_POINTS = 30;       // 30 pontos por deck
 const ARENA_TREE_MAX = 30;              // 30 pontos pra espalhar na árvore
 const ARENA_HP = 60;
 const ARENA_SHIELD_MAX = 40;
-const ARENA_HAND_MAX = 7;
 const ARENA_TOKEN_TURNS = 3;
 const ARENA_CARD_LIMIT = 30;            // teto de cartas criadas por jogador
+const ARENA_ART_MAX = 500;              // teto de URL de arte
+
+/* Glifo vetorial (SVG) por categoria — sem emojis na Arena */
+const ARENA_CATEGORY_GLYPHS = { dano: 'arena-sword', dano_fogo: 'arena-flame', dano_agua: 'arena-droplet', dano_ar: 'arena-wind', dano_terra: 'arena-mountain', cura: 'arena-heart', defesa: 'arena-shield', defesa_magica: 'arena-shield-mag', invocacao: 'arena-moon', estrutura: 'arena-tower' };
+const arenaCatGlyphId = (catId) => ARENA_CATEGORY_GLYPHS[catId] || 'arena-swords';
+const arenaCatIconSVG = (catId, size = 16) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true"><use href="#${arenaCatGlyphId(catId)}"></use></svg>`;
+const arenaHexIconSVG = (size = 12) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true"><use href="#arena-hex"></use></svg>`;
 
 const arenaDeckIds = () => (economyState?.arenaDeck || []).filter((id) => typeof id === 'string');
 const arenaTreePts = () => Object.values(economyState?.arenaTree || {}).reduce((a, b) => a + (Number(b) || 0), 0);
@@ -3558,26 +3567,39 @@ function myCardFrame() {
     if (!(economyState?.cosmetics || []).includes(id)) return null; // apostado/perdido — não possui mais
     return ECO.CARD_COSMETIC_BY_ID?.[id] || null;
 }
-function cardFaceHTML(card, { mini = false, extraClass = '', attrs = '' } = {}) {
+function cardFaceHTML(card, { mini = false, extraClass = '', attrs = '', frameOverride = null } = {}) {
     const cat = ECO?.CARD_CATEGORY_BY_ID?.[card.category];
-    const frame = myCardFrame();
+    const frame = frameOverride || myCardFrame();
     const style = frame ? `--f1:${escapeHtml(frame.c1)};--f2:${escapeHtml(frame.c2)}` : '';
+    const tintClass = card.category ? `tint-${card.category}` : '';
     const art = sanitizeUrl(card.artUrl || '');
-    const emoji = escapeHtml(card.emoji || '🃏');
+    // Arte: imagem enviada > emblema SVG da categoria (emojis só em cartas antigas)
     const artHtml = art
-        ? `<span class="cf-art-emoji">${emoji}</span><img src="${escapeHtml(art)}" alt="" loading="lazy" onerror="this.remove()">`
-        : `<span class="cf-art-emoji">${emoji}</span>`;
+        ? `<img src="${escapeHtml(art)}" alt="" loading="lazy" onerror="this.remove()">`
+        : (card.emoji
+            ? `<span class="cf-legacy-emoji">${escapeHtml(card.emoji)}</span>`
+            : `<svg class="cf-emblem" viewBox="0 0 24 24" aria-hidden="true"><use href="#${arenaCatGlyphId(card.category)}"></use></svg>`);
     const flavor = card.flavor ? escapeHtml(card.flavor) : '&nbsp;';
-    return `<div class="card-face${mini ? ' mini' : ''} ${extraClass}" style="${style}" ${attrs}>
+    return `<div class="card-face${mini ? ' card-face--mini' : ''} ${tintClass} ${extraClass}" style="${style}" ${attrs}>
         <div class="cf-name">${escapeHtml(card.name || 'Sem nome')}</div>
-        <div class="cf-art">${artHtml}</div>
+        <div class="cf-art ${tintClass}">${artHtml}</div>
         <div class="cf-flavor">${flavor}</div>
         <div class="cf-bottom">
             <span class="cf-gem cf-cost" title="Custo no deck">${Number(card.cost) || 1}</span>
-            <span class="cf-cat">${cat?.emoji || ''} ${escapeHtml(cat?.word || card.category || '')}</span>
+            <span class="cf-cat">${arenaCatIconSVG(card.category, 12)}${escapeHtml(cat?.word || card.category || '')}</span>
             <span class="cf-gem cf-power" title="Poder do efeito">${Number(card.power) || 1}</span>
         </div>
     </div>`;
+}
+function arenaCardThumbHTML(c) {
+    const tintClass = c.category ? `tint-${c.category}` : '';
+    const art = sanitizeUrl(c.artUrl || '');
+    const inner = art
+        ? `<img src="${escapeHtml(art)}" alt="" loading="lazy" onerror="this.remove()">`
+        : (c.emoji
+            ? `<span class="arena-legacy-emoji">${escapeHtml(c.emoji)}</span>`
+            : `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#${arenaCatGlyphId(c.category)}"></use></svg>`);
+    return `<span class="arena-deck-thumb ${tintClass}">${inner}</span>`;
 }
 
 /* ---------- Deck: estatísticas e validação ---------- */
@@ -3603,7 +3625,13 @@ function arenaTreeBonusFor(catId, counts = arenaDeckStats().counts, tree = econo
 }
 function validateArenaDeck() {
     const stats = arenaDeckStats();
-    if (stats.size < ARENA_DECK_MIN) return { ok: false, reason: `monte um deck com pelo menos ${ARENA_DECK_MIN} cartas (hoje: ${stats.size})`, ...stats };
+    if (stats.size < ARENA_DECK_MIN) {
+        const missing = arenaDeckIds().length - stats.size;
+        const reason = missing > 0
+            ? `${missing} carta(s) do seu deck não carregaram — confira se as regras do Firestore foram publicadas`
+            : `monte um deck com pelo menos ${ARENA_DECK_MIN} cartas (hoje: ${stats.size})`;
+        return { ok: false, reason, ...stats };
+    }
     if (stats.points > ARENA_DECK_MAX_POINTS) return { ok: false, reason: `deck com ${stats.points} pts — o limite é ${ARENA_DECK_MAX_POINTS}`, ...stats };
     return { ok: true, ...stats };
 }
@@ -3631,50 +3659,79 @@ function renderArenaCardsGrid() {
     const grid = $('#arena-cards-grid');
     const countEl = $('#arena-cards-count');
     if (!grid) return;
-    if (countEl) countEl.textContent = `${arenaCards.length}/${ARENA_CARD_LIMIT} cartas criadas`;
+    if (countEl) countEl.textContent = `${arenaCards.length}/${ARENA_CARD_LIMIT}`;
     const deckSet = new Set(arenaDeckIds());
     grid.innerHTML = arenaCards.length
         ? arenaCards.map((c) => `<div class="card-in-grid">
             ${cardFaceHTML(c, { mini: true })}
-            <button class="card-deck-toggle${deckSet.has(c.id) ? ' indk' : ''}" data-arena-deck-toggle="${escapeHtml(c.id)}">${deckSet.has(c.id) ? '− deck' : '+ deck'}</button>
-            <button class="card-delete" data-arena-card-delete="${escapeHtml(c.id)}">🗑️ apagar</button>
+            <div class="card-in-grid-actions">
+                <button class="card-deck-toggle${deckSet.has(c.id) ? ' indk' : ''}" data-arena-deck-toggle="${escapeHtml(c.id)}">${deckSet.has(c.id) ? '✓ No deck' : '+ Deck'}</button>
+                <button class="card-delete" data-arena-card-delete="${escapeHtml(c.id)}" aria-label="Apagar carta" title="Apagar carta"><svg viewBox="0 0 24 24"><use href="#arena-trash"></use></svg></button>
+            </div>
         </div>`).join('')
-        : '<p class="inv-empty">Você ainda não criou nenhuma carta. Vai na aba ✨ Criar Carta!</p>';
+        : `<div class="arena-empty">
+            <svg viewBox="0 0 24 24"><use href="#arena-cards"></use></svg>
+            <b>Nenhuma carta ainda</b>
+            <span>Forje sua primeira carta na aba Forja.</span>
+            <button class="arena-btn arena-btn-primary arena-btn-sm" data-arena-tab="create" type="button"><svg viewBox="0 0 24 24"><use href="#arena-sparkles"></use></svg>Forjar carta</button>
+        </div>`;
 }
+const arenaNormalizeName = (value = '') => String(value).trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
+const arenaCollapseSpaces = (value = '') => String(value).replace(/\s+/g, ' ').trim();
 async function saveArenaCard() {
-    if (!currentUser) return;
-    if (arenaCards.length >= ARENA_CARD_LIMIT) { showToast(`Teto de ${ARENA_CARD_LIMIT} cartas — apague uma pra criar outra 🗑️`, 'warn'); return; }
-    const name = ($('#ac-name')?.value || '').trim();
-    const flavor = ($('#ac-flavor')?.value || '').trim();
-    const artUrl = sanitizeUrl(($('#ac-art-url')?.value || '').trim());
+    if (!currentUser || arenaSaveBusy) return;
+    if (arenaCards.length >= ARENA_CARD_LIMIT) { showToast(`Teto de ${ARENA_CARD_LIMIT} cartas — apague uma pra criar outra.`, 'warn'); return; }
+    const name = arenaCollapseSpaces($('#ac-name')?.value || '');
+    const flavor = arenaCollapseSpaces($('#ac-flavor')?.value || '').slice(0, 120);
+    const rawUrl = ($('#ac-art-url')?.value || '').trim();
+    const artUrl = rawUrl ? sanitizeUrl(rawUrl).slice(0, ARENA_ART_MAX) : '';
     const category = $('#ac-category')?.value || 'dano';
-    const cost = Number($('#ac-cost')?.value) || 3;
-    const power = Number($('#ac-power')?.value) || 3;
-    if (name.length < 3) { showToast('Dê um nome com pelo menos 3 letras ✏️', 'warn'); return; }
-    if (!artUrl && !arenaDraft.emoji) { showToast('Escolha um emoji ou envie uma imagem pra arte 🎨', 'warn'); return; }
-    if (!ECO?.CARD_CATEGORY_BY_ID?.[category]) { showToast('Categoria inválida', 'error'); return; }
+    const cost = Math.min(5, Math.max(1, Number(arenaDraft.cost) || 3));
+    const power = Math.min(5, Math.max(1, Number(arenaDraft.power) || 3));
+    if (name.length < 3) { showToast('Dê um nome com pelo menos 3 letras.', 'warn'); return; }
+    if (rawUrl && !artUrl) { showToast('Esse link de imagem não é válido (use http/https).', 'warn'); return; }
+    if (!ECO?.CARD_CATEGORY_BY_ID?.[category]) { showToast('Categoria inválida.', 'error'); return; }
+    const dupe = arenaCards.find((c) => arenaNormalizeName(c.name) === arenaNormalizeName(name));
+    if (dupe) { showToast(`Você já tem “${dupe.name}”. Escolha outro nome ou apague-a.`, 'warn'); return; }
+    const btn = $('#ac-save-btn');
+    const label = btn?.querySelector('.btn-label');
+    arenaSaveBusy = true;
+    if (btn) btn.disabled = true;
+    if (label) label.textContent = 'Forjando…';
     try {
         await addDoc(collection(db, 'cards'), {
             ownerId: currentUser.uid,
             ownerName: currentUserProfile.name || 'Usuário',
             ownerAvatar: currentUserProfile.avatarUrl || '',
-            name, flavor: flavor.slice(0, 120),
-            emoji: arenaDraft.emoji || '🃏',
+            name, flavor,
+            emoji: '',
             artUrl: artUrl || '',
             category, cost, power,
             createdAt: serverTimestamp()
         });
-        showToast(`🃏 “${name}” criada! Boa sorte na Arena!`, 'success', 3500);
+        showToast(`“${name}” forjada! Boa sorte na Arena.`, 'success', 3500);
         vibrate([12, 40, 12]);
-        $('#ac-name').value = '';
-        $('#ac-flavor').value = '';
-        $('#ac-art-url').value = '';
+        if ($('#ac-name')) $('#ac-name').value = '';
+        if ($('#ac-flavor')) $('#ac-flavor').value = '';
+        if ($('#ac-art-url')) $('#ac-art-url').value = '';
         arenaDraft.artUrl = '';
+        arenaDraft.cost = 3;
+        arenaDraft.power = 3;
+        arenaSyncPips();
+        const counter = $('#ac-flavor-count');
+        if (counter) counter.textContent = '0/120';
+        const clearBtn = $('#ac-art-clear');
+        if (clearBtn) clearBtn.hidden = true;
         renderArenaCreatePreview();
         await loadArenaCards();
+        setArenaTab('cards');
     } catch (err) {
         console.warn('Falha ao criar carta:', err?.message);
         showToast('Não consegui salvar a carta. Verifique se as rules da Arena foram publicadas.', 'error', 5000);
+    } finally {
+        arenaSaveBusy = false;
+        if (btn) btn.disabled = false;
+        if (label) label.textContent = 'Forjar carta';
     }
 }
 async function deleteArenaCard(id) {
@@ -3689,7 +3746,7 @@ async function deleteArenaCard(id) {
     }
     const deck = arenaDeckIds().filter((x) => x !== id);
     await saveEconomy({ arenaDeck: deck });
-    showToast('Carta apagada 🗑️', 'info');
+    showToast('Carta apagada.', 'info');
     await loadArenaCards();
 }
 
@@ -3716,17 +3773,28 @@ async function toggleArenaCardInDeck(id) {
 function renderArenaDeckPane() {
     const stats = arenaDeckStats();
     const pts = $('#arena-deck-points');
-    if (pts) pts.textContent = `${stats.points}/${ARENA_DECK_MAX_POINTS}`;
+    if (pts) pts.textContent = String(stats.points);
+    const count = $('#arena-deck-count');
+    if (count) count.textContent = `${stats.size} carta${stats.size === 1 ? '' : 's'}`;
+    const size = $('#arena-deck-size');
+    if (size) size.textContent = stats.size ? `${stats.points}/${ARENA_DECK_MAX_POINTS} pts · ${stats.size}` : 'vazio';
+    const deckMeter = $('#arena-deck-meter');
+    if (deckMeter) deckMeter.style.width = `${Math.min(100, (stats.points / ARENA_DECK_MAX_POINTS) * 100)}%`;
     const list = $('#arena-deck-list');
     if (list) {
-        const byId = arenaCardsById();
         list.innerHTML = stats.cards.length
-            ? stats.cards.map((c) => `<button class="arena-deck-row" data-arena-deck-toggle="${escapeHtml(c.id)}" title="Tocar para tirar do deck">
-                <span class="arena-deck-emoji">${escapeHtml(c.emoji || '🃏')}</span>
-                <span class="arena-deck-info"><span class="arena-deck-name">${escapeHtml(c.name)}</span><span class="arena-deck-meta">${ECO?.CARD_CATEGORY_BY_ID?.[c.category]?.emoji || ''} ${escapeHtml(ECO?.CARD_CATEGORY_BY_ID?.[c.category]?.word || c.category)}</span></span>
-                <span class="arena-deck-cost">${c.cost} pts</span>
+            ? stats.cards.map((c) => `<button class="arena-deck-row" data-arena-deck-toggle="${escapeHtml(c.id)}" title="Tocar para tirar do deck" aria-label="Remover ${escapeHtml(c.name)} do deck">
+                ${arenaCardThumbHTML(c)}
+                <span class="arena-deck-info"><span class="arena-deck-name">${escapeHtml(c.name)}</span><span class="arena-deck-meta tint-${escapeHtml(c.category)}">${arenaCatIconSVG(c.category, 12)}<span>${escapeHtml(ECO?.CARD_CATEGORY_BY_ID?.[c.category]?.word || c.category || '')}</span></span></span>
+                <span class="arena-deck-cost" title="Custo em pontos do deck">${arenaHexIconSVG()}${Number(c.cost) || 1}</span>
+                <span class="arena-deck-remove" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#arena-minus"></use></svg></span>
             </button>`).join('')
-            : '<p class="muted">Deck vazio — monte na aba 🃏 Minhas Cartas (+ deck)</p>';
+            : `<div class="arena-deck-empty">
+                <svg viewBox="0 0 24 24"><use href="#arena-layers"></use></svg>
+                <b>Deck vazio</b>
+                <span>Monte até ${ARENA_DECK_MAX_POINTS} pontos de cartas na aba Cartas.</span>
+                <button class="arena-btn arena-btn-ghost arena-btn-sm" data-arena-tab="cards" type="button"><svg viewBox="0 0 24 24"><use href="#arena-cards"></use></svg>Ver minhas cartas</button>
+            </div>`;
     }
     renderArenaTree();
 }
@@ -3736,18 +3804,24 @@ function renderArenaTree() {
     if (!wrap || !ECO) return;
     const tree = economyState?.arenaTree || {};
     const used = arenaTreePointsUsed();
-    if (totalEl) totalEl.textContent = `${used}/${ARENA_TREE_MAX}`;
+    if (totalEl) totalEl.textContent = String(used);
+    const treeMeter = $('#arena-tree-meter');
+    if (treeMeter) treeMeter.style.width = `${Math.min(100, (used / ARENA_TREE_MAX) * 100)}%`;
     const stats = arenaDeckStats();
     wrap.innerHTML = ECO.CARD_CATEGORIES.map((cat) => {
         const bonus = arenaTreeBonusFor(cat.id, stats.counts, tree);
         const pts = bonus.pts;
-        return `<div class="arena-tree-row">
-            <span class="tree-emoji">${cat.emoji}</span>
-            <span class="tree-name">${escapeHtml(cat.word)}<span class="tree-bonus">+${bonus.pct}% (árvore ${pts} · deck ${bonus.affinity} carta${bonus.affinity === 1 ? '' : 's'})</span></span>
+        const tint = `tint-${cat.id}`;
+        return `<div class="arena-tree-row ${tint}${pts > 0 ? ' has-points' : ''}">
+            <span class="tree-badge">${arenaCatIconSVG(cat.id, 19)}</span>
+            <span class="tree-info">
+                <span class="tree-name">${escapeHtml(cat.word)}</span>
+                <span class="tree-bonus"><b>+${bonus.pct}%</b> · árvore ${pts} pt${pts === 1 ? '' : 's'} + ${bonus.affinity} carta${bonus.affinity === 1 ? '' : 's'} no deck</span>
+            </span>
             <span class="tree-controls">
-                <button class="tree-btn" data-arena-tree="${cat.id}" data-delta="-1" ${pts <= 0 ? 'disabled' : ''} aria-label="Tirar 1 ponto">−</button>
+                <button class="tree-btn" data-arena-tree="${cat.id}" data-delta="-1" ${pts <= 0 ? 'disabled' : ''} aria-label="Tirar 1 ponto de ${escapeHtml(cat.word)}"><svg viewBox="0 0 24 24"><use href="#arena-minus"></use></svg></button>
                 <span class="tree-pts">${pts}</span>
-                <button class="tree-btn" data-arena-tree="${cat.id}" data-delta="1" ${used >= ARENA_TREE_MAX ? 'disabled' : ''} aria-label="Pôr 1 ponto">+</button>
+                <button class="tree-btn" data-arena-tree="${cat.id}" data-delta="1" ${used >= ARENA_TREE_MAX ? 'disabled' : ''} aria-label="Pôr 1 ponto em ${escapeHtml(cat.word)}"><svg viewBox="0 0 24 24"><use href="#arena-plus"></use></svg></button>
             </span>
         </div>`;
     }).join('');
@@ -3806,30 +3880,63 @@ async function equipCardFrame(id) {
 }
 
 /* ---------- Criação de carta: preview ao vivo ---------- */
+function arenaEffectHintText(category, power) {
+    const eff = Math.max(1, Number(power) || 1);
+    const cat = ECO?.CARD_CATEGORY_BY_ID?.[category];
+    const kind = cat?.kind;
+    const base = Math.max(1, Math.round(eff * 3) + 2);
+    const structureDmg = Math.max(1, Math.round(eff * 2) + 1);
+    const structureTick = Math.max(1, Math.round(eff));
+    switch (kind) {
+        case 'physical': return `Causa ${base} de dano físico — o escudo físico do rival absorve primeiro.`;
+        case 'magic': return `Causa ${base} de dano mágico — o escudo mágico do rival absorve primeiro.`;
+        case 'heal': return `Restaura ${base} de vida (até o máximo de ${ARENA_HP}).`;
+        case 'shield': return `Concede ${base} de escudo físico (até o teto de ${ARENA_SHIELD_MAX}).`;
+        case 'shieldmagic': return `Concede ${base} de escudo mágico (até o teto de ${ARENA_SHIELD_MAX}).`;
+        case 'summon': return `Invoca uma criatura de poder ${eff} na sua mesa, atacando por ${ARENA_TOKEN_TURNS} turnos.`;
+        case 'structure': return `Causa ${structureDmg} imediato e ${structureTick} de dano no início de cada turno.`;
+        default: return '';
+    }
+}
+function arenaSyncPips() {
+    document.querySelectorAll('.arena-pip[data-pip]').forEach((btn) => {
+        const group = btn.dataset.pip;
+        const value = Number(btn.dataset.value);
+        const current = group === 'cost' ? arenaDraft.cost : arenaDraft.power;
+        const active = value === current;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+}
+function arenaSyncCreateFormUI() {
+    arenaSyncPips();
+    const flavor = $('#ac-flavor');
+    const counter = $('#ac-flavor-count');
+    if (counter) counter.textContent = `${(flavor?.value || '').length}/120`;
+    const hint = $('#ac-effect-hint-text');
+    if (hint) hint.textContent = arenaEffectHintText($('#ac-category')?.value || 'dano', arenaDraft.power);
+    const clearBtn = $('#ac-art-clear');
+    if (clearBtn) clearBtn.hidden = !($('#ac-art-url')?.value || arenaDraft.artUrl);
+}
 function renderArenaCreatePreview() {
     const box = $('#ac-preview');
     if (!box) return;
+    arenaSyncCreateFormUI();
     const catSel = $('#ac-category');
     const draft = {
         name: ($('#ac-name')?.value || '').trim() || 'Sua carta',
-        emoji: arenaDraft.emoji,
-        artUrl: sanitizeUrl(($('#ac-art-url')?.value || '').trim()),
+        artUrl: sanitizeUrl(($('#ac-art-url')?.value || '').trim()) || arenaDraft.artUrl || '',
         category: catSel?.value || 'dano',
-        cost: Number($('#ac-cost')?.value) || 3,
-        power: Number($('#ac-power')?.value) || 3,
+        cost: arenaDraft.cost,
+        power: arenaDraft.power,
         flavor: ($('#ac-flavor')?.value || '').trim()
     };
     box.outerHTML = cardFaceHTML(draft, { attrs: 'id="ac-preview"' });
 }
-function renderArenaEmojiRow() {
-    const row = $('#ac-emoji-row');
-    if (!row) return;
-    row.innerHTML = ARENA_EMOJI_POOL.map((e) => `<button type="button" class="ac-emoji-pick${e === arenaDraft.emoji ? ' selected' : ''}" data-arena-emoji="${e}">${e}</button>`).join('');
-}
 function fillArenaCategorySelect() {
     const sel = $('#ac-category');
     if (!sel || !ECO?.CARD_CATEGORIES) return;
-    sel.innerHTML = ECO.CARD_CATEGORIES.map((c) => `<option value="${c.id}">${c.emoji} ${escapeHtml(c.word)} — ${escapeHtml(c.desc)}</option>`).join('');
+    sel.innerHTML = ECO.CARD_CATEGORIES.map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.word)} — ${escapeHtml(c.desc)}</option>`).join('');
 }
 
 
@@ -4342,7 +4449,7 @@ function setArenaTab(name) {
     document.querySelectorAll('[data-arena-tab]').forEach((b) => b.classList.toggle('active', b.dataset.arenaTab === name));
     ARENA_TABS.forEach((t) => { const pane = $(`#arena-pane-${t}`); if (pane) pane.hidden = t !== name; });
     if (name === 'battle') void refreshArenaBattlePane();
-    if (name === 'create') { fillArenaCategorySelect(); renderArenaEmojiRow(); renderArenaCreatePreview(); }
+    if (name === 'create') { fillArenaCategorySelect(); renderArenaCreatePreview(); }
 }
 
 function updateArenaDeckCheck() {
@@ -4352,19 +4459,22 @@ function updateArenaDeckCheck() {
     el.classList.toggle('ok', v.ok);
     el.classList.toggle('bad', !v.ok);
     el.innerHTML = v.ok
-        ? `🎴 <strong>Deck pronto!</strong> ${v.size} cartas · ${v.points}/${ARENA_DECK_MAX_POINTS} pts`
-        : `⚠️ ${escapeHtml(v.reason)}`;
+        ? `<svg viewBox="0 0 24 24" class="arena-check-ico" aria-hidden="true"><use href="#arena-check-circle"></use></svg><span><strong>Deck pronto!</strong> ${v.size} cartas · ${v.points}/${ARENA_DECK_MAX_POINTS} pts</span>`
+        : `<svg viewBox="0 0 24 24" class="arena-check-ico" aria-hidden="true"><use href="#arena-alert"></use></svg><span>${escapeHtml(v.reason)}</span>`;
 }
 
 function arenaChallengeRowHTML(m, isMine) {
-    const potGold = Number(m.stakeA?.gold) || 0;
-    const cos = (m.stakeA?.cosmetics || []).length;
-    return `<div class="arena-challenge"><span class="tree-emoji">⚔️</span>
-        <span class="arena-challenge-info"><strong>${escapeHtml(m.playerAName || 'Alguém')}</strong><br>
-            <span class="arena-pot">Pote: ${escapeHtml(arenaStakeText(m.stakeA))}</span></span>
+    const avatar = sanitizeUrl(m.playerAAvatar || '');
+    const avatarHtml = avatar
+        ? `<img src="${escapeHtml(avatar)}" alt="" loading="lazy" onerror="this.remove()">`
+        : '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-swords"></use></svg>';
+    return `<div class="arena-challenge">
+        <span class="arena-challenge-avatar">${avatarHtml}</span>
+        <span class="arena-challenge-info"><strong>${escapeHtml(m.playerAName || 'Alguém')}</strong>
+            <span class="arena-pot"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-coin"></use></svg>Pote: ${escapeHtml(arenaStakeText(m.stakeA))}</span></span>
         ${isMine
-            ? `<button class="chip-btn" data-arena-cancel="${escapeHtml(m.id)}">Cancelar</button>`
-            : `<button class="primary-btn arena-accept-btn" data-arena-accept="${escapeHtml(m.id)}">Aceitar ⚔️</button>`}
+            ? `<button class="arena-btn arena-btn-ghost arena-btn-sm" data-arena-cancel="${escapeHtml(m.id)}">Cancelar</button>`
+            : `<button class="arena-btn arena-btn-primary arena-btn-sm arena-accept-btn" data-arena-accept="${escapeHtml(m.id)}"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-swords"></use></svg>Aceitar</button>`}
     </div>`;
 }
 function arenaHistoryRowHTML(m) {
@@ -4375,8 +4485,9 @@ function arenaHistoryRowHTML(m) {
     const potText = arenaStakeText({ gold: Number(m.potGold) || 0, cosmetics: [...(m.stakeA?.cosmetics || []), ...(m.stakeB?.cosmetics || [])] });
     const date = m.finishedAt?.toDate?.() || m.createdAt?.toDate?.() || null;
     const dateText = date ? date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
-    return `<div class="arena-history-row"><span>${won ? '🏆' : '💀'}</span>
-        <span style="flex:1">${won ? 'Vitória' : 'Derrota'} contra <strong>${escapeHtml(oppName)}</strong>${dateText ? ` · ${dateText}` : ''}</span>
+    return `<div class="arena-history-row">
+        <span class="arena-result ${won ? 'win' : 'lose'}"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#${won ? 'arena-trophy' : 'arena-x-circle'}"></use></svg></span>
+        <span class="arena-history-info">${won ? 'Vitória' : 'Derrota'} contra <strong>${escapeHtml(oppName)}</strong>${dateText ? `<small>${dateText}</small>` : ''}</span>
         <span class="arena-pot">${won ? `+${escapeHtml(potText)}` : ''}</span>
     </div>`;
 }
@@ -4391,7 +4502,7 @@ async function refreshArenaBattlePane() {
         const banner = $('#arena-settle-banner');
         if (banner) {
             banner.innerHTML = pending.length
-                ? `<div class="arena-settle">🏆 <span style="flex:1">Você tem <strong>${pending.length}</strong> pote${pending.length > 1 ? 's' : ''} de batalha pra resgatar!</span><button class="primary-btn arena-claim-btn" id="arena-claim-pots-btn">Resgatar</button></div>`
+                ? `<div class="arena-settle"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-coin"></use></svg><span class="arena-settle-text">Você tem <strong>${pending.length}</strong> pote${pending.length > 1 ? 's' : ''} de batalha pra resgatar!</span><button class="arena-btn arena-btn-primary arena-btn-sm" id="arena-claim-pots-btn">Resgatar</button></div>`
                 : '';
         }
     } catch (err) { console.warn('banner de potes:', err?.message); }
@@ -4460,10 +4571,11 @@ function leaveArenaMatch() {
 }
 function arenaTokenHTML(u) {
     if (u.kind === 'structure') {
-        return `<span class="am-struct" title="${escapeHtml(u.name || 'Estrutura')}">🏗️ ${escapeHtml(u.name || 'Estrutura')} · ${Number(u.tick) || 1}/turno</span>`;
+        return `<span class="am-struct" title="${escapeHtml(u.name || 'Estrutura')}"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-tower"></use></svg>${escapeHtml(u.name || 'Estrutura')} · ${Number(u.tick) || 1}/turno</span>`;
     }
     const shortName = String(u.name || 'Criatura').slice(0, 14);
-    return `<span class="am-token" title="${escapeHtml(u.name || 'Criatura')}"><span>${escapeHtml(u.emoji || '🗿')}</span><small>${escapeHtml(shortName)}</small><b>${Number(u.power) || 1}⚔ · ${Number(u.turnsLeft) || 0}⌛</b></span>`;
+    const legacy = u.emoji ? `<span class="am-token-emoji">${escapeHtml(u.emoji)}</span>` : '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-mountain"></use></svg>';
+    return `<span class="am-token" title="${escapeHtml(u.name || 'Criatura')}">${legacy}<small>${escapeHtml(shortName)}</small><b>${Number(u.power) || 1} poder · ${Number(u.turnsLeft) || 0} turnos</b></span>`;
 }
 function renderArenaMatch(m) {
     const me = arenaMySideIn(m) || 'A';
@@ -4488,15 +4600,23 @@ function renderArenaMatch(m) {
     setText('#am-me-hpnum', String(myHp));
     const oppHandCount = (m[`hand${foe}`] || []).length;
     const oppDeckCount = (m[`deck${foe}`] || []).length;
-    setText('#am-opponent-meta', `🛡️ ${oppShield.phys} · 🔮 ${oppShield.mag} · 🂠 ${oppHandCount} na mão · ${oppDeckCount} no deck`);
-    setText('#am-me-meta', `🛡️ ${myShield.phys} · 🔮 ${myShield.mag} · turno ${Number(m.turnNumber) || 1}`);
+    setText('#am-opponent-shield-phys', String(oppShield.phys || 0));
+    setText('#am-opponent-shield-mag', String(oppShield.mag || 0));
+    setText('#am-opponent-hand', String(oppHandCount));
+    setText('#am-opponent-deck', String(oppDeckCount));
+    setText('#am-me-shield-phys', String(myShield.phys || 0));
+    setText('#am-me-shield-mag', String(myShield.mag || 0));
+    setText('#am-me-turn', String(Number(m.turnNumber) || 1));
 
     // Turno
-    const myTurn = m.status === 'active' && m.turn === me;
+    const active = m.status === 'active';
+    const myTurn = active && m.turn === me;
     const turnTag = $('#am-turn-tag');
-    if (turnTag) turnTag.textContent = m.status === 'active' ? (myTurn ? 'SUA VEZ' : 'a vez do rival…') : '';
+    if (turnTag) turnTag.hidden = !myTurn;
+    const turnTagOpp = $('#am-turn-tag-opp');
+    if (turnTagOpp) turnTagOpp.hidden = !(active && !myTurn);
     const hint = $('#am-table-hint');
-    if (hint) hint.textContent = m.status === 'active' ? (myTurn ? 'solte a carta aqui pra jogar 🃏' : `aguardando ${oppName}…`) : '';
+    if (hint) hint.textContent = active ? (myTurn ? 'solte a carta aqui pra jogar' : `aguardando ${oppName}…`) : '';
 
     // Campos (criaturas) e estruturas
     const oppFieldEl = $('#am-board-opponent');
@@ -4528,29 +4648,52 @@ function renderArenaMatch(m) {
 
     // Fim de jogo
     const finishEl = $('#arena-finish');
-    const settleBtn = $('#am-settle-btn');
     if (finishEl) {
-        if (m.status === 'finished' || m.status === 'settled' || m.status === 'cancelled') {
-            finishEl.hidden = false;
+        const over = m.status === 'finished' || m.status === 'settled' || m.status === 'cancelled';
+        finishEl.hidden = !over;
+        if (over) {
             const won = m.winner === myUid;
             const cancelled = m.status === 'cancelled';
-            $('#am-finish-emoji').textContent = cancelled ? '🏳️' : won ? '🏆' : '💀';
-            $('#am-finish-title').textContent = cancelled ? 'Partida cancelada' : won ? 'Você venceu!' : 'Você perdeu…';
-            const potText = arenaStakeText({ gold: Number(m.potGold) || 0, cosmetics: [...(m.stakeA?.cosmetics || []), ...(m.stakeB?.cosmetics || [])] });
+            const settled = m.status === 'settled';
+            finishEl.classList.toggle('am-finish--win', won && !cancelled);
+            finishEl.classList.toggle('am-finish--lose', !won && !cancelled);
+            finishEl.classList.toggle('am-finish--cancel', cancelled);
+            const iconUse = $('#am-finish-icon-use');
+            if (iconUse) iconUse.setAttribute('href', cancelled ? '#arena-flag' : won ? '#arena-trophy' : '#arena-x-circle');
+            const myStake = me === 'A' ? m.stakeA : m.stakeB;
+            const foeStake = me === 'A' ? m.stakeB : m.stakeA;
+            const allCos = [...(m.stakeA?.cosmetics || []), ...(m.stakeB?.cosmetics || [])];
+            const potGold = Number(m.potGold) || 0;
+            const hasStake = potGold > 0 || allCos.length > 0;
+            setText('#am-finish-title', cancelled ? 'Desafio cancelado' : won ? 'Você venceu!' : 'Você perdeu…');
             const subEl = $('#am-finish-sub');
             if (subEl) {
-                if (cancelled) subEl.textContent = 'O desafio foi cancelado antes de começar.';
-                else if (m.status === 'settled') subEl.textContent = won ? 'Pote resgatado. GG! 🤝' : 'O pote foi para o rival. GG!';
-                else subEl.textContent = won ? `Você leva: ${potText}` : 'O rival leva o pote. Tudo bem — revanche vinga!';
+                if (cancelled) subEl.textContent = 'O desafio foi cancelado antes de começar. Nada foi apostado.';
+                else if (settled) subEl.textContent = won ? 'Pote resgatado e guardado no seu bolso. GG!' : 'O pote foi para as mãos do rival. GG!';
+                else if (won) subEl.textContent = hasStake ? 'Bom trabalho — o pote inteiro é seu.' : 'Vitória suada. Continue forjando seu deck!';
+                else subEl.textContent = hasStake ? 'O rival leva o pote dessa vez. Revanche vinga!' : 'Derrota apertada. A próxima é sua!';
             }
+            const potBox = $('#am-finish-pot');
+            if (potBox) {
+                if (hasStake && !cancelled) {
+                    const coin = '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-coin"></use></svg>';
+                    const rows = [];
+                    rows.push(`<div class="am-finish-pot-row"><span>${coin}Sua aposta</span><b>${escapeHtml(arenaStakeText(myStake))}</b></div>`);
+                    rows.push(`<div class="am-finish-pot-row"><span>${coin}Rival apostou</span><b>${escapeHtml(arenaStakeText(foeStake))}</b></div>`);
+                    rows.push(`<div class="am-finish-pot-row is-total"><span>${coin}Pote total</span><b>${escapeHtml(arenaStakeText({ gold: potGold, cosmetics: allCos }))}</b></div>`);
+                    potBox.innerHTML = rows.join('');
+                } else {
+                    potBox.innerHTML = ''; // aposta vazia (amistosa ou cancelada) → some via CSS :empty
+                }
+            }
+            const settleBtn = $('#am-settle-btn');
             if (settleBtn) {
-                settleBtn.style.display = (won && m.status === 'finished') ? '' : 'none';
-                settleBtn.disabled = !(won && m.status === 'finished');
+                const canClaim = won && m.status === 'finished';
+                settleBtn.hidden = !canClaim;
+                settleBtn.disabled = !canClaim;
                 const label = settleBtn.querySelector('.btn-label');
-                if (label) label.textContent = 'Receber pote 🏆';
+                if (label) label.textContent = 'Receber pote';
             }
-        } else {
-            finishEl.hidden = true;
         }
     }
 }
@@ -4577,7 +4720,7 @@ function arenaHandPointerMove(e) {
         d.dragging = true;
         const ghost = document.createElement('div');
         ghost.className = 'arena-ghost';
-        ghost.textContent = '🃏';
+        ghost.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-swords"></use></svg>';
         document.body.appendChild(ghost);
         d.ghost = ghost;
     }
@@ -4630,7 +4773,6 @@ function arenaTableTap() {
 function refreshArenaUI() {
     renderEcoBalances();
     fillArenaCategorySelect();
-    renderArenaEmojiRow();
     renderArenaCreatePreview();
     renderCardCosmeticShop();
     loadArenaCards().catch((err) => console.warn('loadArenaCards:', err));
@@ -4707,10 +4849,11 @@ document.addEventListener('click', async (e) => {
     const treeBtn = t.closest?.('[data-arena-tree]');
     if (treeBtn) { await adjustArenaTree(treeBtn.dataset.arenaTree, Number(treeBtn.dataset.delta) || 0); return; }
 
-    const emojiBtn = t.closest?.('[data-arena-emoji]');
-    if (emojiBtn) {
-        arenaDraft.emoji = emojiBtn.dataset.arenaEmoji || '🐲';
-        renderArenaEmojiRow();
+    const pip = t.closest?.('.arena-pip[data-pip]');
+    if (pip) {
+        const value = Math.min(5, Math.max(1, Number(pip.dataset.value) || 3));
+        if (pip.dataset.pip === 'cost') arenaDraft.cost = value;
+        else if (pip.dataset.pip === 'power') arenaDraft.power = value;
         renderArenaCreatePreview();
         return;
     }
@@ -4733,10 +4876,16 @@ document.addEventListener('click', async (e) => {
 
 /* Criar carta: preview ao vivo + upload de arte */
 ['ac-name', 'ac-flavor', 'ac-art-url'].forEach((id) => {
-    document.getElementById(id)?.addEventListener('input', debounce(renderArenaCreatePreview, 150));
+    document.getElementById(id)?.addEventListener('input', debounce(renderArenaCreatePreview, 120));
 });
-['ac-category', 'ac-cost', 'ac-power'].forEach((id) => {
-    document.getElementById(id)?.addEventListener('change', renderArenaCreatePreview);
+document.getElementById('ac-category')?.addEventListener('change', renderArenaCreatePreview);
+$('#ac-form')?.addEventListener('submit', (e) => { e.preventDefault(); void saveArenaCard(); });
+$('#ac-art-clear')?.addEventListener('click', () => {
+    const input = $('#ac-art-url');
+    if (input) input.value = '';
+    arenaDraft.artUrl = '';
+    renderArenaCreatePreview();
+    $('#ac-name')?.focus();
 });
 $('#ac-art-upload')?.addEventListener('click', () => $('#file-gallery-card')?.click());
 $('#file-gallery-card')?.addEventListener('change', async (e) => {
@@ -4750,7 +4899,7 @@ $('#file-gallery-card')?.addEventListener('change', async (e) => {
         if (input) input.value = url;
         arenaDraft.artUrl = url;
         renderArenaCreatePreview();
-        showToast('Arte pronta! Só salvar a carta 🎨', 'success');
+        showToast('Arte pronta! Só salvar a carta.', 'success');
     } catch (err) { showToast(err?.message || 'Falha ao enviar a imagem.', 'error'); }
 });
 $('#ac-save-btn')?.addEventListener('click', saveArenaCard);
@@ -4774,13 +4923,25 @@ $('#am-leave-btn')?.addEventListener('click', leaveArenaMatch);
 $('#am-settle-btn')?.addEventListener('click', async () => {
     if (!arenaOpenMatchId) return;
     const btn = $('#am-settle-btn');
+    const label = btn?.querySelector('.btn-label');
     if (btn) btn.disabled = true;
-    await claimArenaSettlements();
-    // O onSnapshot atualiza a tela pra "Pote recebido ✅"; força refl. local:
-    if (arenaOpenMatchCache && arenaOpenMatchCache.status === 'finished' && arenaOpenMatchCache.winner === currentUser?.uid) {
-        // claim pode não ter rodado se outra aba resgatou — tudo bem
+    if (label) label.textContent = 'Resgatando…';
+    try {
+        await claimArenaSettlements();
+    } catch (err) {
+        console.warn('resgate de pote:', err?.message);
     }
-    if (btn && arenaOpenMatchCache?.status !== 'finished') { /* estado virá via snapshot */ }
+    const cache = arenaOpenMatchCache;
+    if (cache && cache.status === 'finished' && cache.winner === currentUser?.uid) {
+        // Ainda não resgatou (rules pendentes, por exemplo) — deixa tentar de novo
+        if (btn) btn.disabled = false;
+        if (label) label.textContent = 'Tentar de novo';
+        showToast('Não consegui resgatar agora. Tente de novo em instantes.', 'warn');
+        return;
+    }
+    if (label) label.textContent = 'Pote resgatado!';
+    // O onSnapshot troca a tela para o estado "settled" (some com o botão)
+    if (arenaOpenMatchCache) renderArenaMatch(arenaOpenMatchCache);
 });
 $('#arena-hand')?.addEventListener('pointerdown', arenaHandPointerDown);
 $('#arena-table')?.addEventListener('click', arenaTableTap);
