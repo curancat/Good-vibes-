@@ -483,12 +483,178 @@
                         <div class="rule-item card"><span class="rule-emoji">🎟️</span><div><strong>Cadastro aberto, casa íntima</strong><p>Qualquer um pode criar conta, mas o Refúgio continua pequeno: a moderação é manual e, se a convivência apertar, novos cadastros podem ser pausados.</p></div></div>
                         <div class="rule-item card"><span class="rule-emoji">🛡️</span><div><strong>Moderação</strong><p>Algo te incomodou? Denuncie no PV: <a href="https://wa.me/5584999528925" target="_blank" rel="noopener">+55 84 99952-8925</a>. Contas que não respeitarem o ambiente serão desativadas ou excluídas.</p></div></div>
                         <div class="rule-item card"><span class="rule-emoji">🌊</span><div><strong>Energia da casa</strong><p>De tempos em tempos, com o app aberto, a casa distribui curtidas e descurtidas nos posts — é o app respirando junto com a galera, não uma pessoa tocando. Posts sensíveis (🔞) e do próprio autor ficam de fora.</p></div></div>
+                        <div class="rule-item card"><span class="rule-emoji">🪙</span><div><strong>Economia do Refúgio</strong><p>Gold é a moeda oficial do refúgio — ganha-se trabalhando, coletando e construindo. Vale só aqui e numa boa: sem trapacear pelo Console, sem vender gold de verdade, sem anunciar. Super Like (PIX) é outra história: é mimo real, tratado com o mesmo cuidado.</p></div></div>
                         <div class="rule-item card"><span class="rule-emoji">💸</span><div><strong>Super Like (PIX)</strong><p>É apenas um “mimo” para os criadores — não abuse. O site não processa o dinheiro, não cobra taxas e não se responsabiliza pelas transferências. <strong>Confira sempre os dados no app do seu banco</strong> antes de confirmar.</p></div></div>
                     </div>
                     <p class="rules-footnote">Lembrando: as regras valem para casos de desconforto de algum usuário — no geral, usem sem medo e abusem. 💜</p>
                     <p class="rules-thanks">Isso é tudo — muito obrigado pela atenção. 🙏</p>
                 </div>
             </section>
+
+            <!-- ============ APP: LOJA ============ -->
+            <section class="app-window" id="app-shop" data-app="shop" aria-label="Loja">
+                <header class="app-header">
+                    <button class="app-back" data-close-app aria-label="Voltar para a tela inicial">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+                        <span>Início</span>
+                    </button>
+                    <h2 class="app-title">🪙 Loja</h2>
+                    <span class="app-header-spacer"></span>
+                </header>
+                <div class="app-body">
+                    <div class="eco-balance card">
+                        <div><span class="eco-balance-label">💰 Seu saldo</span><strong class="eco-balance-value" id="shop-gold">0 gold</strong></div>
+                        <span class="eco-rate" id="shop-rate"></span>
+                    </div>
+                    <div class="eco-tabs" role="tablist" aria-label="Seções da loja">
+                        <button class="eco-tab active" data-shop-tab="cosmeticos" role="tab">✨ Cosméticos</button>
+                        <button class="eco-tab" data-shop-tab="comprar" role="tab">🧺 Comprar</button>
+                        <button class="eco-tab" data-shop-tab="vender" role="tab">💱 Vender</button>
+                    </div>
+
+                    <div class="eco-pane" id="shop-pane-cosmeticos" role="tabpanel">
+                        <div class="eco-filter-row">
+                            <input type="search" id="shop-search" placeholder="Buscar cosmético…" autocomplete="off" aria-label="Buscar cosmético">
+                        </div>
+                        <div class="eco-filter-row">
+                            <select id="shop-cat" aria-label="Categoria"><option value="">Todas as categorias</option></select>
+                            <select id="shop-rarity" aria-label="Raridade"><option value="">Todas as raridades</option></select>
+                        </div>
+                        <p class="eco-count" id="shop-cosmetic-count"></p>
+                        <div class="cosmetic-grid" id="cosmetic-grid"></div>
+                        <button class="secondary-btn wide" id="shop-load-more">Carregar mais</button>
+                    </div>
+
+                    <div class="eco-pane" id="shop-pane-comprar" role="tabpanel" hidden>
+                        <p class="card-sub">Matérias-primas da ilha, entrega na hora. Venda por <strong>60%</strong> do preço na aba Vender.</p>
+                        <div class="material-list" id="buy-material-list"></div>
+                    </div>
+
+                    <div class="eco-pane" id="shop-pane-vender" role="tabpanel" hidden>
+                        <p class="card-sub">Vende por <strong>60%</strong> do preço de vitrine. Sem taxas, direto no seu saldo.</p>
+                        <div class="material-list" id="sell-material-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============ APP: INVENTÁRIO ============ -->
+            <section class="app-window" id="app-inventory" data-app="inventory" aria-label="Inventário">
+                <header class="app-header">
+                    <button class="app-back" data-close-app aria-label="Voltar para a tela inicial">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+                        <span>Início</span>
+                    </button>
+                    <h2 class="app-title">🎒 Inventário</h2>
+                    <span class="app-header-spacer"></span>
+                </header>
+                <div class="app-body">
+                    <div class="eco-balance card">
+                        <div><span class="eco-balance-label">💰 Seu saldo</span><strong class="eco-balance-value" id="inv-gold">0 gold</strong></div>
+                        <button class="chip-btn accent" id="gift-open-btn">🎁 Enviar presente</button>
+                    </div>
+                    <div class="eco-equipped card" id="equipped-card"></div>
+                    <h3 class="eco-h3">🧺 Materiais <span class="eco-h3-count" id="inv-mat-count"></span></h3>
+                    <div class="inventory-grid" id="inventory-grid"></div>
+                    <h3 class="eco-h3">✨ Seus cosméticos <span class="eco-h3-count" id="inv-cos-count"></span></h3>
+                    <div class="cosmetic-grid" id="owned-cosmetics"></div>
+                </div>
+            </section>
+
+            <!-- ============ APP: REFINARIA ============ -->
+            <section class="app-window" id="app-refinery" data-app="refinery" aria-label="Refinaria">
+                <header class="app-header">
+                    <button class="app-back" data-close-app aria-label="Voltar para a tela inicial">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+                        <span>Início</span>
+                    </button>
+                    <h2 class="app-title">⚒️ Refinaria</h2>
+                    <span class="app-header-spacer"></span>
+                </header>
+                <div class="app-body">
+                    <div class="eco-balance card"><div><span class="eco-balance-label">💰 Seu saldo</span><strong class="eco-balance-value" id="refinery-gold">0 gold</strong></div><span class="eco-rate">Transforma matéria-prima em riqueza</span></div>
+                    <div class="recipe-list" id="refinery-list"></div>
+                </div>
+            </section>
+
+            <!-- ============ APP: CONSTRUÇÃO ============ -->
+            <section class="app-window" id="app-construction" data-app="construction" aria-label="Construção">
+                <header class="app-header">
+                    <button class="app-back" data-close-app aria-label="Voltar para a tela inicial">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+                        <span>Início</span>
+                    </button>
+                    <h2 class="app-title">🏗️ Construção</h2>
+                    <span class="app-header-spacer"></span>
+                </header>
+                <div class="app-body">
+                    <div class="eco-balance card"><div><span class="eco-balance-label">💰 Seu saldo</span><strong class="eco-balance-value" id="construction-gold">0 gold</strong></div></div>
+                    <div class="eco-income card">
+                        <div class="eco-income-text"><strong>🏦 Renda passiva</strong><span id="construction-income">0 gold/min · acumulado: 0 gold</span></div>
+                        <button class="primary-btn compact" id="collect-btn"><span class="btn-label">Coletar</span></button>
+                    </div>
+                    <div class="building-list" id="construction-list"></div>
+                </div>
+            </section>
+
+            <!-- ============ APP: TRABALHO ============ -->
+            <section class="app-window" id="app-work" data-app="work" aria-label="Trabalho">
+                <header class="app-header">
+                    <button class="app-back" data-close-app aria-label="Voltar para a tela inicial">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+                        <span>Início</span>
+                    </button>
+                    <h2 class="app-title">💼 Trabalho</h2>
+                    <span class="app-header-spacer"></span>
+                </header>
+                <div class="app-body">
+                    <div class="eco-balance card"><div><span class="eco-balance-label">💰 Seu saldo</span><strong class="eco-balance-value" id="work-gold">0 gold</strong></div><span class="eco-rate">Trabalhe ou colete para encher os bolsos</span></div>
+                    <div class="eco-tabs" role="tablist" aria-label="Formas de ganhar">
+                        <button class="eco-tab active" data-work-tab="jobs" role="tab">💼 Trabalhos</button>
+                        <button class="eco-tab" data-work-tab="gather" role="tab">🌿 Coleta</button>
+                    </div>
+                    <div class="eco-pane" id="work-pane-jobs" role="tabpanel">
+                        <div class="job-list" id="job-list"></div>
+                    </div>
+                    <div class="eco-pane" id="work-pane-gather" role="tabpanel" hidden>
+                        <p class="card-sub">Cada local rende de 1 a 2 materiais. Recarrega em 25 segundos.</p>
+                        <div class="gather-list" id="gather-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============ MODAL: PRESENTE ============ -->
+            <div id="gift-modal" class="modal" role="dialog" aria-modal="true" aria-label="Enviar presente">
+                <div class="modal-content card">
+                    <button class="close-modal" data-close-modal="gift-modal" aria-label="Fechar">&times;</button>
+                    <h2 class="modal-title">🎁 Enviar presente</h2>
+                    <p class="modal-sub">Sai do seu bolso na hora. A pessoa recebe quando abrir o app.</p>
+                    <div class="eco-tabs small" role="tablist" aria-label="Tipo de presente">
+                        <button class="eco-tab active" data-gift-tab="gold" role="tab">🪙 Gold</button>
+                        <button class="eco-tab" data-gift-tab="material" role="tab">🧺 Material</button>
+                    </div>
+                    <div class="eco-pane" id="gift-pane-gold" role="tabpanel">
+                        <div class="gift-amount-row">
+                            <input type="number" id="gift-gold-amount" min="1" max="1000000" inputmode="numeric" placeholder="Quantidade de gold" aria-label="Quantidade de gold">
+                            <div class="gift-quick-row">
+                                <button class="chip-btn" data-gift-quick="50">50</button>
+                                <button class="chip-btn" data-gift-quick="100">100</button>
+                                <button class="chip-btn" data-gift-quick="500">500</button>
+                                <button class="chip-btn" data-gift-quick="1000">1k</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="eco-pane" id="gift-pane-material" role="tabpanel" hidden>
+                        <div class="gift-amount-row">
+                            <select id="gift-material-select" aria-label="Material"></select>
+                            <input type="number" id="gift-material-qty" min="1" inputmode="numeric" value="1" placeholder="Qtd" aria-label="Quantidade">
+                        </div>
+                    </div>
+                    <div class="gift-search-row">
+                        <input type="search" id="gift-search" placeholder="Buscar para quem enviar…" autocomplete="off" aria-label="Buscar pessoa">
+                    </div>
+                    <div id="gift-results" class="gift-results"></div>
+                </div>
+            </div>
 
             <!-- ============ MODAL: COMENTÁRIOS ============ -->
             <div id="comments-modal" class="modal" role="dialog" aria-modal="true" aria-label="Comentários">
@@ -558,6 +724,7 @@
 
 
 
+<script src="js/economy-data.js"></script>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

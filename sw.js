@@ -1,4 +1,4 @@
-/* Good Vibes 🌊 — Service Worker v2.6.0
+/* Good Vibes 🌊 — Service Worker v3.0.0
    Estratégia:
    - App shell (mesma origem): network-first com fallback offline para o cache
    - Navegação: network-first (bypass do HTTP cache) com fallback offline
@@ -7,7 +7,7 @@
    - Atualizações: o worker novo ESPERA a escolha do usuário (botão "Atualizar")
      em vez de assumir o controle silenciosamente
 */
-const CACHE_VERSION = 'good-vibes-v2.6.0';
+const CACHE_VERSION = 'good-vibes-v3.0.0';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -16,6 +16,7 @@ const SHELL_ASSETS = [
   './index.html',
   './css/style.css',
   './js/app.js',
+  './js/economy-data.js',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',

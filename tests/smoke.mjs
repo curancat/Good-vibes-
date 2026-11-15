@@ -33,7 +33,9 @@ const onSnapshot = (q, ok) => { return () => {}; };
 const serverTimestamp = () => ({ toMillis: () => Date.now() });
 const updateDoc = async () => {};
 const increment = (n) => n;
-const where = () => ({});`);
+const where = () => ({});
+const runTransaction = async (db, fn) => fn({ get: async () => ({ data: () => ({}) }), set: () => {} });
+const limit = (n) => n;`);
 
 const dom = new JSDOM(html, {
   url: 'https://good-vibes.example/',
@@ -59,7 +61,8 @@ window.addEventListener('error', (e) => errors.push(e.message));
 
 // Execute the module code (imports already replaced by stubs)
 try {
-  window.eval(js);
+  window.eval(readFileSync('js/economy-data.js', 'utf8')); // igual ao index.html (script clássico antes do módulo)
+window.eval(js);
   console.log('✓ app.js executou sem lançar exceção');
 } catch (e) {
   console.error('✗ app.js lançou:', e);
@@ -72,14 +75,17 @@ const $ = (s) => window.document.querySelector(s);
 const $$ = (s) => [...window.document.querySelectorAll(s)];
 
 // ---- Assertions ----
-assert.equal($$('#app-grid .app-icon').length, 8, 'grade deve ter 8 apps');
+assert.equal($$('#app-grid .app-icon').length, 13, 'grade deve ter 13 apps');
 assert.equal($$('#dock .app-icon').length, 4, 'dock deve ter 4 apps');
 assert.ok($('#sb-time').textContent.trim().length >= 4, 'relógio da status bar preenchido');
 assert.ok($('#hw-time').textContent.trim().length >= 4, 'relógio do widget preenchido');
 assert.ok($('#lock-time').textContent.trim().length >= 4, 'relógio da tela de bloqueio preenchido');
 assert.ok($('#hw-greeting-text').textContent.trim().length > 0, 'saudação preenchida');
 assert.ok($('#hw-quote').textContent.trim().length > 0, 'quote preenchida');
-console.log('✓ tela inicial renderizou (8 apps, dock, relógios, saudação)');
+assert.equal(window.GV_ECO?.RAW_MATERIALS.length, 100, 'deve haver exatamente 100 materiais brutos');
+assert.equal(window.GV_ECO?.COSMETICS.length, 1000, 'deve haver exatamente 1.000 cosméticos');
+console.log('✓ economia: 100 materiais brutos e 1.000 cosméticos carregados');
+console.log('✓ tela inicial renderizou (13 apps, dock, relógios, saudação)');
 
 // Lockscreen → unlock
 $('#unlock-btn').click();
@@ -134,6 +140,12 @@ assert.ok($('#post-char-counter').textContent.startsWith(String('Teste de boas v
 console.log('✓ compositor: contador de caracteres ok');
 
 // Banner de atualização existe e começa oculto
+// Economia 🪙: os 5 apps e o modal de presente existem
+for (const id of ['app-shop', 'app-inventory', 'app-refinery', 'app-construction', 'app-work', 'gift-modal']) {
+    assert.ok($('#' + id), `app/modal #${id} presente`);
+}
+assert.ok($('#cosmetic-grid'), 'grade de cosméticos presente');
+
 const banner = $('#update-banner');
 assert.ok(banner, 'banner de nova versão existe no DOM');
 assert.equal(banner.hidden, true, 'banner começa oculto');

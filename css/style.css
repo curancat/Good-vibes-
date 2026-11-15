@@ -1210,3 +1210,128 @@ input[type="color"] { width: 58px; height: 38px; border: 1px solid var(--border-
     background: color-mix(in srgb, #38bdf8 18%, transparent) !important;
     color: color-mix(in srgb, #38bdf8 65%, var(--text-color)) !important;
 }
+
+/* ============ ECONOMIA 🪙 (Loja, Inventário, Refinaria, Construção, Trabalho) ============ */
+.eco-balance { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px; margin-bottom: 12px; }
+.eco-balance-label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+.eco-balance-value { font-size: 24px; font-weight: 800; color: #fbbf24; }
+.eco-rate { font-size: 11px; color: var(--text-muted); max-width: 45%; text-align: right; }
+.eco-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+.eco-tab { flex: 1; padding: 9px 6px; border-radius: 12px; border: 1.4px solid var(--border); background: var(--card-bg, rgba(255,255,255,.04)); color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer; transition: all .18s ease; }
+.eco-tab.active { color: #111; background: #fbbf24; border-color: #fbbf24; box-shadow: 0 4px 18px rgba(251,191,36,.35); }
+.eco-tabs.small .eco-tab { padding: 8px 6px; font-size: 12px; }
+.eco-pane[hidden] { display: none !important; }
+.eco-h3 { display: flex; align-items: center; gap: 8px; font-size: 15px; margin: 18px 2px 8px; }
+.eco-h3-count { font-size: 11px; font-weight: 700; color: var(--text-muted); background: rgba(255,255,255,.06); padding: 2px 10px; border-radius: 999px; }
+.eco-count { font-size: 12px; color: var(--text-muted); margin: 6px 2px 10px; }
+.eco-filter-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.eco-filter-row input, .eco-filter-row select { flex: 1; min-width: 0; }
+.eco-equipped { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 4px; }
+.eco-equipped-emoji { font-size: 34px; }
+.eco-equipped-info { display: flex; flex-direction: column; min-width: 0; }
+.eco-equipped-info small { color: var(--text-muted); font-size: 11px; }
+.eco-equipped-info strong { font-size: 14px; }
+
+/* Cosméticos */
+.cosmetic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.cosmetic-card { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; padding: 12px 8px; border-radius: 16px; border: 1.4px solid var(--border); background: var(--card-bg, rgba(255,255,255,.04)); }
+.cosmetic-emoji { font-size: 34px; line-height: 1; }
+.cosmetic-name { font-size: 11.5px; font-weight: 700; line-height: 1.25; min-height: 2.5em; }
+.rarity-chip { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px; letter-spacing: .03em; }
+.rarity-comum { background: rgba(156,163,175,.18); color: #d1d5db; }
+.rarity-incomum { background: rgba(52,211,153,.18); color: #6ee7b7; }
+.rarity-raro { background: rgba(96,165,250,.18); color: #93c5fd; }
+.rarity-epico { background: rgba(192,132,252,.2); color: #d8b4fe; }
+.rarity-lendario { background: rgba(251,191,36,.22); color: #fde68a; }
+.cosmetic-price { font-size: 12px; font-weight: 800; color: #fbbf24; }
+.cosmetic-buy { margin-top: 2px; padding: 7px 10px; width: 100%; border-radius: 10px; border: none; font-weight: 800; font-size: 12px; cursor: pointer; background: #fbbf24; color: #111; transition: transform .15s ease, filter .15s ease; }
+.cosmetic-buy:hover { filter: brightness(1.08); }
+.cosmetic-buy:active { transform: scale(.96); }
+.cosmetic-buy.owned { background: rgba(52,211,153,.25); color: #6ee7b7; cursor: default; }
+.cosmetic-buy.equipped { background: rgba(96,165,250,.3); color: #93c5fd; cursor: default; }
+
+/* Materiais (comprar/vender) */
+.material-list { display: flex; flex-direction: column; gap: 8px; }
+.material-row { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--card-bg, rgba(255,255,255,.03)); }
+.material-emoji { font-size: 22px; }
+.material-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.material-name { font-size: 12px; font-weight: 700; }
+.material-meta { font-size: 11px; color: var(--text-muted); }
+.material-actions { display: flex; gap: 5px; }
+.material-actions button { padding: 6px 9px; font-size: 11px; border-radius: 9px; border: 1px solid var(--border); background: transparent; color: var(--text-color); cursor: pointer; font-weight: 700; }
+.material-actions button:hover { background: rgba(255,255,255,.06); }
+.material-actions .buy1, .material-actions .buy10 { color: #6ee7b7; border-color: rgba(52,211,153,.4); }
+.material-actions .sell1, .material-actions .sell10 { color: #fca5a5; border-color: rgba(248,113,113,.4); }
+
+/* Inventário */
+.inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.inv-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 4px; border-radius: 12px; border: 1px solid var(--border); background: var(--card-bg, rgba(255,255,255,.03)); }
+.inv-emoji { font-size: 24px; }
+.inv-name { font-size: 9.5px; color: var(--text-muted); text-align: center; line-height: 1.2; min-height: 2.4em; }
+.inv-qty { font-size: 13px; font-weight: 800; }
+.inv-empty { grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 26px 10px; font-size: 13px; }
+
+/* Refinaria */
+.recipe-list { display: flex; flex-direction: column; gap: 8px; }
+.recipe-card { padding: 10px 12px; border-radius: 14px; border: 1px solid var(--border); background: var(--card-bg, rgba(255,255,255,.03)); }
+.recipe-head { display: flex; align-items: center; gap: 8px; }
+.recipe-out { font-size: 20px; }
+.recipe-name { font-weight: 800; font-size: 13px; flex: 1; }
+.recipe-qty { font-size: 12px; color: var(--text-muted); font-weight: 700; }
+.recipe-inputs { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0; }
+.mat-chip { font-size: 10.5px; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--border); }
+.mat-ok { color: #6ee7b7; border-color: rgba(52,211,153,.45); background: rgba(52,211,153,.1); }
+.mat-missing { color: #fca5a5; border-color: rgba(248,113,113,.45); background: rgba(248,113,113,.1); }
+.recipe-craft { width: 100%; padding: 8px; border-radius: 10px; border: none; background: #fbbf24; color: #111; font-weight: 800; cursor: pointer; }
+.recipe-craft[disabled] { opacity: .35; cursor: not-allowed; }
+
+/* Construção */
+.eco-income { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; margin-bottom: 12px; }
+.eco-income-text { display: flex; flex-direction: column; }
+.eco-income-text span { font-size: 12px; color: var(--text-muted); }
+.building-list { display: flex; flex-direction: column; gap: 8px; }
+.building-card { display: flex; gap: 10px; align-items: center; padding: 11px 12px; border-radius: 14px; border: 1px solid var(--border); background: var(--card-bg, rgba(255,255,255,.03)); }
+.building-emoji { font-size: 30px; }
+.building-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.building-name { font-weight: 800; font-size: 13px; }
+.building-owned { font-size: 10.5px; color: #fbbf24; font-weight: 800; }
+.building-desc { font-size: 11px; color: var(--text-muted); }
+.building-cost { display: flex; flex-wrap: wrap; gap: 5px; }
+.building-build { padding: 10px 12px; border-radius: 11px; border: none; background: #fbbf24; color: #111; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.building-build[disabled] { opacity: .35; cursor: not-allowed; }
+
+/* Trabalho / Coleta */
+.job-list, .gather-list { display: flex; flex-direction: column; gap: 8px; }
+.job-card, .gather-card { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: 14px; border: 1px solid var(--border); background: var(--card-bg, rgba(255,255,255,.03)); }
+.job-emoji, .gather-emoji { font-size: 28px; }
+.job-info, .gather-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.job-name, .gather-name { font-weight: 800; font-size: 13px; }
+.job-pay { font-size: 12px; color: #fbbf24; font-weight: 800; }
+.job-desc, .gather-desc { font-size: 10.5px; color: var(--text-muted); }
+.job-btn, .gather-btn { padding: 9px 12px; border-radius: 11px; border: none; background: #34d399; color: #052e1c; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.job-btn[disabled], .gather-btn[disabled] { opacity: .55; background: rgba(255,255,255,.08); color: var(--text-muted); cursor: not-allowed; }
+
+/* Presente */
+.gift-amount-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+.gift-amount-row input, .gift-amount-row select { flex: 1; min-width: 0; }
+.gift-quick-row { display: flex; gap: 5px; }
+.gift-search-row { margin-bottom: 8px; }
+.gift-search-row input { width: 100%; }
+.gift-results { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow: auto; }
+.gift-person { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 12px; border: 1px solid var(--border); }
+.gift-person-name { flex: 1; font-size: 13px; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Cosmético no nome do autor (posts e comentários) */
+.author-cosmetic { font-size: 11px; margin-left: 4px; padding: 1px 7px; border-radius: 999px; background: rgba(251,191,36,.18); border: 1px solid rgba(251,191,36,.4); color: #fde68a; font-weight: 700; vertical-align: 1px; white-space: nowrap; }
+
+@media (max-width: 400px) {
+    .cosmetic-grid { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); }
+    .eco-rate { display: none; }
+}
+
+/* Tiles dos novos apps */
+.tile-shop { background: linear-gradient(145deg, #f59e0b, #d97706); }
+.tile-inventory { background: linear-gradient(145deg, #a16207, #713f12); }
+.tile-refinery { background: linear-gradient(145deg, #64748b, #334155); }
+.tile-construction { background: linear-gradient(145deg, #fb923c, #c2410c); }
+.tile-work { background: linear-gradient(145deg, #34d399, #047857); }

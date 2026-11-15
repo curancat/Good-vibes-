@@ -5,7 +5,7 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, deleteUser, updatePassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, increment, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, increment, where, runTransaction, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 /* ================= FIREBASE ================= */
 const firebaseConfig = {
@@ -430,6 +430,11 @@ const APPS = [
     { id: 'people', label: 'Pessoas', icon: '🔍', tile: 'tile-people' },
     { id: 'profile', label: 'Perfil', icon: '👤', tile: 'tile-profile' },
     { id: 'rules', label: 'Regras', icon: '📜', tile: 'tile-rules' },
+    { id: 'shop', label: 'Loja', icon: '🪙', tile: 'tile-shop' },
+    { id: 'inventory', label: 'Inventário', icon: '🎒', tile: 'tile-inventory' },
+    { id: 'refinery', label: 'Refinaria', icon: '⚒️', tile: 'tile-refinery' },
+    { id: 'construction', label: 'Obras', icon: '🏗️', tile: 'tile-construction' },
+    { id: 'work', label: 'Trabalho', icon: '💼', tile: 'tile-work' },
     { id: 'settings', label: 'Ajustes', icon: '⚙️', tile: 'tile-settings' },
 ];
 const DOCK_IDS = ['feed', 'chat', 'notifications', 'profile'];
@@ -478,6 +483,7 @@ function openApp(appId, pushHistory = true) {
     if (appId === 'chat') { setBadge('chat', 0); window.lastReadChatTimestamp = Date.now(); try { localStorage.setItem('gv_last_chat_read', String(window.lastReadChatTimestamp)); } catch { /* ignora */ } }
     if (appId === 'notifications') { setBadge('notifications', 0); renderNotificationsList(); }
 
+    if (['shop', 'inventory', 'refinery', 'construction', 'work'].includes(appId)) refreshEconomyUI();
     const body = target.querySelector('.app-body');
     if (body) body.scrollTop = 0;
 }
@@ -972,7 +978,7 @@ function postCardHTML(docSnap) {
         <div class="post-header">
             <div class="post-avatar">${avatarHtml}</div>
             <div class="post-author-wrap">
-                <div class="post-author">${escapeHtml(data.authorName || 'Usuário')} ${nsfwBadge}</div>
+                <div class="post-author">${escapeHtml(data.authorName || 'Usuário')} ${authorCosmeticChip(data.authorCosmetic)} ${nsfwBadge}</div>
                 <div class="post-time">${ts ? timeAgo(ts) : 'agora mesmo'}</div>
             </div>
         </div>
@@ -1051,6 +1057,7 @@ $('#post-btn')?.addEventListener('click', async () => {
             userId: currentUser.uid,
             authorName: currentUserProfile.name || 'Usuário',
             authorAvatar: currentUserProfile.avatarUrl || '',
+            authorCosmetic: equippedCosmeticSummary(),
             text: text.trim(),
             isNsfw,
             mediaUrl: mediaUrl || '',
@@ -1156,7 +1163,7 @@ window.openComments = (postId, authorId) => {
         }
         list.innerHTML = snapshot.docs.map((d) => {
             const data = d.data();
-            return `<div class="comment-item"><strong>${escapeHtml(data.authorName || 'Usuário')}</strong>${escapeHtml(data.text || '')}</div>`;
+            return `<div class="comment-item"><strong>${escapeHtml(data.authorName || 'Usuário')}</strong>${authorCosmeticChip(data.authorCosmetic)}${escapeHtml(data.text || '')}</div>`;
         }).join('');
         list.scrollTop = list.scrollHeight;
     }, (err) => {
@@ -1179,6 +1186,7 @@ $('#submit-comment-btn')?.addEventListener('click', async () => {
             userId: currentUser.uid,
             authorName: currentUserProfile.name || 'Usuário',
             authorAvatar: currentUserProfile.avatarUrl || '',
+            authorCosmetic: equippedCosmeticSummary(),
             text,
             timestamp: serverTimestamp()
         });
@@ -1703,6 +1711,612 @@ window.addEventListener('appinstalled', () => {
     showToast('Aplicativo instalado com sucesso! 🎉', 'success');
 });
 
+/* ================= ECONOMIA 🪙 (Loja, Inventário, Refinaria, Construção, Trabalho, Presentes) ================= */
+/* Dados em window.GV_ECO (js/economy-data.js). Estado persistido em users/{uid}.
+   ⚠️ A economia é autoritativa no cliente (sem servidor): dá pra trapacear
+   pelo Console — vale como diversão, não como dinheiro de verdade. */
+const ECO = window.GV_ECO;
+const STARTER_GOLD = 250;
+const SELL_RATE = ECO?.SELL_RATE ?? 0.6;
+const COLLECT_CAP_MINUTES = 12 * 60; // renda acumula no máximo 12h
+const GATHER_CD_MS = 25 * 1000;
+
+let economyState = null;      // { gold, inv, buildings, cosmetics, equipped, lastCollectAt, jobCd, gatherCd }
+let economyTicker = null;
+let shopPage = 1;             // paginação dos cosméticos (60 por página)
+const COSMETICS_PAGE_SIZE = 60;
+const giftState = { mode: 'gold' };
+
+const ecoUserRef = () => doc(db, 'users', currentUser.uid);
+const fmtGold = (n) => `${Math.floor(Number(n) || 0).toLocaleString('pt-BR')} gold`;
+const matQty = (id) => (economyState?.inv?.[id] || 0);
+const sellPriceOf = (m) => Math.max(1, Math.floor(m.price * SELL_RATE));
+
+function normalizeEconomy(d = {}) {
+    return {
+        gold: typeof d.gold === 'number' ? d.gold : STARTER_GOLD,
+        inv: d.inv && typeof d.inv === 'object' ? { ...d.inv } : {},
+        buildings: d.buildings && typeof d.buildings === 'object' ? { ...d.buildings } : {},
+        cosmetics: Array.isArray(d.cosmetics) ? [...d.cosmetics] : [],
+        equipped: typeof d.equippedCosmetic === 'string' ? d.equippedCosmetic : null,
+        lastCollectAt: typeof d.lastCollectAt === 'number' ? d.lastCollectAt : Date.now(),
+        jobCd: d.jobCd && typeof d.jobCd === 'object' ? { ...d.jobCd } : {},
+        gatherCd: d.gatherCd && typeof d.gatherCd === 'object' ? { ...d.gatherCd } : {}
+    };
+}
+
+async function initEconomy() {
+    if (!currentUser) return;
+    try {
+        const snap = await getDoc(ecoUserRef());
+        const data = snap.exists() ? snap.data() : {};
+        const patch = {};
+        if (typeof data.gold !== 'number') patch.gold = STARTER_GOLD;
+        if (!data.inv || typeof data.inv !== 'object') patch.inv = {};
+        if (!data.buildings || typeof data.buildings !== 'object') patch.buildings = {};
+        if (typeof data.lastCollectAt !== 'number') patch.lastCollectAt = Date.now();
+        if (!Array.isArray(data.cosmetics)) patch.cosmetics = [];
+        if (!data.jobCd || typeof data.jobCd !== 'object') patch.jobCd = {};
+        if (!data.gatherCd || typeof data.gatherCd !== 'object') patch.gatherCd = {};
+        if (Object.keys(patch).length) await setDoc(ecoUserRef(), patch, { merge: true });
+        economyState = normalizeEconomy({ ...data, ...patch });
+    } catch (err) {
+        console.warn('Economia indisponível (verifique as regras do Firestore):', err?.message);
+        economyState = normalizeEconomy({});
+    }
+    refreshEconomyUI();
+    startEconomyTicker();
+}
+
+async function saveEconomy(patch) {
+    if (!currentUser || !economyState) return;
+    economyState = { ...economyState, ...patch };
+    try {
+        await setDoc(ecoUserRef(), patch, { merge: true });
+    } catch (err) {
+        console.warn('Falha ao salvar a economia:', err?.message);
+        showToast('Não consegui salvar sua economia. Verifique as regras do Firestore.', 'error');
+    }
+    refreshEconomyUI();
+}
+
+/* ---------- util: cosmetic equipado ---------- */
+function equippedCosmetic() {
+    if (!economyState?.equipped) return null;
+    return ECO?.COSMETIC_BY_ID[economyState.equipped] || null;
+}
+function equippedCosmeticSummary() {
+    const c = equippedCosmetic();
+    return c ? { emoji: c.emoji, name: c.name, gem: c.gem, rarity: c.rarity } : null;
+}
+function authorCosmeticChip(cosmetic) {
+    if (!cosmetic?.emoji) return '';
+    const title = escapeHtml(cosmetic.name || 'Cosmético');
+    return `<span class="author-cosmetic" title="${title}">${escapeHtml(cosmetic.emoji)} ${title}</span>`;
+}
+
+/* ---------- renda passiva ---------- */
+function incomeRate() {
+    if (!economyState || !ECO) return 0;
+    return ECO.BUILDINGS.reduce((sum, b) => sum + (economyState.buildings[b.id] || 0) * b.rate, 0);
+}
+function pendingGain() {
+    if (!economyState) return 0;
+    const minutes = Math.min((Date.now() - (economyState.lastCollectAt || Date.now())) / 60000, COLLECT_CAP_MINUTES);
+    return Math.max(0, Math.floor(incomeRate() * minutes));
+}
+
+/* ---------- RENDERERS ---------- */
+function renderEcoBalances() {
+    if (!ECO) return;
+    const gold = fmtGold(economyState?.gold);
+    ['shop-gold', 'inv-gold', 'refinery-gold', 'construction-gold', 'work-gold'].forEach((id) => { const el = document.getElementById(id); if (el) el.textContent = gold; });
+    const rate = document.getElementById('shop-rate');
+    if (rate) rate.textContent = incomeRate() ? `+${incomeRate()} gold/min de renda` : 'Construa para ter renda passiva';
+}
+
+function cosmeticCardHTML(c, owned) {
+    const isEquipped = economyState?.equipped === c.id;
+    let btn;
+    if (isEquipped) btn = '<button class="cosmetic-buy equipped" disabled>⭐ Equipado</button>';
+    else if (owned) btn = `<button class="cosmetic-buy owned" data-equip-cosmetic="${c.id}">✅ No seu baú</button>`;
+    else btn = `<button class="cosmetic-buy" data-buy-cosmetic="${c.id}">🪙 ${c.price.toLocaleString('pt-BR')}</button>`;
+    return `<div class="cosmetic-card" title="${escapeHtml(c.name)} — ${escapeHtml(c.rarityName)}">
+        <span class="cosmetic-emoji">${c.catEmoji}${c.emoji}</span>
+        <span class="cosmetic-name">${escapeHtml(c.name)}</span>
+        <span class="rarity-chip rarity-${c.rarity}">${c.gem} ${escapeHtml(c.rarityName)}</span>
+        ${owned ? '' : `<span class="cosmetic-price">🪙 ${c.price.toLocaleString('pt-BR')}</span>`}
+        ${btn}
+    </div>`;
+}
+
+function filteredCosmetics() {
+    const q = ($('#shop-search')?.value || '').trim().toLowerCase();
+    const cat = $('#shop-cat')?.value || '';
+    const rar = $('#shop-rarity')?.value || '';
+    return ECO.COSMETICS.filter((c) =>
+        (!cat || c.cat === cat) && (!rar || c.rarity === rar) && (!q || c.name.toLowerCase().includes(q))
+    );
+}
+
+function renderCosmeticShop() {
+    const grid = $('#cosmetic-grid');
+    if (!grid || !ECO) return;
+    const ownedSet = new Set(economyState?.cosmetics || []);
+    const filtered = filteredCosmetics();
+    const shown = filtered.slice(0, shopPage * COSMETICS_PAGE_SIZE);
+    const countEl = $('#shop-cosmetic-count');
+    if (countEl) countEl.textContent = `${filtered.length.toLocaleString('pt-BR')} cosméticos · você possui ${ownedSet.size.toLocaleString('pt-BR')}`;
+    grid.innerHTML = shown.map((c) => cosmeticCardHTML(c, ownedSet.has(c.id))).join('') || '<p class="inv-empty">Nada por aqui… tente outra busca 🔍</p>';
+    const more = $('#shop-load-more');
+    if (more) {
+        more.hidden = shown.length >= filtered.length;
+        more.textContent = `Carregar mais (${(filtered.length - shown.length).toLocaleString('pt-BR')} restantes)`;
+    }
+}
+
+function materialRowHTML(m, mode) {
+    const owned = matQty(m.id);
+    if (mode === 'buy') {
+        return `<div class="material-row"><span class="material-emoji">${m.emoji}</span><span class="material-info"><span class="material-name">${escapeHtml(m.name)}</span><span class="material-meta">🪙 ${m.price.toLocaleString('pt-BR')} · você tem ${owned}</span></span><span class="material-actions"><button class="buy1" data-buy-mat="${m.id}" data-qty="1">+1</button><button class="buy10" data-buy-mat="${m.id}" data-qty="10">+10</button></span></div>`;
+    }
+    if (owned <= 0) return '';
+    const sell = sellPriceOf(m);
+    return `<div class="material-row"><span class="material-emoji">${m.emoji}</span><span class="material-info"><span class="material-name">${escapeHtml(m.name)}</span><span class="material-meta">vende por 🪙 ${sell.toLocaleString('pt-BR')} · você tem ${owned}</span></span><span class="material-actions"><button class="sell1" data-sell-mat="${m.id}" data-qty="1">−1</button><button class="sell10" data-sell-mat="${m.id}" data-qty="10">−10</button></span></div>`;
+}
+
+function renderBuyList() {
+    const list = $('#buy-material-list');
+    if (list && ECO) list.innerHTML = ECO.RAW_MATERIALS.map((m) => materialRowHTML(m, 'buy')).join('');
+}
+function renderSellList() {
+    const list = $('#sell-material-list');
+    if (!list || !ECO) return;
+    const rows = ECO.ALL_MATERIALS.map((m) => materialRowHTML(m, 'sell')).filter(Boolean).join('');
+    list.innerHTML = rows || '<p class="inv-empty">Seu baú está vazio. Trabalhe e colete para ter o que vender 🎒</p>';
+}
+
+function renderInventory() {
+    if (!ECO) return;
+    const gold = fmtGold(economyState?.gold);
+    const invGold = $('#inv-gold'); if (invGold) invGold.textContent = gold;
+    const equipped = equippedCosmetic();
+    const eq = $('#equipped-card');
+    if (eq) eq.innerHTML = equipped
+        ? `<span class="eco-equipped-emoji">${equipped.catEmoji}${equipped.emoji}</span><span class="eco-equipped-info"><small>Cosmético equipado</small><strong>${escapeHtml(equipped.name)}</strong><small>${equipped.gem} ${escapeHtml(equipped.rarityName)} · aparece ao lado do seu nome no feed</small></span>`
+        : `<span class="eco-equipped-emoji">🫥</span><span class="eco-equipped-info"><small>Nenhum cosmético equipado</small><strong>Toque em um cosmético do seu baú para equipar</strong></span>`;
+
+    const grid = $('#inventory-grid');
+    const ownedEntries = ECO.ALL_MATERIALS.filter((m) => matQty(m.id) > 0);
+    if (grid) {
+        grid.innerHTML = ownedEntries.length
+            ? ownedEntries.map((m) => `<div class="inv-cell" title="${escapeHtml(m.name)}"><span class="inv-emoji">${m.emoji}</span><span class="inv-name">${escapeHtml(m.name)}</span><span class="inv-qty">×${matQty(m.id)}</span></div>`).join('')
+            : '<p class="inv-empty">Nada no baú ainda. Visite o Trabalho 💼 pra começar a juntar!</p>';
+        const count = $('#inv-mat-count'); if (count) count.textContent = `${ownedEntries.length}/${ECO.ALL_MATERIALS.length} tipos`;
+    }
+
+    const ownedBox = $('#owned-cosmetics');
+    if (ownedBox) {
+        const ownedSet = new Set(economyState?.cosmetics || []);
+        const ownedItems = ECO.COSMETICS.filter((c) => ownedSet.has(c.id));
+        ownedBox.innerHTML = ownedItems.length
+            ? ownedItems.map((c) => cosmeticCardHTML(c, true)).join('')
+            : '<p class="inv-empty">Você ainda não tem cosméticos. A Loja 🪙 te espera — tem 1.000 opções!</p>';
+        const count = $('#inv-cos-count'); if (count) count.textContent = `${ownedItems.length}/1.000`;
+    }
+}
+
+function renderRefinery() {
+    const list = $('#refinery-list');
+    if (!list || !economyState || !ECO) return;
+    list.innerHTML = ECO.RECIPES.map((r) => {
+        const out = ECO.MATERIAL_BY_ID[r.out];
+        const canCraft = Object.entries(r.inputs).every(([id, qty]) => matQty(id) >= qty);
+        const chips = Object.entries(r.inputs).map(([id, qty]) => {
+            const m = ECO.MATERIAL_BY_ID[id];
+            const have = matQty(id);
+            const ok = have >= qty;
+            return `<span class="mat-chip ${ok ? 'mat-ok' : 'mat-missing'}">${m?.emoji || ''} ${escapeHtml(m?.name || id)} ${have}/${qty}</span>`;
+        }).join('');
+        return `<div class="recipe-card"><div class="recipe-head"><span class="recipe-out">${out?.emoji || '📦'}</span><span class="recipe-name">${escapeHtml(out?.name || r.out)}</span><span class="recipe-qty">×${r.qty}</span></div><div class="recipe-inputs">${chips}</div><button class="recipe-craft" data-craft="${r.id}" ${canCraft ? '' : 'disabled'}>Refinar ⚒️</button></div>`;
+    }).join('');
+}
+
+function renderConstruction() {
+    const list = $('#construction-list');
+    if (!list || !economyState || !ECO) return;
+    const income = $('#construction-income');
+    if (income) income.textContent = `${incomeRate()} gold/min · acumulado: ${fmtGold(pendingGain())}`;
+    const collectBtn = $('#collect-btn');
+    if (collectBtn) collectBtn.disabled = pendingGain() <= 0;
+    list.innerHTML = ECO.BUILDINGS.map((b) => {
+        const owned = economyState.buildings[b.id] || 0;
+        const costChips = Object.entries(b.costMats).map(([id, qty]) => {
+            const m = ECO.MATERIAL_BY_ID[id];
+            const have = matQty(id);
+            const ok = have >= qty;
+            return `<span class="mat-chip ${ok ? 'mat-ok' : 'mat-missing'}">${m?.emoji || ''} ${have}/${qty}</span>`;
+        }).join('');
+        const canBuild = economyState.gold >= b.costGold && Object.entries(b.costMats).every(([id, qty]) => matQty(id) >= qty);
+        return `<div class="building-card"><span class="building-emoji">${b.emoji}</span><span class="building-info"><span class="building-name">${escapeHtml(b.name)}${owned ? ` <span class="building-owned">×${owned}</span>` : ''}</span><span class="building-desc">${escapeHtml(b.desc)}</span><span class="building-cost"><span class="mat-chip ${economyState.gold >= b.costGold ? 'mat-ok' : 'mat-missing'}">🪙 ${b.costGold.toLocaleString('pt-BR')}</span>${costChips}</span></span><button class="building-build" data-build="${b.id}" ${canBuild ? '' : 'disabled'}>Construir</button></div>`;
+    }).join('');
+}
+
+function formatCountdown(ms) {
+    const total = Math.ceil(ms / 1000);
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return m > 0 ? `⏳ ${m}:${String(s).padStart(2, '0')}` : `⏳ 0:${String(s).padStart(2, '0')}`;
+}
+
+function renderWork() {
+    const jobList = $('#job-list');
+    if (jobList && economyState && ECO) {
+        const now = Date.now();
+        jobList.innerHTML = ECO.JOBS.map((j) => {
+            const readyAt = Number(economyState.jobCd[j.id] || 0);
+            const remaining = Math.max(0, readyAt - now);
+            const bonusTxt = j.bonus ? ` · bônus: ${ECO.MATERIAL_BY_ID[j.bonus.id]?.emoji || ''} ${ECO.MATERIAL_BY_ID[j.bonus.id]?.name || ''} ${Math.round(j.bonus.chance * 100)}%` : '';
+            return `<div class="job-card"><span class="job-emoji">${j.emoji}</span><span class="job-info"><span class="job-name">${escapeHtml(j.name)}</span><span class="job-pay">🪙 ${j.goldMin}–${j.goldMax}${bonusTxt}</span><span class="job-desc">${escapeHtml(j.desc)} · recarrega em ${j.cdMinutes}min</span></span><button class="job-btn" data-job="${j.id}" ${remaining > 0 ? 'disabled' : ''}>${remaining > 0 ? formatCountdown(remaining) : 'Trabalhar 💪'}</button></div>`;
+        }).join('');
+    }
+    const gatherList = $('#gather-list');
+    if (gatherList && economyState && ECO) {
+        const now = Date.now();
+        gatherList.innerHTML = ECO.GATHER_LOCATIONS.map((loc) => {
+            const readyAt = Number(economyState.gatherCd[loc.id] || 0);
+            const remaining = Math.max(0, readyAt - now);
+            const dropsTxt = loc.drops.slice(0, 4).map(([id]) => ECO.MATERIAL_BY_ID[id]?.emoji || '').join(' ') + '…';
+            return `<div class="gather-card"><span class="gather-emoji">${loc.emoji}</span><span class="gather-info"><span class="gather-name">${escapeHtml(loc.name)}</span><span class="gather-desc">${dropsTxt} 1–2 materiais por visita</span></span><button class="gather-btn" data-gather="${loc.id}" ${remaining > 0 ? 'disabled' : ''}>${remaining > 0 ? formatCountdown(remaining) : 'Coletar 🌿'}</button></div>`;
+        }).join('');
+    }
+}
+
+function refreshEconomyUI() {
+    if (!economyState || !ECO) return;
+    renderEcoBalances();
+    renderCosmeticShop();
+    renderBuyList();
+    renderSellList();
+    renderInventory();
+    renderRefinery();
+    renderConstruction();
+    renderWork();
+}
+
+function startEconomyTicker() {
+    stopEconomyTicker();
+    economyTicker = setInterval(() => {
+        if (!currentUser || !economyState) return;
+        renderEcoBalances();
+        const income = $('#construction-income');
+        if (income) income.textContent = `${incomeRate()} gold/min · acumulado: ${fmtGold(pendingGain())}`;
+        const collectBtn = $('#collect-btn');
+        if (collectBtn) collectBtn.disabled = pendingGain() <= 0;
+        renderWork();
+    }, 1000);
+}
+function stopEconomyTicker() { if (economyTicker) { clearInterval(economyTicker); economyTicker = null; } }
+
+/* ---------- AÇÕES ---------- */
+async function buyCosmetic(id) {
+    const c = ECO.COSMETIC_BY_ID[id];
+    if (!c || !economyState) return;
+    if (economyState.cosmetics.includes(id)) { showToast('Você já tem esse cosmético ✨', 'info'); return; }
+    if (economyState.gold < c.price) { showToast(`Falta gold! São ${fmtGold(c.price)} 🪙`, 'warn'); return; }
+    await saveEconomy({ gold: economyState.gold - c.price, cosmetics: [...economyState.cosmetics, id] });
+    vibrate([12, 40, 12]);
+    showToast(`${c.emoji} ${c.name} virou seu! ✨`, 'success', 3500);
+}
+async function equipCosmetic(id) {
+    if (!economyState) return;
+    if (!economyState.cosmetics.includes(id)) return;
+    const next = economyState.equipped === id ? null : id;
+    economyState.equipped = next;
+    await saveEconomy({ equippedCosmetic: next });
+    showToast(next ? 'Cosmético equipado! Vai aparecer no feed ⭐' : 'Cosmético guardado de volta.', 'info');
+}
+async function buyMaterial(id, qty) {
+    const m = ECO.MATERIAL_BY_ID[id];
+    if (!m || !economyState) return;
+    const total = m.price * qty;
+    if (economyState.gold < total) { showToast(`Saldo insuficiente (faltam ${fmtGold(total - economyState.gold)})`, 'warn'); return; }
+    const inv = { ...economyState.inv, [id]: (economyState.inv[id] || 0) + qty };
+    await saveEconomy({ gold: economyState.gold - total, inv });
+    vibrate(8);
+    showToast(`+${qty}× ${m.name} 🧺`, 'success');
+}
+async function sellMaterial(id, qty) {
+    const m = ECO.MATERIAL_BY_ID[id];
+    if (!m || !economyState) return;
+    const have = matQty(id);
+    const n = Math.min(qty, have);
+    if (n <= 0) return;
+    const inv = { ...economyState.inv, [id]: have - n };
+    if (inv[id] <= 0) delete inv[id];
+    await saveEconomy({ gold: economyState.gold + sellPriceOf(m) * n, inv });
+    vibrate(8);
+    showToast(`+${fmtGold(sellPriceOf(m) * n)} no bolso 🪙`, 'success');
+}
+async function craftRecipe(id) {
+    const r = ECO.RECIPES.find((x) => x.id === id);
+    if (!r || !economyState) return;
+    const ok = Object.entries(r.inputs).every(([mid, qty]) => matQty(mid) >= qty);
+    if (!ok) { showToast('Faltam materiais 👀', 'warn'); return; }
+    const inv = { ...economyState.inv };
+    for (const [mid, qty] of Object.entries(r.inputs)) {
+        inv[mid] = (inv[mid] || 0) - qty;
+        if (inv[mid] <= 0) delete inv[mid];
+    }
+    inv[r.out] = (inv[r.out] || 0) + r.qty;
+    await saveEconomy({ inv });
+    vibrate([10, 30, 10]);
+    const out = ECO.MATERIAL_BY_ID[r.out];
+    showToast(`⚒️ ${out?.emoji || ''} ${out?.name || r.out} pronto!`, 'success');
+}
+async function buildStructure(id) {
+    const b = ECO.BUILDINGS.find((x) => x.id === id);
+    if (!b || !economyState) return;
+    if (economyState.gold < b.costGold) { showToast('Gold insuficiente 🪙', 'warn'); return; }
+    const ok = Object.entries(b.costMats).every(([mid, qty]) => matQty(mid) >= qty);
+    if (!ok) { showToast('Faltam materiais para construir 👀', 'warn'); return; }
+    const inv = { ...economyState.inv };
+    for (const [mid, qty] of Object.entries(b.costMats)) {
+        inv[mid] = (inv[mid] || 0) - qty;
+        if (inv[mid] <= 0) delete inv[mid];
+    }
+    const buildings = { ...economyState.buildings, [id]: (economyState.buildings[id] || 0) + 1 };
+    await saveEconomy({ gold: economyState.gold - b.costGold, inv, buildings });
+    vibrate([12, 40, 12, 40, 12]);
+    showToast(`🏗️ ${b.name} construída! +${b.rate} gold/min`, 'success', 4000);
+}
+async function collectIncome() {
+    if (!economyState) return;
+    const gain = pendingGain();
+    if (gain <= 0) { showToast('Nada para coletar ainda — deixa a renda trabalhar 🏦', 'info'); return; }
+    await saveEconomy({ gold: economyState.gold + gain, lastCollectAt: Date.now() });
+    vibrate([10, 30, 10]);
+    showToast(`🏦 +${fmtGold(gain)} de renda!`, 'success', 3500);
+}
+async function doJob(id) {
+    const job = ECO.JOBS.find((j) => j.id === id);
+    if (!job || !economyState) return;
+    if ((economyState.jobCd[id] || 0) > Date.now()) return;
+    const pay = Math.floor(job.goldMin + Math.random() * (job.goldMax - job.goldMin + 1));
+    const jobCd = { ...economyState.jobCd, [id]: Date.now() + job.cdMinutes * 60000 };
+    const patch = { gold: economyState.gold + pay, jobCd };
+    let bonusTxt = '';
+    if (job.bonus && Math.random() < job.bonus.chance) {
+        const inv = { ...economyState.inv };
+        inv[job.bonus.id] = (inv[job.bonus.id] || 0) + job.bonus.qty;
+        patch.inv = inv;
+        bonusTxt = ` + ${ECO.MATERIAL_BY_ID[job.bonus.id]?.emoji || ''}×${job.bonus.qty}`;
+    }
+    await saveEconomy(patch);
+    vibrate([10, 30, 10]);
+    showToast(`💼 ${job.name}: +${fmtGold(pay)}${bonusTxt}`, 'success', 3500);
+}
+async function gatherHere(id) {
+    const loc = ECO.GATHER_LOCATIONS.find((l) => l.id === id);
+    if (!loc || !economyState) return;
+    if ((economyState.gatherCd[id] || 0) > Date.now()) return;
+    const totalWeight = loc.drops.reduce((s, d) => s + d[1], 0);
+    const picks = {};
+    for (let i = 0; i < 2; i++) {
+        let roll = Math.random() * totalWeight;
+        for (const [mid, weight] of loc.drops) {
+            roll -= weight;
+            if (roll <= 0) { picks[mid] = (picks[mid] || 0) + (1 + (Math.random() < 0.35 ? 1 : 0)); break; }
+        }
+    }
+    const inv = { ...economyState.inv };
+    const summary = Object.entries(picks).map(([mid, qty]) => {
+        inv[mid] = (inv[mid] || 0) + qty;
+        const m = ECO.MATERIAL_BY_ID[mid];
+        return `${m?.emoji || ''}${qty}`;
+    }).join(' ');
+    const gatherCd = { ...economyState.gatherCd, [id]: Date.now() + GATHER_CD_MS };
+    await saveEconomy({ inv, gatherCd });
+    vibrate(8);
+    showToast(`🌿 ${loc.name}: ${summary}`, 'success', 3000);
+}
+
+/* ---------- PRESENTES 🎁 ---------- */
+function openGiftModal() {
+    if (!currentUser) return;
+    populateGiftMaterialOptions();
+    const goldInput = $('#gift-gold-amount'); if (goldInput) goldInput.value = '';
+    const qtyInput = $('#gift-material-qty'); if (qtyInput) qtyInput.value = '1';
+    const search = $('#gift-search'); if (search) search.value = '';
+    const results = $('#gift-results'); if (results) results.innerHTML = '<p class="muted">Digite o nome da pessoa…</p>';
+    openModal('gift-modal');
+}
+function populateGiftMaterialOptions() {
+    const select = $('#gift-material-select');
+    if (!select || !ECO) return;
+    const owned = ECO.ALL_MATERIALS.filter((m) => matQty(m.id) > 0);
+    select.innerHTML = owned.length
+        ? owned.map((m) => `<option value="${m.id}">${m.emoji} ${escapeHtml(m.name)} (×${matQty(m.id)})</option>`).join('')
+        : '<option value="">Baú vazio — nada para presentear</option>';
+}
+async function searchGiftRecipients(term) {
+    const box = $('#gift-results');
+    if (!box) return;
+    const q = term.trim().toLowerCase();
+    if (q.length < 2) { box.innerHTML = '<p class="muted">Digite ao menos 2 letras…</p>'; return; }
+    box.innerHTML = '<p class="muted">Buscando…</p>';
+    try {
+        const snap = await getDocs(collection(db, 'users'));
+        const matches = [];
+        snap.forEach((d) => {
+            const data = d.data() || {};
+            const name = String(data.name || '');
+            if (d.id !== currentUser.uid && name.toLowerCase().includes(q)) matches.push({ uid: d.id, name });
+        });
+        box.innerHTML = matches.slice(0, 8).map((p) => `<div class="gift-person"><span class="gift-person-name">${escapeHtml(p.name)}</span><button class="chip-btn accent" data-send-gift="${escapeHtml(p.uid)}" data-name="${escapeHtml(p.name)}">Enviar 🎁</button></div>`).join('') || '<p class="muted">Ninguém com esse nome 🙈</p>';
+    } catch (err) {
+        box.innerHTML = `<p class="muted">Erro na busca: ${escapeHtml(firestorePermissionMsg(err))}</p>`;
+    }
+}
+async function sendGift(toUid, toName) {
+    if (!currentUser || !economyState) return;
+    const mode = giftState.mode;
+    try {
+        await runTransaction(db, async (tx) => {
+            const ref = ecoUserRef();
+            const snap = await tx.get(ref);
+            const d = snap.data() || {};
+            const base = { from: currentUser.uid, fromName: currentUserProfile.name || 'Alguém', to: toUid, status: 'pending', createdAt: serverTimestamp() };
+            if (mode === 'gold') {
+                const amount = Math.floor(Number($('#gift-gold-amount')?.value || 0));
+                if (!Number.isFinite(amount) || amount < 1) throw new Error('Informe uma quantidade de gold válida.');
+                const gold = typeof d.gold === 'number' ? d.gold : 0;
+                if (gold < amount) throw new Error(`Você só tem ${fmtGold(gold)} 🪙`);
+                tx.set(ref, { gold: gold - amount }, { merge: true });
+                tx.set(doc(collection(db, 'gifts')), { ...base, gold: amount });
+            } else {
+                const sel = $('#gift-material-select');
+                const materialId = sel?.value || '';
+                const qty = Math.floor(Number($('#gift-material-qty')?.value || 0));
+                const have = d.inv && typeof d.inv === 'object' ? (d.inv[materialId] || 0) : 0;
+                if (!materialId) throw new Error('Escolha um material (ou seu baú está vazio).');
+                if (!Number.isFinite(qty) || qty < 1) throw new Error('Quantidade inválida.');
+                if (have < qty) throw new Error(`Você só tem ${have}× esse material.`);
+                const inv = { ...(d.inv || {}) };
+                inv[materialId] = have - qty;
+                if (inv[materialId] <= 0) delete inv[materialId];
+                tx.set(ref, { inv }, { merge: true });
+                tx.set(doc(collection(db, 'gifts')), { ...base, materialId, materialQty: qty });
+            }
+        });
+        const fresh = await getDoc(ecoUserRef());
+        economyState = normalizeEconomy(fresh.data() || {});
+        refreshEconomyUI();
+        closeModal('gift-modal');
+        vibrate([12, 40, 12]);
+        showToast(`🎁 Presente enviado para ${toName}!`, 'success', 4000);
+    } catch (err) {
+        showToast(err?.message || 'Não consegui enviar o presente.', 'error', 4500);
+    }
+}
+
+/* Resgata presentes pendentes (chamado no login) */
+async function claimGifts() {
+    if (!currentUser) return;
+    try {
+        const q = query(collection(db, 'gifts'), where('to', '==', currentUser.uid), where('status', '==', 'pending'), limit(20));
+        const snap = await getDocs(q);
+        if (snap.empty) return;
+        const received = [];
+        for (const giftSnap of snap.docs) {
+            try {
+                await runTransaction(db, async (tx) => {
+                    const gSnap = await tx.get(giftSnap.ref);
+                    const g = gSnap.data();
+                    if (!g || g.status !== 'pending') return;
+                    const ref = ecoUserRef();
+                    const u = (await tx.get(ref)).data() || {};
+                    const patch = {};
+                    const gold = Number(g.gold || 0);
+                    if (gold > 0) {
+                        patch.gold = (typeof u.gold === 'number' ? u.gold : 0) + gold;
+                        received.push(`🪙 ${fmtGold(gold)} de ${g.fromName || 'alguém'}`);
+                    } else if (g.materialId) {
+                        const inv = { ...(u.inv || {}) };
+                        const qty = Number(g.materialQty || 1);
+                        inv[g.materialId] = (inv[g.materialId] || 0) + qty;
+                        patch.inv = inv;
+                        const m = ECO.MATERIAL_BY_ID[g.materialId];
+                        received.push(`${m?.emoji || ''} ${qty}× ${m?.name || g.materialId} de ${g.fromName || 'alguém'}`);
+                    }
+                    tx.set(ref, patch, { merge: true });
+                    tx.set(giftSnap.ref, { status: 'claimed', claimedAt: serverTimestamp() }, { merge: true });
+                });
+            } catch (err) {
+                console.warn('Não consegui resgatar um presente:', err?.message);
+            }
+        }
+        if (received.length) {
+            const fresh = await getDoc(ecoUserRef());
+            economyState = normalizeEconomy(fresh.data() || {});
+            refreshEconomyUI();
+            showToast(`🎁 Presente${received.length > 1 ? 's' : ''} recebido${received.length > 1 ? 's' : ''}: ${received.join(' · ')}`, 'success', 6000);
+            vibrate([10, 40, 10, 40, 10]);
+        }
+    } catch (err) {
+        console.warn('Presentes indisponíveis (regras do Firestore?):', err?.message);
+    }
+}
+
+/* ---------- wiring dos botões ---------- */
+document.addEventListener('click', async (e) => {
+    const t = e.target;
+
+    const shopTab = t.closest?.('[data-shop-tab]');
+    if (shopTab) {
+        document.querySelectorAll('[data-shop-tab]').forEach((b) => b.classList.toggle('active', b === shopTab));
+        const target = shopTab.dataset.shopTab;
+        ['cosmeticos', 'comprar', 'vender'].forEach((name) => { const pane = document.getElementById(`shop-pane-${name}`); if (pane) pane.hidden = name !== target; });
+        return;
+    }
+    const workTab = t.closest?.('[data-work-tab]');
+    if (workTab) {
+        document.querySelectorAll('[data-work-tab]').forEach((b) => b.classList.toggle('active', b === workTab));
+        ['jobs', 'gather'].forEach((name) => { const pane = document.getElementById(`work-pane-${name}`); if (pane) pane.hidden = name !== workTab.dataset.workTab; });
+        return;
+    }
+    const giftTab = t.closest?.('[data-gift-tab]');
+    if (giftTab) {
+        giftState.mode = giftTab.dataset.giftTab;
+        document.querySelectorAll('[data-gift-tab]').forEach((b) => b.classList.toggle('active', b === giftTab));
+        const gp = $('#gift-pane-gold'), mp = $('#gift-pane-material');
+        if (gp) gp.hidden = giftState.mode !== 'gold';
+        if (mp) mp.hidden = giftState.mode !== 'material';
+        return;
+    }
+    const giftQuick = t.closest?.('[data-gift-quick]');
+    if (giftQuick) { const input = $('#gift-gold-amount'); if (input) input.value = giftQuick.dataset.giftQuick; return; }
+    const sendGiftBtn = t.closest?.('[data-send-gift]');
+    if (sendGiftBtn) { await sendGift(sendGiftBtn.dataset.sendGift, sendGiftBtn.dataset.name || 'amigo(a)'); return; }
+
+    const buyCosmeticBtn = t.closest?.('[data-buy-cosmetic]');
+    if (buyCosmeticBtn) { await buyCosmetic(buyCosmeticBtn.dataset.buyCosmetic); return; }
+    const equipBtn = t.closest?.('[data-equip-cosmetic]');
+    if (equipBtn) { await equipCosmetic(equipBtn.dataset.equipCosmetic); return; }
+    const buyMat = t.closest?.('[data-buy-mat]');
+    if (buyMat) { await buyMaterial(buyMat.dataset.buyMat, Number(buyMat.dataset.qty || 1)); return; }
+    const sellMat = t.closest?.('[data-sell-mat]');
+    if (sellMat) { await sellMaterial(sellMat.dataset.sellMat, Number(sellMat.dataset.qty || 1)); return; }
+    const craft = t.closest?.('[data-craft]');
+    if (craft) { await craftRecipe(craft.dataset.craft); return; }
+    const build = t.closest?.('[data-build]');
+    if (build) { await buildStructure(build.dataset.build); return; }
+    const job = t.closest?.('[data-job]');
+    if (job) { await doJob(job.dataset.job); return; }
+    const gather = t.closest?.('[data-gather]');
+    if (gather) { await gatherHere(gather.dataset.gather); return; }
+});
+
+$('#shop-load-more')?.addEventListener('click', () => { shopPage += 1; renderCosmeticShop(); });
+$('#shop-search')?.addEventListener('input', debounce(() => { shopPage = 1; renderCosmeticShop(); }, 200));
+$('#shop-cat')?.addEventListener('change', () => { shopPage = 1; renderCosmeticShop(); });
+$('#shop-rarity')?.addEventListener('change', () => { shopPage = 1; renderCosmeticShop(); });
+$('#collect-btn')?.addEventListener('click', collectIncome);
+$('#gift-open-btn')?.addEventListener('click', openGiftModal);
+$('#gift-search')?.addEventListener('input', debounce((e) => searchGiftRecipients(e.target.value), 350));
+
+/* Popula os filtros de categoria/raridade da Loja uma única vez */
+(() => {
+    const catSel = $('#shop-cat');
+    if (catSel && ECO?.COSMETIC_CATEGORIES) {
+        catSel.innerHTML = '<option value="">Todas as categorias</option>' + ECO.COSMETIC_CATEGORIES.map((c) => `<option value="${c.id}">${c.emoji} ${escapeHtml(c.word)}s</option>`).join('');
+    }
+    const rarSel = $('#shop-rarity');
+    if (rarSel && ECO?.RARITIES) {
+        rarSel.innerHTML = '<option value="">Todas as raridades</option>' + ECO.RARITIES.map((r) => `<option value="${r.id}">${r.gem} ${escapeHtml(r.name)}</option>`).join('');
+    }
+})();
+
 /* ================= ENERGIA DA CASA (engajamento ambiental) ================= */
 // A cada 3 minutos com o app aberto, a casa distribui uma energia:
 // curte um post recente de outra pessoa (80% das vezes) ou descurtida (20%).
@@ -1765,6 +2379,7 @@ onAuthStateChanged(auth, (user) => {
         startInboxListener();
         startDmInboxListener();
         startAmbientVibes();
+        initEconomy().then(claimGifts);
         if (unlocked) showUnlockedScreen();
     } else {
         currentUser = null;
@@ -1778,6 +2393,8 @@ onAuthStateChanged(auth, (user) => {
         if (dmUnsubscribe) { dmUnsubscribe(); dmUnsubscribe = null; }
         stopAmbientVibes();
         feedPostsCache = [];
+        stopEconomyTicker();
+        economyState = null;
         relock();
     }
 });
@@ -1797,7 +2414,7 @@ setInterval(tickClock, 1000);
 })();
 
 /* ================= ATUALIZAÇÃO DO APP (NOVA VERSÃO) ================= */
-const APP_VERSION = '2.6.0';
+const APP_VERSION = '3.0.0';
 const appVersionEl = $('#app-version');
 if (appVersionEl) appVersionEl.textContent = `Good Vibes 🌊 · O Refúgio · v${APP_VERSION}`;
 let swRegistration = null;

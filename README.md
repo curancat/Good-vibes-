@@ -2,6 +2,23 @@
 
 Uma rede social privada entre amigos, agora com cara de **tela inicial de telefone**: cada menu é um aplicativo. Feita em HTML/CSS/JS puro (sem build), com Firebase (Auth + Firestore), instalável como **PWA** no celular.
 
+## 🪙 Economia do Refúgio (v3.0 — a maior atualização até agora)
+
+A rede social agora tem uma **economia própria**, com a moeda **gold**:
+
+- **🪙 Loja** — 1.000 cosméticos (10 categorias × 20 temas × 5 raridades: molduras, emblemas, títulos, auras, fundos, capas, selos…), comprados com gold e equipáveis; equipado, seu cosmético aparece **ao lado do seu nome no feed e nos comentários**. Venda o que não quer por 60% do preço
+- **🧺 Comprar e Vender materiais** — 100 matérias-primas brutas (madeira, pedra, minério de ferro a platina, cristais, flores, pérolas…) com preço de vitrine +26 refinados
+- **💼 Trabalho** — 8 freelas (de Carregador de Feira à Lenda do Surf) com cooldown próprio e bônus de material, e **🌿 Coleta** em 6 pontos (Floresta, Mina Velha, Rio & Praia, Campo Florido, Montanha, Pântano), 25s de recarga, 2 drops por visita
+- **⚒️ Refinaria** — 36 receitas transformando matéria-prima em refinados (barras, tijolos, gemas lapidadas, pergaminho…)
+- **🏗️ Construção** — 12 estruturas (Barraca → 👑 Trono do Refúgio) com custo em gold/materiais e **renda passiva em gold/min** (até 12h acumuladas, botão Coletar)
+- **🎒 Inventário** — saldo de gold, baú visual com todos os materiais, baú de cosméticos + equipar — e o botão **🎁 Enviar presente**: mande gold ou materiais para qualquer amigo direto de lá (o presente é resgatado quando a pessoa abre o app, via coleção `gifts`)
+- **🏦 Economia de verdade** — o gold é salvo no Firestore (`users/{uid}`), funciona offline nos lançamentos e re-sincroniza ao abrir
+- Starter: 250 gold de presente de boas-vindas
+
+> ⚠️ **Honesto como sempre:** a economia é **autoritativa no cliente** (não há servidor): tecnicamente dá para se dar gold pelo Console do navegador. Ela vale como diversão e conquista social, não como dinheiro. Se quiser economia à prova de trapaça, só com backend/Cloud Functions + Blaze — posso montar depois.
+>
+> ⚠️ **Para os presentes funcionarem**, publique as novas regras do `firestore.rules` (bloco `gifts`): Firebase Console → Firestore → Regras → cole → Publicar. Sem isso, envio/resgate de presente falha em silêncio (o resto da economia funciona normalmente — ela usa sua própria `users/{uid}`).
+
 ## ✨ O que há de novo na v2.0
 
 - **Atualização de app funcionando de verdade** 🔧 — o Service Worker pré-cacheia a versão nova ignorando o cache HTTP do GitHub Pages e tudo mesma origem agora é *network-first*: ao tocar em **Atualizar 🔄**, a página recarrega com o código novo de verdade (antes servia o velho). Se nenhum worker novo estiver esperando, o botão apaga o cache do app shell e recarrega da rede

@@ -54,6 +54,27 @@ service cloud.firestore {
       }
     }
 
+    // ---------- PRESENTES (presentes entre membros) ----------
+    // Envio: quem cria manda constando como remetente.
+    // Resgate: só o destinatário lê e marca como 'claimed'.
+    match /gifts/{giftId} {
+      allow create: if signedIn()
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.fromName is string
+        && request.resource.data.to is string
+        && request.resource.data.to != request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasOnly(['from', 'fromName', 'to', 'status', 'createdAt', 'gold', 'materialId', 'materialQty'])
+        && (request.resource.data.gold is number || request.resource.data.materialId is string)
+        && (!request.resource.data.keys().hasAny(['gold']) || request.resource.data.gold > 0)
+        && (!request.resource.data.keys().hasAny(['materialQty']) || request.resource.data.materialQty > 0);
+      allow read: if signedIn() && (resource.data.to == request.auth.uid || resource.data.from == request.auth.uid);
+      allow update: if signedIn() && resource.data.to == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'claimedAt'])
+        && request.resource.data.status == 'claimed';
+      allow delete: if false;
+    }
+
     // ---------- CHATS DE CANAL (Global e Grupos) ----------
     match /chats_global/{messageId} {
       allow read: if signedIn();
