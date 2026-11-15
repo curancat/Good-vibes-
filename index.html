@@ -663,6 +663,9 @@
                         <button class="primary-btn compact" id="collect-btn"><span class="btn-label">Coletar</span></button>
                     </div>
                     <div class="building-list" id="construction-list"></div>
+                    <h3 class="eco-h3">🧿 Artefatos do Refúgio <span class="eco-h3-count">renda pequena, para sempre</span></h3>
+                    <p class="card-sub">Artefatos são craftados na <strong>Mesa de Trabalho 🛠️</strong> — o formato é um segredo que você descobre. Uma vez ativados, rendem gold/min <strong>para sempre</strong>, sem custo de manutenção.</p>
+                    <div class="artifact-list" id="artifact-list"></div>
                 </div>
             </section>
 
@@ -736,7 +739,7 @@
                         <div class="job-list" id="job-list"></div>
                     </div>
                     <div class="eco-pane" id="work-pane-gather" role="tabpanel" hidden>
-                        <p class="card-sub">Coleta de verdade agora dá trabalho 💪 Cada visita custa <strong>⚡ 20 de energia</strong> e exige reflexo no minigame — acerte o marcador na <strong>zona verde</strong>. Energia recarrega com o tempo. Cada local tem seu próprio tempo de descanso.</p>
+                        <p class="card-sub">Coleta não é mais de graça 💪 Cada visita custa <strong>⚡ 20 de energia</strong>: você tem <strong>5 segundos</strong> pra <strong>tocar o botão o máximo que puder</strong> — quanto mais toques, mais materiais (e locais difíceis exigem mais braços). Energia recarrega com o tempo, e cada local tem seu descanso.</p>
                         <div class="stamina-card card">
                             <span class="stamina-emoji">⚡</span>
                             <div class="stamina-info">
@@ -803,15 +806,14 @@
                     <button class="close-modal" id="gather-quit-btn" aria-label="Desistir da coleta">&times;</button>
                     <div class="gather-game-hero" id="gather-game-emoji">🌲</div>
                     <h2 class="modal-title center" id="gather-game-title">Floresta</h2>
-                    <p class="modal-sub center" id="gather-game-sub">Rodada 1 de 3 — pare o marcador dentro da zona verde!</p>
-                    <div class="gather-rounds" id="gather-rounds" aria-hidden="true"></div>
-                    <div class="gather-track" id="gather-track" aria-hidden="true">
-                        <div class="gather-spot" id="gather-spot"></div>
-                        <div class="gather-spot-perfect" id="gather-spot-perfect"></div>
-                        <div class="gather-marker" id="gather-marker"></div>
+                    <p class="modal-sub center" id="gather-game-sub">Toque no botão o MÁXIMO que puder em 5 segundos!</p>
+                    <div class="mash-hud" aria-hidden="true">
+                        <span class="mash-timer" id="mash-timer">5.0s</span>
+                        <span class="mash-taps"><strong id="mash-taps">0</strong> toques 💪</span>
                     </div>
-                    <div class="gather-feedback" id="gather-feedback" aria-live="assertive">&nbsp;</div>
-                    <button class="primary-btn wide gather-hit-btn" id="gather-hit-btn"><span class="btn-label">⛏️ Golpear!</span></button>
+                    <div class="mash-track" aria-hidden="true"><div class="mash-fill" id="mash-fill" style="width:0%"></div></div>
+                    <div class="gather-feedback" id="gather-feedback" aria-live="assertive">Toque para começar! 💪</div>
+                    <button class="mash-btn" id="mash-btn" aria-label="Toque o máximo que puder"><span id="mash-btn-emoji">⛏️</span><small>TOQUE!</small></button>
                     <button class="primary-btn wide" id="gather-done-btn" hidden><span class="btn-label">Guardar no baú 🎒</span></button>
                 </div>
             </div>

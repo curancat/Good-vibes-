@@ -178,11 +178,31 @@ const RECIPES = [
     { id: 'r_liga_aco2', out: 'liga_de_aco', qty: 1, inputs: { minerio_tungstenio: 1, barra_ferro: 1 }, shape: ["T","F"], key: {"T":"minerio_tungstenio","F":"barra_ferro"} },
     { id: 'r_bloco_marmore2', out: 'bloco_de_marmore', qty: 1, inputs: { arenito: 2, calcario: 1 }, shape: ["AA","C."], key: {"A":"arenito","C":"calcario"} },
     { id: 'r_couro2', out: 'couro_curtido', qty: 1, inputs: { couro_de_crocodilo: 1, sal_marinho: 1 }, shape: ["C","S"], key: {"C":"couro_de_crocodilo","S":"sal_marinho"} },
-    { id: 'r_la2', out: 'la_fiada', qty: 2, inputs: { seda_bruta: 1 }, shape: ["S"], key: {"S":"seda_bruta"} }
+    { id: 'r_la2', out: 'la_fiada', qty: 2, inputs: { seda_bruta: 1 }, shape: ["S"], key: {"S":"seda_bruta"} },
+    { id: 'r_art_amuleto', out: 'art_amuleto_cobre', qty: 1, inputs: { barra_cobre: 2 }, shape: ["CC"], key: { C: 'barra_cobre' } },
+    { id: 'r_art_anel', out: 'art_anel_prata', qty: 1, inputs: { barra_prata: 1, perola_polida: 1 }, shape: ["S", "P"], key: { S: 'barra_prata', P: 'perola_polida' } },
+    { id: 'r_art_candelabro', out: 'art_candelabro_aco', qty: 1, inputs: { liga_de_aco: 1, vidro: 1 }, shape: ["A", "V"], key: { A: 'liga_de_aco', V: 'vidro' } },
+    { id: 'r_art_rosario', out: 'art_rosario_bronze', qty: 1, inputs: { liga_de_bronze: 1, la_fiada: 2 }, shape: ["L", "B", "L"], key: { L: 'la_fiada', B: 'liga_de_bronze' } },
+    { id: 'r_art_idolo', out: 'art_idolo_marmore', qty: 1, inputs: { bloco_de_marmore: 2, tinta_violeta: 1 }, shape: ["M", "M", "T"], key: { M: 'bloco_de_marmore', T: 'tinta_violeta' } },
+    { id: 'r_art_coroa', out: 'art_coroa_refugio', qty: 1, inputs: { barra_ouro: 2, gema_lapidada: 1 }, shape: ["G.G", ".E."], key: { G: 'barra_ouro', E: 'gema_lapidada' } },
+    { id: 'r_art_orbe', out: 'art_orbe_encantado', qty: 1, inputs: { lingote_enfeitiçado: 1, cristal_lapidado: 1, essencia_concentrada: 1 }, shape: ["L", "C", "E"], key: { L: 'lingote_enfeitiçado', C: 'cristal_lapidado', E: 'essencia_concentrada' } }
 ];
 
 /* ---------- 12 CONSTRUÇÕES ---------- */
 /* costMats usa ids de materiais (brutos ou refinados) */
+
+/* ---------- ARTEFATOS (craftáveis, renda passiva pequena e para sempre) ---------- */
+const ARTIFACTS = [
+    { id: 'art_amuleto_cobre', name: 'Amuleto de Cobre', emoji: '🧿', passive: 2, hint: 'Dois cobres lado a lado…', desc: '+2 gold/min, para sempre' },
+    { id: 'art_anel_prata', name: 'Anel de Prata', emoji: '💍', passive: 3, hint: 'Prata sobre uma pérola polida…', desc: '+3 gold/min, para sempre' },
+    { id: 'art_candelabro_aco', name: 'Candelabro de Aço', emoji: '🕯️', passive: 4, hint: 'Liga de aço sobre vidro…', desc: '+4 gold/min, para sempre' },
+    { id: 'art_rosario_bronze', name: 'Rosário de Bronze', emoji: '📿', passive: 5, hint: 'Lã, bronze e lã em pé…', desc: '+5 gold/min, para sempre' },
+    { id: 'art_idolo_marmore', name: 'Ídolo de Mármore', emoji: '🏺', passive: 8, hint: 'Dois mármores e um pingo de tinta…', desc: '+8 gold/min, para sempre' },
+    { id: 'art_coroa_refugio', name: 'Coroa do Refúgio', emoji: '👑', passive: 12, hint: 'Ouro, gema, ouro — em coroa…', desc: '+12 gold/min, para sempre' },
+    { id: 'art_orbe_encantado', name: 'Orbe Encantado', emoji: '🔮', passive: 18, hint: 'Lingote enfeitiçado, cristal e essência…', desc: '+18 gold/min, para sempre' }
+];
+const ARTIFACT_BY_ID = Object.fromEntries(ARTIFACTS.map((a) => [a.id, a]));
+
 const BUILDINGS = [
     { id: 'barraca', name: 'Barraca', emoji: '⛺', costGold: 800, costMats: { madeira_pinho: 6 }, rate: 1, desc: 'Um canto seu no mundo. +1 gold/min' },
     { id: 'poco', name: 'Poço', emoji: '🪣', costGold: 1200, costMats: { madeira_carvalho: 4 }, rate: 2, desc: 'Água fresca sempre à mão. +2 gold/min' },
@@ -212,12 +232,12 @@ const JOBS = [
 
 /* ---------- 6 PONTOS DE COLETA ---------- */
 const GATHER_LOCATIONS = [
-    { id: 'floresta', name: 'Floresta', emoji: '🌲', cdSeconds: 120, spot: 30, speed: 0.9, drops: [ ['madeira_pinho', 30], ['madeira_carvalho', 22], ['fibra_vegetal', 25], ['pinha', 18], ['flor_silvestre', 12], ['mel', 4] ] },
-    { id: 'mina', name: 'Mina Velha', emoji: '⛏️', cdSeconds: 180, spot: 19, speed: 1.45, drops: [ ['pedra_bruta', 30], ['minerio_carvao', 20], ['minerio_ferro', 14], ['minerio_cobre', 12], ['grafite', 6], ['minerio_prata', 4] ] },
-    { id: 'rio_praia', name: 'Rio & Praia', emoji: '🏖️', cdSeconds: 150, spot: 24, speed: 1.15, drops: [ ['concha', 25], ['areia', 25], ['sal_marinho', 18], ['alga', 20], ['peixe_dourado', 8], ['perola', 2], ['ambar', 2] ] },
-    { id: 'campo', name: 'Campo Florido', emoji: '🌼', cdSeconds: 120, spot: 28, speed: 1, drops: [ ['flor_silvestre', 25], ['erva_medicinal', 20], ['mel', 12], ['cogumelo_vermelho', 12], ['petala_de_lotus', 4], ['milho', 10] ] },
-    { id: 'montanha', name: 'Montanha', emoji: '⛰️', cdSeconds: 210, spot: 16, speed: 1.7, drops: [ ['marmore', 8], ['granito', 18], ['calcario', 20], ['obsidiana', 6], ['jade', 2], ['cristal_runico', 1] ] },
-    { id: 'pantano', name: 'Pântano', emoji: '🐸', cdSeconds: 150, spot: 22, speed: 1.25, drops: [ ['musgo', 28], ['cogumelo_vermelho', 15], ['erva_medicinal', 15], ['lagrima_de_sereia', 2], ['agua_marinha', 3] ] }
+    { id: 'floresta', name: 'Floresta', emoji: '🌲', cdSeconds: 120, power: 1, drops: [ ['madeira_pinho', 30], ['madeira_carvalho', 22], ['fibra_vegetal', 25], ['pinha', 18], ['flor_silvestre', 12], ['mel', 4] ] },
+    { id: 'mina', name: 'Mina Velha', emoji: '⛏️', cdSeconds: 180, power: 0.75, drops: [ ['pedra_bruta', 30], ['minerio_carvao', 20], ['minerio_ferro', 14], ['minerio_cobre', 12], ['grafite', 6], ['minerio_prata', 4] ] },
+    { id: 'rio_praia', name: 'Rio & Praia', emoji: '🏖️', cdSeconds: 150, power: 0.9, drops: [ ['concha', 25], ['areia', 25], ['sal_marinho', 18], ['alga', 20], ['peixe_dourado', 8], ['perola', 2], ['ambar', 2] ] },
+    { id: 'campo', name: 'Campo Florido', emoji: '🌼', cdSeconds: 120, power: 1, drops: [ ['flor_silvestre', 25], ['erva_medicinal', 20], ['mel', 12], ['cogumelo_vermelho', 12], ['petala_de_lotus', 4], ['milho', 10] ] },
+    { id: 'montanha', name: 'Montanha', emoji: '⛰️', cdSeconds: 210, power: 0.65, drops: [ ['marmore', 8], ['granito', 18], ['calcario', 20], ['obsidiana', 6], ['jade', 2], ['cristal_runico', 1] ] },
+    { id: 'pantano', name: 'Pântano', emoji: '🐸', cdSeconds: 150, power: 0.85, drops: [ ['musgo', 28], ['cogumelo_vermelho', 15], ['erva_medicinal', 15], ['lagrima_de_sereia', 2], ['agua_marinha', 3] ] }
 ];
 
 /* ---------- 1.000 COSMÉTICOS (10 categorias × 20 temas × 5 raridades) ---------- */
@@ -323,6 +343,8 @@ window.GV_ECO = {
     ALL_MATERIALS,
     MATERIAL_BY_ID,
     RECIPES,
+    ARTIFACTS,
+    ARTIFACT_BY_ID,
     BUILDINGS,
     JOBS,
     GATHER_LOCATIONS,

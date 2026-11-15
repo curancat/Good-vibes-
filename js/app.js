@@ -1775,7 +1775,6 @@ const COLLECT_CAP_MINUTES = 12 * 60; // renda acumula no máximo 12h
 const STAMINA_MAX = 100;
 const STAMINA_REGEN_MS = 20 * 1000;   // +1 energia a cada 20s
 const GATHER_STAMINA_COST = 20;       // energia por visita de coleta
-const GATHER_ROUNDS = 3;
 
 let economyState = null;      // { gold, inv, buildings, cosmetics, equipped, lastCollectAt, jobCd, gatherCd }
 let economyTicker = null;
@@ -1786,6 +1785,9 @@ const giftState = { mode: 'gold' };
 const ecoUserRef = () => doc(db, 'users', currentUser.uid);
 const fmtGold = (n) => `${Math.floor(Number(n) || 0).toLocaleString('pt-BR')} gold`;
 const matQty = (id) => (economyState?.inv?.[id] || 0);
+const artifactQty = (id) => (economyState?.artifacts?.[id] || 0);
+const outputInfo = (id) => ECO?.MATERIAL_BY_ID?.[id] || ECO?.ARTIFACT_BY_ID?.[id] || { id, name: id, emoji: '📦' };
+const isArtifact = (id) => !!(ECO?.ARTIFACT_BY_ID?.[id]);
 
 function normalizeEconomy(d = {}) {
     return {
@@ -1800,7 +1802,8 @@ function normalizeEconomy(d = {}) {
         gatherCd: d.gatherCd && typeof d.gatherCd === 'object' ? { ...d.gatherCd } : {},
         creditScore: typeof d.creditScore === 'number' ? d.creditScore : 50,
         stamina: typeof d.stamina === 'number' ? Math.max(0, Math.min(STAMINA_MAX, d.stamina)) : STAMINA_MAX,
-        staminaAt: typeof d.staminaAt === 'number' ? d.staminaAt : Date.now()
+        staminaAt: typeof d.staminaAt === 'number' ? d.staminaAt : Date.now(),
+        artifacts: d.artifacts && typeof d.artifacts === 'object' ? { ...d.artifacts } : {}
     };
 }
 
@@ -1835,6 +1838,7 @@ async function initEconomy() {
         if (typeof data.creditScore !== 'number') patch.creditScore = 50;
         if (typeof data.stamina !== 'number') patch.stamina = STAMINA_MAX;
         if (typeof data.staminaAt !== 'number') patch.staminaAt = Date.now();
+        if (!data.artifacts || typeof data.artifacts !== 'object') patch.artifacts = {};
         if (!data.equippedCosmetics || typeof data.equippedCosmetics !== 'object') {
             // Migração: converte o slot único antigo em slots por categoria
             const migrated = {};
@@ -1947,7 +1951,9 @@ function authorCosmeticChip(cosmetic) {
 /* ---------- renda passiva ---------- */
 function incomeRate() {
     if (!economyState || !ECO) return 0;
-    return ECO.BUILDINGS.reduce((sum, b) => sum + (economyState.buildings[b.id] || 0) * b.rate, 0);
+    const fromBuildings = ECO.BUILDINGS.reduce((sum, b) => sum + (economyState.buildings[b.id] || 0) * b.rate, 0);
+    const fromArtifacts = ECO.ARTIFACTS.reduce((sum, a) => sum + (economyState.artifacts?.[a.id] || 0) * a.passive, 0);
+    return fromBuildings + fromArtifacts;
 }
 function pendingGain() {
     if (!economyState) return 0;
@@ -2104,10 +2110,11 @@ function renderCraftArea() {
     const craftBtn = $('#craft-do-btn');
     if (resultEl && resultName && craftBtn) {
         if (match) {
-            const out = ECO.MATERIAL_BY_ID[match.out];
+            const out = outputInfo(match.out);
+            const artifact = ECO.ARTIFACT_BY_ID?.[match.out];
             resultEl.innerHTML = `${out?.emoji || '📦'}${match.qty > 1 ? `<span class="cell-qty">×${match.qty}</span>` : ''}`;
             resultEl.classList.add('ready');
-            resultName.textContent = `${out?.name || match.out} (×${match.qty})`;
+            resultName.textContent = artifact ? `${out?.name} · +${artifact.passive} gold/min 🧿` : `${out?.name || match.out} (×${match.qty})`;
             craftBtn.disabled = false;
         } else {
             resultEl.innerHTML = '<span class="craft-result-empty">?</span>';
@@ -2148,13 +2155,23 @@ async function craftNow() {
         inv[id] = (inv[id] || 0) - 1;
         if (inv[id] <= 0) delete inv[id];
     }
-    inv[match.out] = (inv[match.out] || 0) + match.qty;
+    const artifact = ECO.ARTIFACT_BY_ID?.[match.out];
     craftGrid = Array(9).fill(null);
     craftSelected = null;
-    addLedger('craft', `Craft: ${ECO.MATERIAL_BY_ID[match.out]?.name || match.out} ×${match.qty}`, 0);
+    if (artifact) {
+        const artifacts = { ...(economyState.artifacts || {}) };
+        artifacts[artifact.id] = (artifacts[artifact.id] || 0) + 1;
+        addLedger('craft', `Artefato ativado: ${artifact.name} (+${artifact.passive} gold/min)`, 0);
+        await saveEconomy({ inv, artifacts });
+        vibrate([12, 60, 12, 60, 18]);
+        showToast(`🧿 ${artifact.emoji} ${artifact.name} ativado! +${artifact.passive} gold/min para sempre`, 'success', 4500);
+        return;
+    }
+    inv[match.out] = (inv[match.out] || 0) + match.qty;
+    addLedger('craft', `Craft: ${outputInfo(match.out)?.name || match.out} ×${match.qty}`, 0);
     await saveEconomy({ inv });
     vibrate([12, 40, 12, 40, 18]);
-    const out = ECO.MATERIAL_BY_ID[match.out];
+    const out = outputInfo(match.out);
     showToast(`⚒️ ${out?.emoji || ''} ${out?.name || match.out} ×${match.qty} craftado!`, 'success');
 }
 
@@ -2233,6 +2250,19 @@ function renderConstruction() {
         const canBuild = economyState.gold >= b.costGold && Object.entries(b.costMats).every(([id, qty]) => matQty(id) >= qty);
         return `<div class="building-card"><span class="building-emoji">${b.emoji}</span><span class="building-info"><span class="building-name">${escapeHtml(b.name)}${owned ? ` <span class="building-owned">×${owned}</span>` : ''}</span><span class="building-desc">${escapeHtml(b.desc)}</span><span class="building-cost"><span class="mat-chip ${economyState.gold >= b.costGold ? 'mat-ok' : 'mat-missing'}">🪙 ${b.costGold.toLocaleString('pt-BR')}</span>${costChips}</span></span><button class="building-build" data-build="${b.id}" ${canBuild ? '' : 'disabled'}>Construir</button></div>`;
     }).join('');
+
+    // Artefatos 🧿 — renda pequena e para sempre, conquistados por descoberta
+    const artifactList = $('#artifact-list');
+    if (artifactList) {
+        const arts = economyState.artifacts || {};
+        artifactList.innerHTML = ECO.ARTIFACTS.map((a) => {
+            const owned = arts[a.id] || 0;
+            if (!owned) {
+                return `<div class="artifact-card locked"><span class="artifact-emoji">🕳️</span><span class="artifact-info"><span class="artifact-name">??? </span><span class="artifact-hint">${escapeHtml(a.hint)}</span></span><span class="artifact-passive">+${a.passive}/min</span></div>`;
+            }
+            return `<div class="artifact-card">${owned > 1 ? `<span class="artifact-owned">×${owned}</span>` : ''}<span class="artifact-emoji">${a.emoji}</span><span class="artifact-info"><span class="artifact-name">${escapeHtml(a.name)}</span><span class="artifact-hint">${escapeHtml(a.desc)}</span></span><span class="artifact-passive">+${a.passive * owned}/min</span></div>`;
+        }).join('');
+    }
 }
 
 function formatCountdown(ms) {
@@ -2264,11 +2294,12 @@ function renderWork() {
             const remaining = Math.max(0, readyAt - now);
             const cdMin = Math.round((loc.cdSeconds || 120) / 60);
             const dropsTxt = loc.drops.slice(0, 4).map(([id]) => ECO.MATERIAL_BY_ID[id]?.emoji || '').join(' ') + '…';
-            const difficulty = (loc.spot || 25) >= 26 ? '🟢 fácil' : (loc.spot || 25) >= 20 ? '🟡 médio' : '🔴 difícil';
+            const power = Number(loc.power) || 1;
+            const difficulty = power >= 0.95 ? '🟢 fácil' : power >= 0.8 ? '🟡 médio' : '🔴 difícil';
             const noStamina = stamina < GATHER_STAMINA_COST;
             const disabled = remaining > 0 || noStamina;
             const label = remaining > 0 ? formatCountdown(remaining) : (noStamina ? '⚡ sem energia' : 'Coletar ⛏️');
-            return `<div class="gather-card"><span class="gather-emoji">${loc.emoji}</span><span class="gather-info"><span class="gather-name">${escapeHtml(loc.name)}</span><span class="gather-desc">${dropsTxt} zona ${difficulty} · ${cdMin}min de descanso</span><span class="gather-meta">⚡ ${GATHER_STAMINA_COST} energia por visita</span></span><button class="gather-btn" data-gather="${loc.id}" ${disabled ? 'disabled' : ''}>${label}</button></div>`;
+            return `<div class="gather-card"><span class="gather-emoji">${loc.emoji}</span><span class="gather-info"><span class="gather-name">${escapeHtml(loc.name)}</span><span class="gather-desc">${dropsTxt} ${cdMin}min de descanso</span><span class="gather-meta">⚡ ${GATHER_STAMINA_COST} por visita · dificuldade ${difficulty}</span></span><button class="gather-btn" data-gather="${loc.id}" ${disabled ? 'disabled' : ''}>${label}</button></div>`;
         }).join('');
     }
 }
@@ -2403,8 +2434,10 @@ async function doJob(id) {
     vibrate([10, 30, 10]);
     showToast(`💼 ${job.name}: +${fmtGold(pay)}${bonusTxt}`, 'success', 3500);
 }
-/* ============ MINIGAME DE COLETA ⛏️ (parar o marcador na zona verde) ============ */
-const gatherGame = { loc: null, results: [], pos: 12, dir: 1, raf: 0, lastTs: 0, spotCenter: 50, spotWidth: 22, over: false };
+/* ============ MINIGAME DE COLETA ⛏️ (toque rápido / força de braço) ============ */
+const MASH_DURATION_MS = 5000;
+const MASH_TIERS = [55, 35, 18];   // 3, 2, 1 materiais (antes do power do local)
+const mashGame = { loc: null, taps: 0, started: false, endsAt: 0, raf: 0, over: false };
 
 const gatherWeightRoll = (loc) => {
     const totalWeight = loc.drops.reduce((sum, d) => sum + d[1], 0);
@@ -2412,38 +2445,20 @@ const gatherWeightRoll = (loc) => {
     for (const [mid, weight] of loc.drops) { roll -= weight; if (roll <= 0) return mid; }
     return loc.drops[0][0];
 };
+const mashEffective = () => mashGame.taps * (Number(mashGame.loc?.power) || 1);
 
-function gatherNewSpot() {
-    const w = gatherGame.spotWidth;
-    gatherGame.spotCenter = w / 2 + 4 + Math.random() * (100 - w - 8);
-    const spot = $('#gather-spot');
-    if (spot) { spot.style.left = `${gatherGame.spotCenter - w / 2}%`; spot.style.width = `${w}%`; }
-    const perfect = $('#gather-spot-perfect');
-    const pw = w / 3;
-    if (perfect) { perfect.style.left = `${gatherGame.spotCenter - pw / 2}%`; perfect.style.width = `${pw}%`; }
+function mashRender() {
+    const eff = mashEffective();
+    const tapsEl = $('#mash-taps'); if (tapsEl) tapsEl.textContent = String(mashGame.taps);
+    const fill = $('#mash-fill'); if (fill) fill.style.width = `${Math.min(100, (eff / MASH_TIERS[0]) * 100)}%`;
 }
 
-function gatherRenderPips() {
-    const pips = $('#gather-rounds');
-    if (!pips) return;
-    pips.innerHTML = Array.from({ length: GATHER_ROUNDS }, (_, i) => {
-        const r = gatherGame.results[i];
-        return `<span class="gather-round-pip${r ? ` ${r === 'perfect' ? 'perfect' : r === 'hit' ? 'hit' : 'miss'}` : ''}"></span>`;
-    }).join('');
-}
-
-function gatherGameLoop(ts) {
-    if (!gatherGame.loc || gatherGame.over) return;
-    if (!gatherGame.lastTs) gatherGame.lastTs = ts;
-    const dt = Math.min(64, ts - gatherGame.lastTs);
-    gatherGame.lastTs = ts;
-    const velocity = 55 + (gatherGame.loc.speed || 1) * 45;   // % por segundo
-    gatherGame.pos += gatherGame.dir * velocity * (dt / 1000);
-    if (gatherGame.pos >= 100) { gatherGame.pos = 100; gatherGame.dir = -1; }
-    else if (gatherGame.pos <= 0) { gatherGame.pos = 0; gatherGame.dir = 1; }
-    const marker = $('#gather-marker');
-    if (marker) marker.style.left = `${gatherGame.pos}%`;
-    gatherGame.raf = requestAnimationFrame(gatherGameLoop);
+function mashTick() {
+    if (!mashGame.loc || mashGame.over) return;
+    const left = Math.max(0, mashGame.endsAt - Date.now());
+    const timer = $('#mash-timer'); if (timer) timer.textContent = `${(left / 1000).toFixed(1)}s`;
+    if (left <= 0) { void finishMashGame(); return; }
+    mashGame.raf = requestAnimationFrame(mashTick);
 }
 
 function startGatherGame(id) {
@@ -2452,58 +2467,52 @@ function startGatherGame(id) {
     const readyAt = Number(economyState.gatherCd[id] || 0);
     if (readyAt > Date.now()) { showToast('Esse local ainda está descansando 😌', 'info'); return; }
     const stamina = regenStamina();
-    if (stamina < GATHER_STAMINA_COST) { showToast(`Energia insuficiente ⚡ — recarrega com o tempo (faltam ${Math.ceil((GATHER_STAMINA_COST - stamina) * STAMINA_REGEN_MS / 60000)}min)`, 'warn'); return; }
-    gatherGame.loc = loc;
-    gatherGame.results = [];
-    gatherGame.pos = Math.random() < 0.5 ? 4 : 96;
-    gatherGame.dir = gatherGame.pos < 50 ? 1 : -1;
-    gatherGame.lastTs = 0;
-    gatherGame.over = false;
-    gatherGame.spotWidth = Number(loc.spot) || 22;
-    $('#gather-game-emoji').textContent = loc.emoji;
-    $('#gather-game-title').textContent = loc.name;
-    $('#gather-game-sub').textContent = `Rodada 1 de ${GATHER_ROUNDS} — pare o marcador na zona verde!`;
-    const feedback = $('#gather-feedback'); if (feedback) { feedback.textContent = '\u00a0'; feedback.className = 'gather-feedback'; }
-    $('#gather-hit-btn').hidden = false;
+    if (stamina < GATHER_STAMINA_COST) { showToast(`Energia insuficiente ⚡ — recarrega com o tempo (faltam ~${Math.ceil((GATHER_STAMINA_COST - stamina) * STAMINA_REGEN_MS / 60000)}min)`, 'warn'); return; }
+    mashGame.loc = loc;
+    mashGame.taps = 0;
+    mashGame.started = false;
+    mashGame.over = false;
+    cancelAnimationFrame(mashGame.raf);
+    const setText = (sel, txt) => { const el = $(sel); if (el) el.textContent = txt; };
+    setText('#gather-game-emoji', loc.emoji);
+    setText('#gather-game-title', loc.name);
+    setText('#gather-game-sub', `Toque no botão o MÁXIMO que puder em ${MASH_DURATION_MS / 1000} segundos!`);
+    setText('#mash-btn-emoji', loc.emoji);
+    setText('#mash-timer', `${(MASH_DURATION_MS / 1000).toFixed(1)}s`);
+    setText('#mash-taps', '0');
+    const fill = $('#mash-fill'); if (fill) fill.style.width = '0%';
+    const feedback = $('#gather-feedback'); if (feedback) { feedback.textContent = 'Toque para começar! 💪'; feedback.className = 'gather-feedback'; }
+    const mashBtn = $('#mash-btn'); if (mashBtn) { mashBtn.hidden = false; mashBtn.disabled = false; }
     $('#gather-done-btn').hidden = true;
-    gatherRenderPips();
-    gatherNewSpot();
     openModal('gather-game-modal');
-    cancelAnimationFrame(gatherGame.raf);
-    gatherGame.raf = requestAnimationFrame(gatherGameLoop);
 }
 
-async function hitGatherGame() {
-    const loc = gatherGame.loc;
-    if (!loc || gatherGame.over || !economyState) return;
-    const dist = Math.abs(gatherGame.pos - gatherGame.spotCenter);
-    const perfectHalf = gatherGame.spotWidth / 6;         // zona dourada = ⅓ da verde
-    const goodHalf = gatherGame.spotWidth / 2;
-    const result = dist <= perfectHalf ? 'perfect' : dist <= goodHalf ? 'hit' : 'miss';
-    gatherGame.results.push(result);
-    gatherRenderPips();
-    const feedback = $('#gather-feedback');
-    vibrate(result === 'miss' ? 60 : [8, 20, 8]);
-    if (result === 'perfect') { if (feedback) { feedback.textContent = 'PERFEITO! ✨ +2 materiais'; feedback.className = 'gather-feedback perfect'; } }
-    else if (result === 'hit') { if (feedback) { feedback.textContent = 'Bom! 💪 +1 material'; feedback.className = 'gather-feedback good'; } }
-    else if (feedback) { feedback.textContent = 'Errou… 😵'; feedback.className = 'gather-feedback miss'; }
-
-    if (gatherGame.results.length < GATHER_ROUNDS) {
-        $('#gather-game-sub').textContent = `Rodada ${gatherGame.results.length + 1} de ${GATHER_ROUNDS}`;
-        gatherNewSpot();
-        return;
+function mashTap() {
+    if (!mashGame.loc || mashGame.over) return;
+    if (!mashGame.started) {
+        mashGame.started = true;
+        mashGame.endsAt = Date.now() + MASH_DURATION_MS;
+        const feedback = $('#gather-feedback'); if (feedback) { feedback.textContent = ''; feedback.className = 'gather-feedback'; }
+        cancelAnimationFrame(mashGame.raf);
+        mashGame.raf = requestAnimationFrame(mashTick);
     }
+    mashGame.taps += 1;
+    vibrate(4);
+    mashRender();
+}
 
-    // Fim das rodadas: resolve recompensas
-    gatherGame.over = true;
-    cancelAnimationFrame(gatherGame.raf);
+async function finishMashGame() {
+    if (mashGame.over) return;
+    mashGame.over = true;
+    cancelAnimationFrame(mashGame.raf);
+    const loc = mashGame.loc;
+    if (!loc || !economyState) return;
+    const eff = mashEffective();
+    const rolls = eff >= MASH_TIERS[0] ? 3 : eff >= MASH_TIERS[1] ? 2 : eff >= MASH_TIERS[2] ? 1 : 0;
     const picks = {};
-    for (const r of gatherGame.results) {
-        const rolls = r === 'perfect' ? 2 : r === 'hit' ? 1 : 0;
-        for (let i = 0; i < rolls; i++) {
-            const mid = gatherWeightRoll(loc);
-            picks[mid] = (picks[mid] || 0) + 1;
-        }
+    for (let i = 0; i < rolls; i++) {
+        const mid = gatherWeightRoll(loc);
+        picks[mid] = (picks[mid] || 0) + 1;
     }
     const inv = { ...economyState.inv };
     const summary = Object.entries(picks).map(([mid, qty]) => {
@@ -2514,17 +2523,19 @@ async function hitGatherGame() {
     const staminaNow = regenStamina();
     const gatherCd = { ...economyState.gatherCd, [loc.id]: Date.now() + (loc.cdSeconds || 120) * 1000 };
     await saveEconomy({ inv, gatherCd, stamina: Math.max(0, staminaNow - GATHER_STAMINA_COST), staminaAt: Date.now() });
+    const timer = $('#mash-timer'); if (timer) timer.textContent = '0.0s';
+    const feedback = $('#gather-feedback');
     $('#gather-game-sub').textContent = summary ? `Você coletou: ${summary}` : 'Dessa vez não veio nada. Da próxima sai! 😤';
-    if (feedback) { feedback.textContent = summary ? 'Coleta concluída! 🎒' : 'Mãos vazias… 🍃'; feedback.className = `gather-feedback ${summary ? 'good' : 'miss'}`; }
-    $('#gather-hit-btn').hidden = true;
+    if (feedback) { feedback.textContent = summary ? `Coleta concluída com ${mashGame.taps} toques! 🎒` : `Só ${mashGame.taps} toques… o braço tremeu? 🍃`; feedback.className = `gather-feedback ${summary ? 'good' : 'miss'}`; }
+    const mashBtn = $('#mash-btn'); if (mashBtn) mashBtn.hidden = true;
     $('#gather-done-btn').hidden = false;
 }
 
 function closeGatherGame(cancelled) {
-    cancelAnimationFrame(gatherGame.raf);
-    if (cancelled && gatherGame.loc && !gatherGame.over) showToast('Coleta cancelada — energia intacta ⚡', 'info');
-    gatherGame.loc = null;
-    gatherGame.over = false;
+    cancelAnimationFrame(mashGame.raf);
+    if (cancelled && mashGame.loc && !mashGame.over) showToast('Coleta cancelada — energia intacta ⚡', 'info');
+    mashGame.loc = null;
+    mashGame.over = false;
     closeModal('gather-game-modal');
     renderWork();
 }
@@ -3542,7 +3553,7 @@ setInterval(tickClock, 1000);
 })();
 
 /* ================= ATUALIZAÇÃO DO APP (NOVA VERSÃO) ================= */
-const APP_VERSION = '4.3.0';
+const APP_VERSION = '4.4.0';
 const appVersionEl = $('#app-version');
 if (appVersionEl) appVersionEl.textContent = `Good Vibes 🌊 · O Refúgio · v${APP_VERSION}`;
 let swRegistration = null;
@@ -3751,6 +3762,6 @@ $('#craft-tray')?.addEventListener('pointerdown', craftPointerDown);
 $('#craft-grid')?.addEventListener('click', craftCellClick);
 $('#craft-do-btn')?.addEventListener('click', () => { void craftNow(); });
 $('#craft-clear-btn')?.addEventListener('click', clearCraftGrid);
-$('#gather-hit-btn')?.addEventListener('click', () => { void hitGatherGame(); });
+$('#mash-btn')?.addEventListener('click', mashTap);
 $('#gather-done-btn')?.addEventListener('click', () => closeGatherGame(false));
 $('#gather-quit-btn')?.addEventListener('click', () => closeGatherGame(true));

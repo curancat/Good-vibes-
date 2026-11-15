@@ -11,7 +11,7 @@ let js = readFileSync(`${root}/js/app.js`, 'utf8');
 
 const ECO_DATA = {
   gold: 500,
-  inv: { madeira_carvalho: 5, minerio_ferro: 3, minerio_cobre: 3, minerio_estanho: 3, areia: 3, carvao_vegetal: 2 },
+  inv: { madeira_carvalho: 5, minerio_ferro: 3, minerio_cobre: 6, minerio_estanho: 3, areia: 3, carvao_vegetal: 2, barra_cobre: 4 },
   buildings: {}, cosmetics: [], creditScore: 50,
   stamina: 100, staminaAt: Date.now(), gatherCd: {}, jobCd: {}
 };
@@ -121,6 +121,18 @@ assert.equal($$('#craft-grid .craft-cell.filled').length, 3, 'só 3 minérios no
 window.clearCraftGrid();
 console.log('✓ limite de estoque na grade respeitado');
 
+// ---------- 2.5) Artefato 🧿: craft do Amuleto de Cobre ativa renda passiva ----------
+window.placeCraftMaterial('barra_cobre', 0);
+window.placeCraftMaterial('barra_cobre', 1);
+await new Promise((r) => setTimeout(r, 60));
+assert.equal($('#craft-do-btn').disabled, false, 'amuleto de cobre detectado');
+$('#craft-do-btn').click();
+await new Promise((r) => setTimeout(r, 200));
+assert.ok($('#toast-container').innerHTML.includes('Amuleto de Cobre'), 'toast de artefato ativado');
+await new Promise((r) => setTimeout(r, 100));
+assert.ok(($('#construction-income')?.textContent || '').startsWith('2 gold/min'), `renda passiva inclui o amuleto (+2/min), veio: ${$('#construction-income')?.textContent}`);
+console.log('✓ artefato craftado: Amuleto de Cobre ativado, renda passiva agora 2 gold/min');
+
 // ---------- 3) Coleta: minigame abre, 3 rodadas encerram e gastam energia ----------
 $('#app-grid [data-open-app="work"]')?.click(); // pode não existir no grid — trabalho está no dock? tenta abrir via openApp
 window.openApp('work');
@@ -131,12 +143,14 @@ assert.equal($('#stamina-count').textContent, '100', 'energia inicia em 100');
 gatherBtns[0].click(); // Floresta
 await new Promise((r) => setTimeout(r, 80));
 assert.ok($('#gather-game-modal').classList.contains('active'), 'minigame abre');
-for (let i = 0; i < 3; i++) { $('#gather-hit-btn').click(); await new Promise((r) => setTimeout(r, 80)); }
-assert.equal($('#gather-done-btn').hidden, false, 'após 3 rodadas, botão de concluir aparece');
+for (let i = 0; i < 42; i++) $('#mash-btn').click();
+assert.equal($('#mash-taps').textContent, '42', 'contador de toques funciona');
+await new Promise((r) => setTimeout(r, 5400)); // espera o cronômetro de 5s fechar
+assert.equal($('#gather-done-btn').hidden, false, 'após o tempo, botão de concluir aparece');
 assert.equal($('#stamina-count').textContent, '80', 'coleta custou 20 de energia');
 $('#gather-done-btn').click();
 await new Promise((r) => setTimeout(r, 80));
-console.log('✓ coleta: minigame completo, 20⚡ deduzidos, local em descanso');
+console.log('✓ coleta: mash de 5s completo, 20⚡ deduzidos, local em descanso');
 
 // ---------- 4) Loja: sem aba Comprar, aba Itens presente ----------
 window.openApp('shop');

@@ -2,6 +2,34 @@
 
 Uma rede social privada entre amigos, agora com cara de **tela inicial de telefone**: cada menu é um aplicativo. Feita em HTML/CSS/JS puro (sem build), com Firebase (Auth + Firestore), instalável como **PWA** no celular.
 
+## 🧿 Artefatos + Coleta reformulada (v4.4.0)
+
+### 🧿 Artefatos do Refúgio — renda passiva pequena, para sempre
+
+Descobrir receitas agora **paga**: existem **7 artefatos craftáveis** na Mesa de Trabalho que, uma vez ativados, rendem **gold/min para sempre** — sem custo de manutenção, sem botões, só descoberta:
+
+| Artefato | Formato (dica) | Renda |
+|---|---|---|
+| 🧿 Amuleto de Cobre | dois cobres lado a lado | +2 gold/min |
+| 💍 Anel de Prata | prata sobre pérola polida | +3 gold/min |
+| 🕯️ Candelabro de Aço | liga de aço sobre vidro | +4 gold/min |
+| 📿 Rosário de Bronze | lã, bronze e lã na coluna | +5 gold/min |
+| 🏺 Ídolo de Mármore | dois mármores e um pingo de tinta | +8 gold/min |
+| 👑 Coroa do Refúgio | ouro, gema e ouro em coroa | +12 gold/min |
+| 🔮 Orbe Encantado | lingote enfeitiçado, cristal e essência | +18 gold/min |
+
+- Os artefatos **não vão pro baú** — ficam "instalados" na sua renda (ícone 🧿 na Construção, com a lista completa; os não descobertos aparecem como **???** com uma dica do formato)
+- Empilháveis: craftou 2 Amuletos, +4/min. A renda entra no mesmo contador de sempre (**gold/min** na Construção, acumulando até o teto de 24h)
+- É de propósito que a renda é **pouquinho** — artefato é conquista de quem descobre, não atalho de ouro (a Coroa não paga seu trono sozinha)
+
+### ⛏️ Coleta reformulada — agora é só força de braço
+
+O minigame de timing (parar o marcador na zona verde) foi aposentado por ser **difícil de entender**. No lugar: **Toque Rápido** — 5 segundos, um botão enorme, zero explicação:
+
+- ⚡ A visita continua custando **20 de energia**; toque o botão ⛏️ o máximo que puder em **5 segundos**
+- **55+ toques** (ajustado pelo peso do local) = **3 materiais** · **35+** = **2** · **18+** = **1** · menos que isso = **nada**
+- Locais difíceis (Mina, Montanha) exigem mais toques pelo mesmo resultado — cada local tem um **peso de força** (Floresta/Campo 🟢 · Rio&Praia 🟡 · Pântano 🟡 · Mina/Montanha 🔴)
+
 ## 🛠️ Trabalho de verdade: Mesa de Trabalho, Coleta com energia e Perfil TikTok (v4.3.0)
 
 ### 🛒 Loja limpa — cosméticos de um lado, itens do outro
@@ -20,9 +48,8 @@ Uma rede social privada entre amigos, agora com cara de **tela inicial de telefo
 ### ⛏️ Coleta virou TRABALHO — energia + minigame
 
 - Chega de coletar de graça a cada 25 segundos: agora cada visita custa **⚡ 20 de energia** (100 no máximo, recarrega +1 a cada 20s — cerca de 33min para encher)
-- Cada local é um **minigame**: um marcador varre a barra e você **para ele na zona verde** — acertar no centro (zona dourada) rende **+2 materiais**, na borda **+1**, errar rende **nada**. São **3 rodadas** por visita
-- Locais fáceis (Floresta, Campo) têm zona larga e marcador lento; difíceis (Mina, Montanha) têm zona estreita e marcador veloz
-- Cada local tem **descanso real**: Floresta/Campo 2min · Rio&Praia/Pântano 2,5min · Mina 3min · Montanha 3,5min
+- ~~Zona verde/timing~~ — esse minigame era difícil de entender; na **v4.4.0** ele virou **toque rápido**: 5 segundos de botão pra martelar 💪
+- **Descanso real** por local: Floresta/Campo 2min · Rio&Praia/Pântano 2,5min · Mina 3min · Montanha 3,5min
 - Sem energia? O botão mostra "⚡ sem energia" e a coleta recarrega com o tempo — trabalho mesmo 💪
 
 ### 👤 Perfil de qualquer jogador — direto do feed/chat (estilo TikTok)
