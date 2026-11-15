@@ -1571,3 +1571,120 @@ button.chat-bubble-name:hover { color: #7dd3fc; text-decoration: underline; }
 .artifact-passive { font-size: 11px; font-weight: 800; color: #fde047; white-space: nowrap; }
 .artifact-owned { position: absolute; top: -6px; right: -6px; background: #fbbf24; color: #111; font-size: 10px; font-weight: 900; border-radius: 999px; padding: 1px 6px; }
 .artifact-card { position: relative; overflow: visible; }
+
+/* ============ ARENA ⚔️ (cartas, deck, árvore, PvP ao vivo) ============ */
+.tile-arena { background: linear-gradient(145deg, #a855f7, #e11d48); }
+.arena-points { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; margin-bottom: 10px; }
+.arena-points strong { font-size: 18px; color: #fbbf24; }
+.arena-deck-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.arena-deck-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--card-bg, rgba(255,255,255,.03)); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.arena-deck-row:hover { border-color: rgba(248,113,113,.5); }
+.arena-deck-emoji { font-size: 22px; }
+.arena-deck-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.arena-deck-name { font-size: 12px; font-weight: 800; }
+.arena-deck-meta { font-size: 10px; color: var(--text-muted); }
+.arena-deck-cost { font-size: 11px; font-weight: 800; color: #93c5fd; }
+
+/* Árvore */
+.arena-tree-total { font-size: 13px; margin: 6px 2px 10px; color: var(--text-muted); }
+.arena-tree-total strong { color: #c4b5fd; font-size: 15px; }
+.arena-tree { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.arena-tree-row { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 12px; border: 1px solid var(--border); background: var(--card-bg, rgba(255,255,255,.03)); }
+.tree-emoji { font-size: 20px; width: 26px; text-align: center; }
+.tree-name { flex: 1; min-width: 0; font-size: 12px; font-weight: 700; display: flex; flex-direction: column; }
+.tree-bonus { font-size: 9.5px; color: #86efac; font-weight: 600; }
+.tree-controls { display: flex; align-items: center; gap: 6px; }
+.tree-btn { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--border); background: var(--chip-bg); color: var(--text-muted); font-size: 15px; font-weight: 800; cursor: pointer; line-height: 1; }
+.tree-btn:disabled { opacity: .35; cursor: not-allowed; }
+.tree-pts { min-width: 26px; text-align: center; font-weight: 900; color: #c4b5fd; font-variant-numeric: tabular-nums; }
+
+/* Cartas */
+.arena-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.card-face { --f1: #fbbf24; --f2: #f97316; position: relative; width: 172px; min-height: 236px; border-radius: 16px; border: 3px solid transparent; background: linear-gradient(165deg, #1e293b, #0b1220) padding-box, linear-gradient(160deg, var(--f1), var(--f2)) border-box; box-shadow: 0 6px 18px rgba(0,0,0,.45), inset 0 0 24px rgba(0,0,0,.35); display: flex; flex-direction: column; padding: 8px; user-select: none; -webkit-user-select: none; }
+.card-face.mini { width: 92px; min-height: 130px; padding: 5px; border-width: 2px; border-radius: 12px; }
+.card-face .cf-name { font-size: 12px; font-weight: 900; text-align: center; color: #fde68a; text-shadow: 0 1px 2px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-face.mini .cf-name { font-size: 8px; }
+.card-face .cf-art { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 56px; border-radius: 10px; margin: 6px 0; background: radial-gradient(circle at 50% 40%, rgba(255,255,255,.10), rgba(0,0,0,.25)); overflow: hidden; }
+.card-face.mini .cf-art { font-size: 32px; margin: 3px 0; }
+.card-face .cf-art img { width: 100%; height: 100%; object-fit: cover; }
+.card-face .cf-flavor { font-size: 8px; font-style: italic; color: #a8a29e; text-align: center; min-height: 20px; line-height: 1.25; padding: 0 2px; }
+.card-face.mini .cf-flavor { display: none; }
+.card-face .cf-bottom { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.cf-gem { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; border: 2px solid rgba(255,255,255,.25); }
+.card-face.mini .cf-gem { width: 17px; height: 17px; font-size: 9px; border-width: 1px; }
+.cf-cost { background: radial-gradient(circle at 35% 30%, #7dd3fc, #0369a1); color: #082f3f; }
+.cf-power { background: radial-gradient(circle at 35% 30%, #fca5a5, #b91c1c); color: #450a0a; }
+.cf-cat { flex: 1; text-align: center; font-size: 9.5px; font-weight: 800; border-radius: 999px; padding: 2px 4px; background: rgba(255,255,255,.07); color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-face.mini .cf-cat { font-size: 6.5px; }
+.card-in-grid { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.card-in-grid .card-face { width: 100%; min-height: 0; aspect-ratio: 5/7; }
+.card-in-grid .card-face .cf-art { font-size: 30px; }
+.card-in-grid .card-delete { font-size: 10px; background: none; border: none; color: #f87171; cursor: pointer; }
+.card-in-grid .card-deck-toggle { font-size: 9.5px; padding: 3px 8px; border-radius: 8px; border: 1px solid rgba(52,211,153,.5); background: rgba(52,211,153,.12); color: #6ee7b7; cursor: pointer; font-weight: 800; }
+.card-in-grid .card-deck-toggle.indk { border-color: rgba(248,113,113,.5); background: rgba(248,113,113,.12); color: #fca5a5; }
+
+/* Criar carta */
+.arena-create-wrap { display: flex; flex-direction: column; gap: 14px; }
+.arena-create-form { display: flex; flex-direction: column; gap: 10px; }
+.arena-field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; color: var(--text-muted); }
+.arena-field input, .arena-field select { font: inherit; font-size: 13px; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--input-bg, rgba(255,255,255,.05)); color: var(--text); }
+.arena-field-row { display: flex; gap: 10px; }
+.arena-field-row .arena-field { flex: 1; }
+.ac-emoji-row { display: flex; flex-wrap: wrap; gap: 5px; }
+.ac-emoji-pick { width: 38px; height: 38px; font-size: 20px; border-radius: 10px; border: 1px solid var(--border); background: var(--card-bg, rgba(255,255,255,.04)); cursor: pointer; }
+.ac-emoji-pick.selected { border-color: #fbbf24; box-shadow: 0 0 0 2px rgba(251,191,36,.4); }
+.arena-create-preview { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+
+/* Batalhar — lobby */
+.arena-deck-check { padding: 12px 14px; font-size: 12.5px; margin-bottom: 8px; }
+.arena-deck-check.ok { border-color: rgba(52,211,153,.4); }
+.arena-deck-check.bad { border-color: rgba(248,113,113,.4); }
+.arena-challenge-list, .arena-history-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.arena-challenge { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--border); background: var(--card-bg); }
+.arena-challenge-info { flex: 1; min-width: 0; font-size: 11.5px; }
+.arena-challenge-info strong { font-size: 12.5px; }
+.arena-pot { color: #fbbf24; font-weight: 800; font-size: 11px; }
+.arena-history-row { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--text-muted); padding: 6px 10px; }
+.arena-bet-cosmetics { max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin: 6px 0 12px; }
+.arena-bet-cosm-title { font-size: 11px; color: var(--text-muted); font-weight: 700; margin: 4px 0 4px; }
+.arena-bet-cosm { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--border); cursor: pointer; }
+.arena-bet-cosm input { accent-color: #fbbf24; }
+.arena-settle { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 14px; border: 1px solid rgba(251,191,36,.5); background: rgba(251,191,36,.1); margin-bottom: 10px; font-size: 12px; }
+
+/* Batalha — mesa */
+#arena-match { display: flex; flex-direction: column; gap: 6px; position: relative; }
+.am-opponent, .am-me { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
+.am-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; background: rgba(255,255,255,.08); border: 1px solid var(--border); }
+.am-opponent-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; }
+.am-hp-track { height: 10px; border-radius: 999px; background: rgba(2,6,23,.6); border: 1px solid var(--border); overflow: hidden; }
+.am-hp-fill { height: 100%; background: linear-gradient(90deg, #f87171, #ef4444); transition: width .35s ease; }
+.am-hp-fill.mine { background: linear-gradient(90deg, #4ade80, #16a34a); }
+.am-opponent-hpnum, #am-me-hpnum { font-size: 26px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.am-meta { font-size: 9.5px; color: var(--text-muted); }
+.am-turn-tag { font-size: 9px; background: #fbbf24; color: #111; border-radius: 6px; padding: 1px 6px; font-weight: 900; vertical-align: middle; }
+.am-board { display: flex; gap: 6px; min-height: 46px; align-items: center; padding: 2px 4px; flex-wrap: wrap; }
+.am-token { position: relative; width: 44px; height: 54px; border-radius: 9px; background: rgba(148,163,184,.14); border: 1px solid rgba(148,163,184,.4); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 19px; }
+.am-token small { font-size: 7px; color: #fda4a4; font-weight: 800; line-height: 1; }
+.am-token b { font-size: 8px; color: #fde68a; line-height: 1; }
+.am-structures { display: flex; gap: 6px; padding: 0 4px; min-height: 0; flex-wrap: wrap; }
+.am-struct { font-size: 10px; border-radius: 8px; padding: 2px 7px; background: rgba(52,211,153,.12); border: 1px solid rgba(52,211,153,.35); color: #a7f3d0; }
+.am-table { position: relative; display: flex; align-items: center; justify-content: center; min-height: 58px; border-radius: 14px; border: 2px dashed rgba(251,191,36,.35); background: radial-gradient(120% 140% at 50% 0%, rgba(251,191,36,.07), transparent); transition: border-color .15s, transform .15s; }
+.am-table.drop-target { border-color: #fbbf24; transform: scale(1.02); }
+.am-table-hint { font-size: 11px; color: var(--text-muted); }
+.am-log { min-height: 34px; font-size: 9.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 1px; padding: 0 4px; }
+.am-log div:last-child { color: #e2e8f0; }
+.am-hand { display: flex; gap: 8px; overflow-x: auto; padding: 6px 2px 10px; scroll-snap-type: x proximity; align-items: flex-end; }
+.am-hand .card-face { flex: 0 0 auto; scroll-snap-align: start; cursor: pointer; transition: transform .12s; }
+.am-hand .card-face:hover { transform: translateY(-6px); }
+.am-hand .card-face.disabled { opacity: .45; filter: grayscale(.5); cursor: not-allowed; }
+.am-actions { display: flex; gap: 8px; }
+.am-actions .secondary-btn { flex: 1; }
+.am-actions .danger-btn { flex: .7; }
+.arena-ghost { position: fixed; z-index: 999; font-size: 38px; pointer-events: none; filter: drop-shadow(0 8px 12px rgba(0,0,0,.6)); transform: translate(-50%, -50%); }
+.am-finish { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; border-radius: 18px; background: rgba(2,6,23,.88); backdrop-filter: blur(6px); padding: 20px; }
+.am-finish-emoji { font-size: 64px; }
+.am-finish h3 { margin: 0; font-size: 22px; }
+.am-hand .card-face { touch-action: none; }
+.card-face.selected { outline: 3px solid #fbbf24; outline-offset: 2px; }
+.arena-accept-btn { width: auto; padding: 9px 16px; }
+.arena-claim-btn { width: auto; padding: 9px 16px; white-space: nowrap; }

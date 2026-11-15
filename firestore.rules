@@ -223,6 +223,98 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ---------- ARENA ⚔️ (cartas criadas pelos jogadores) ----------
+    // Qualquer membro lê cartas (decks alheios são públicos). Autor edita/apaga.
+    match /cards/{cardId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 3
+        && request.resource.data.name.size() <= 40
+        && request.resource.data.emoji is string
+        && request.resource.data.category in ['dano','dano_fogo','dano_agua','dano_ar','dano_terra','cura','defesa','defesa_magica','invocacao','estrutura']
+        && request.resource.data.power is number
+        && request.resource.data.power >= 1 && request.resource.data.power <= 5
+        && request.resource.data.cost is number
+        && request.resource.data.cost >= 1 && request.resource.data.cost <= 5
+        && request.resource.data.flavor is string
+        && request.resource.data.flavor.size() <= 120;
+      allow update, delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
+    // ---------- ARENA ⚔️ (partidas ao vivo + apostas em escrow) ----------
+    // Fluxo: challenger cria ('waiting', aposta dele já debitada) → outro
+    // jogador aceita ('active', aposta dele debitada) → jogo por turnos →
+    // 'finished' (vencedor) → vencedor resgata o pote ('settled').
+    match /arena_matches/{matchId} {
+      allow read: if signedIn()
+        && (resource.data.status == 'waiting'
+            || resource.data.playerA == request.auth.uid
+            || resource.data.playerB == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.playerA == request.auth.uid
+        && request.resource.data.playerAName is string
+        && request.resource.data.status == 'waiting'
+        && request.resource.data.playerB == ''
+        && request.resource.data.turn == 'A'
+        && request.resource.data.stakeA is map
+        && request.resource.data.stakeA.gold is number
+        && request.resource.data.stakeA.gold >= 0
+        && request.resource.data.stakeA.cosmetics is list
+        && request.resource.data.stakeB is map
+        && request.resource.data.hpA == 60 && request.resource.data.hpB == 60;
+      function playersOf() {
+        return [resource.data.playerA, resource.data.playerB];
+      }
+      function isPlayer() {
+        return signedIn() && request.auth.uid in playersOf();
+      }
+      // Aceitar (waiting→active): aceitante vira playerB
+      function acceptIsValid() {
+        return resource.data.status == 'waiting'
+          && request.resource.data.status == 'active'
+          && request.resource.data.playerB == request.auth.uid
+          && request.resource.data.playerA == resource.data.playerA
+          && request.resource.data.playerB != resource.data.playerA
+          && request.resource.data.stakeA.gold == resource.data.stakeA.gold
+          && request.resource.data.stakeB.gold is number
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'playerB', 'playerBName', 'playerBAvatar', 'stakeB', 'potGold', 'turn', 'turnNumber', 'deckB', 'handB', 'treeB', 'catCountB', 'acceptedAt', 'log']);
+      }
+      // Jogar um turno (active→active) ou encerrar ('finished')
+      function playIsValid() {
+        return resource.data.status == 'active'
+          && isPlayer()
+          && request.resource.data.playerA == resource.data.playerA
+          && request.resource.data.playerB == resource.data.playerB
+          && request.resource.data.potGold == resource.data.potGold
+          && (request.resource.data.status == 'active' || request.resource.data.status == 'finished' || request.resource.data.status == 'cancelled')
+          && (!request.resource.data.keys().hasAny(['winner'])
+              || request.resource.data.winner == ''
+              || request.resource.data.winner == resource.data.playerA
+              || request.resource.data.winner == resource.data.playerB);
+      }
+      // Resgate do pote pelo vencedor (finished→settled)
+      function settleIsValid() {
+        return resource.data.status == 'finished'
+          && resource.data.winner == request.auth.uid
+          && request.resource.data.status == 'settled'
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'settledAt']);
+      }
+      // Cancelar partida aguardando (só o challenger)
+      function cancelWaitingIsValid() {
+        return resource.data.status == 'waiting'
+          && resource.data.playerA == request.auth.uid
+          && request.resource.data.status == 'cancelled'
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'cancelledAt']);
+      }
+      allow update: if signedIn() && (acceptIsValid() || playIsValid() || settleIsValid() || cancelWaitingIsValid());
+      allow delete: if false;
+    }
+
     // ---------- INBOX (notificações de comentário) ----------
     match /inbox/{notifId} {
       allow read: if signedIn() && resource.data.to == request.auth.uid;

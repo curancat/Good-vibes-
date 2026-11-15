@@ -203,6 +203,22 @@ const ARTIFACTS = [
 ];
 const ARTIFACT_BY_ID = Object.fromEntries(ARTIFACTS.map((a) => [a.id, a]));
 
+
+/* ---------- ARENA ⚔️ (categorias de carta + cosméticos de carta) ---------- */
+const CARD_CATEGORIES = [
+    { id: 'dano', word: 'Dano', emoji: '🗡️', kind: 'physical', desc: 'Dano direto ao oponente (perfura nada — passa pelo escudo físico primeiro)' },
+    { id: 'dano_fogo', word: 'Dano de Fogo', emoji: '🔥', kind: 'magic', desc: 'Dano mágico de fogo (passa pelo escudo mágico primeiro)' },
+    { id: 'dano_agua', word: 'Dano de Água', emoji: '💧', kind: 'magic', desc: 'Dano mágico de água (passa pelo escudo mágico primeiro)' },
+    { id: 'dano_ar', word: 'Dano de Ar', emoji: '🌪️', kind: 'magic', desc: 'Dano mágico de ar (passa pelo escudo mágico primeiro)' },
+    { id: 'dano_terra', word: 'Dano de Terra', emoji: '🪨', kind: 'magic', desc: 'Dano mágico de terra (passa pelo escudo mágico primeiro)' },
+    { id: 'cura', word: 'Cura', emoji: '💚', kind: 'heal', desc: 'Restaura a sua vida' },
+    { id: 'defesa', word: 'Defesa', emoji: '🛡️', kind: 'shield', desc: 'Escudo físico: absorve Dano e ataques de Invocações' },
+    { id: 'defesa_magica', word: 'Defesa Mágica', emoji: '🔮', kind: 'shieldmagic', desc: 'Escudo mágico: absorve dano de elemento (🔥💧🌪️🪨) e Estruturas' },
+    { id: 'invocacao', word: 'Invocação', emoji: '🗿', kind: 'summon', desc: 'Invoca uma criatura que ataca o oponente no início dos seus próximos turnos' },
+    { id: 'estrutura', word: 'Estrutura', emoji: '🏗️', kind: 'structure', desc: 'Instala uma estrutura: dano imediato + dano por turno, permanente' }
+];
+const CARD_CATEGORY_BY_ID = Object.fromEntries(CARD_CATEGORIES.map((c) => [c.id, c]));
+
 const BUILDINGS = [
     { id: 'barraca', name: 'Barraca', emoji: '⛺', costGold: 800, costMats: { madeira_pinho: 6 }, rate: 1, desc: 'Um canto seu no mundo. +1 gold/min' },
     { id: 'poco', name: 'Poço', emoji: '🪣', costGold: 1200, costMats: { madeira_carvalho: 4 }, rate: 2, desc: 'Água fresca sempre à mão. +2 gold/min' },
@@ -330,6 +346,13 @@ function buildCosmeticsCatalog() {
     }
     return items; // 10 × 20 × 5 = 1.000
 }
+// Cosméticos exclusivos das cartas (moldura equipável — muda TODAS as suas cartas na Arena)
+const CARD_COSMETICS = COSMETIC_THEMES.map((theme, i) => {
+    const rarity = i < 5 ? { id: 'comum', name: 'Comum', price: 500 } : i < 10 ? { id: 'raro', name: 'Raro', price: 1200 } : i < 15 ? { id: 'epico', name: 'Épico', price: 3000 } : { id: 'lendario', name: 'Lendário', price: 7500 };
+    return { id: 'card_' + theme.slug, name: 'Moldura de Carta ' + theme.name, emoji: '🃏', theme: theme.slug, c1: theme.c1, c2: theme.c2, rarity: rarity.id, rarityName: rarity.name, price: rarity.price, desc: 'Moldura ' + theme.name.toLowerCase() + ' para todas as suas cartas na Arena' };
+});
+const CARD_COSMETIC_BY_ID = Object.fromEntries(CARD_COSMETICS.map((c) => [c.id, c]));
+
 const COSMETICS = buildCosmeticsCatalog();
 
 const SELL_RATE = 0.6; // venda = 60% do preço
@@ -345,6 +368,10 @@ window.GV_ECO = {
     RECIPES,
     ARTIFACTS,
     ARTIFACT_BY_ID,
+    CARD_CATEGORIES,
+    CARD_CATEGORY_BY_ID,
+    CARD_COSMETICS,
+    CARD_COSMETIC_BY_ID,
     BUILDINGS,
     JOBS,
     GATHER_LOCATIONS,

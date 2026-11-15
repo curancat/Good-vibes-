@@ -2,6 +2,54 @@
 
 Uma rede social privada entre amigos, agora com cara de **tela inicial de telefone**: cada menu é um aplicativo. Feita em HTML/CSS/JS puro (sem build), com Firebase (Auth + Firestore), instalável como **PWA** no celular.
 
+## ⚔️ Arena — crie suas cartas e batalhe ao vivo (v4.5.0)
+
+O 16º aplicativo (ícone ⚔️ no grid): uma arena de cartas **criadas por quem joga**, com deck de 30 pontos, árvore de poder e **batalha PvP ao vivo** (turnos em tempo real, direto no Firestore).
+
+### 🃏 Criando cartas
+
+- Nome, **emoji OU arte por imagem** (envie do celular/PC ou cole a URL), categoria, custo em pontos e poder do efeito
+- **10 categorias de efeito**: 🗡️ Dano · 🔥 Dano mágico de Fogo · 💧 de Água · 🌪️ de Ar · 🪨 de Terra · 💚 Cura · 🛡️ Defesa (escudo físico) · 🔮 Defesa Mágica · 🗿 Invocação (criatura que ataca nos próximos 3 turnos) · 🏗️ Estrutura (dano imediato + dano por turno, permanente)
+- Teto de **30 cartas** por jogador; cada carta é única e pode ser apagada quando quiser (some do deck junto)
+
+### 🎴 Deck: 30 pontos, singleton, sem repetir
+
+- Cada carta custa de 1 a 5 pontos — seu deck fecha no **máximo 30 pontos** e **não repete carta nenhuma**
+- Mínimo de 5 cartas pra entrar em batalha
+- Deck salvo por jogador no Firestore (sincroniza entre aparelhos)
+
+### 🌳 A Árvore do Refúgio (mescla)
+
+- Você tem **30 pontos pra espalhar** entre os 10 ramos — cada ponto num ramo turbinha as cartas dele em **+6%** pra sempre
+- **Cada carta daquele ramo no seu deck soma +2% de afinidade** — jogar focado num elemento é jogar forte nele
+- Os bônus entram em tudo que a carta faz: dano, cura, escudo, invocação e estrutura
+
+### ⚔️ Batalha PvP ao vivo
+
+- **PvP em tempo real por turnos**: crie um desafio, espere alguém aceitar (ou aceite o de alguém) e jogue — a mesa atualiza na hora no celular do rival (drag & drop da carta até a mesa, ou toque na carta e depois na mesa)
+- Início de 60 de vida, escudos físico e mágico separados, criaturas com duração, estruturas permanentes, mão de 5 (compra automática por turno)
+- **Desistir** vale derrota; o vencedor leva o pote
+
+### 💰 Apostas: gold E cosméticos (custódia)
+
+- No desafio você aposta **gold e/ou cosméticos** do seu baú (equipados ficam de fora)
+- **Tudo entra em custódia na partida na hora**: quem perde já confirmou o prejuízo; quem vence resgata **o pote inteiro** (gold + cosméticos dos dois lados) numa liquidação só — automática ao abrir o app (botão "Receber pote 🏆" na tela de vitória também funciona)
+- Taxa zero: o pote é seu
+- Cosméticos equipados não podem ser apostados (evita perder o visual sem querer); desfazer o desafio antes de aceitar devolve 100%
+
+### 🃏 Loja: molduras de carta
+
+- A Loja ganhou a aba **🃏 Cartas**: **20 molduras exclusivas** (uma por tema — Solar, Água Viva, Chapada, Maré…) que mudam **todas as suas cartas na Arena** de uma vez
+- Molduras por raridade: Comum 500 · Raro 1.200 · Épico 3.000 · Lendário 7.500 gold
+
+### ⚠️ Limites honestos do PvP (sem servidor)
+
+- **Não existe informação escondida de verdade**: o documento da partida é legível pelos dois jogadores — dá pra ver a mão do rival pelo Console se você quiser se dar esse trabalho
+- Um rival com o cliente alterado pode forçar resultado — a arena vale como **aposta entre amigos**, não como cassino
+- A liquidação do pote é feita pelo vencedor no cliente (custódia garante: quem perde já viu o cosmético sair do baú dele ao aceitar)
+- **As regras do Firestore precisam ser republicadas** (`cards` + `arena_matches` novas na v4.5.0) — sem publicar, criar cartas e batalhas não funciona e o app avisa na tela
+- Se o rival sumir no meio da partida, a partida fica "aberta" pra sempre (sem WO automático por enquanto) — Combine com o rival ou use Desistir
+
 ## 🧿 Artefatos + Coleta reformulada (v4.4.0)
 
 ### 🧿 Artefatos do Refúgio — renda passiva pequena, para sempre

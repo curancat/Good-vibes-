@@ -75,7 +75,7 @@ const $ = (s) => window.document.querySelector(s);
 const $$ = (s) => [...window.document.querySelectorAll(s)];
 
 // ---- Assertions ----
-assert.equal($$('#app-grid .app-icon').length, 15, 'grade deve ter 15 apps');
+assert.equal($$('#app-grid .app-icon').length, 16, 'grade deve ter 16 apps');
 assert.equal($$('#dock .app-icon').length, 4, 'dock deve ter 4 apps');
 assert.ok($('#sb-time').textContent.trim().length >= 4, 'relógio da status bar preenchido');
 assert.ok($('#hw-time').textContent.trim().length >= 4, 'relógio do widget preenchido');
@@ -84,6 +84,11 @@ assert.ok($('#hw-greeting-text').textContent.trim().length > 0, 'saudação pree
 assert.ok($('#hw-quote').textContent.trim().length > 0, 'quote preenchida');
 assert.equal(window.GV_ECO?.RAW_MATERIALS.length, 100, 'deve haver exatamente 100 materiais brutos');
 assert.equal(window.GV_ECO?.COSMETICS.length, 1000, 'deve haver exatamente 1.000 cosméticos');
+for (const id of ['app-arena', 'arena-pane-deck', 'arena-pane-cards', 'arena-pane-create', 'arena-pane-battle', 'arena-cards-grid', 'arena-tree', 'arena-hand', 'arena-table', 'arena-bet-modal', 'card-cosmetic-grid', 'am-opponent-hp', 'am-me-hp']) { assert.ok($('#' + id), `#${id} presente`); }
+if (window.GV_ECO?.CARD_CATEGORIES) {
+  assert.equal(window.GV_ECO.CARD_CATEGORIES.length, 10, 'deve haver 10 categorias de carta');
+  assert.ok(window.GV_ECO.CARD_COSMETICS.length >= 10, 'deve haver cosméticos de carta à venda');
+}
 for (const id of ['app-bank', 'board-list', 'shame-list', 'bank-ledger', 'app-market', 'market-list', 'my-listings', 'market-publish-btn', 'market-item-select', 'market-total']) { assert.ok($('#' + id), `#${id} presente`); }
 assert.equal(window.GV_ECO?.COSMETIC_CATEGORIES.length, 10, 'deve haver 10 categorias de cosmético');
 const sampleC = window.GV_ECO?.COSMETIC_BY_ID?.moldura_solar_comum || Object.values(window.GV_ECO?.COSMETIC_BY_ID || {})[0];
@@ -96,7 +101,7 @@ const cssSrc = readFileSync(`${root}/css/style.css`, 'utf8');
 for (const token of ['.fx-flame', '.fx-neon', '.fx-aurora', '.cos-avatar', '.cos-aura', '.cos-avatar-inner', '.author-title', '.author-emblem', '.post-seal', '.profile-cover', '.profile-cover[hidden]', '.reaction-btn']) { assert.ok(cssSrc.includes(token), `css contém ${token}`); }
 console.log('✓ cosméticos com efeito real: slots por categoria, mapa authorCosmetics, animações CSS presentes');
 console.log('✓ economia: 100 materiais brutos e 1.000 cosméticos carregados');
-console.log('✓ tela inicial renderizou (15 apps, dock, relógios, saudação)');
+console.log('✓ tela inicial renderizou (16 apps, dock, relógios, saudação)');
 
 // Lockscreen → unlock
 $('#unlock-btn').click();

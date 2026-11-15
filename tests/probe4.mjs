@@ -158,7 +158,10 @@ await new Promise((r) => setTimeout(r, 120));
 assert.ok(!$('#shop-pane-comprar'), 'aba Comprar materiais removida do DOM');
 assert.ok($('#shop-pane-itens'), 'aba Itens presente');
 assert.ok($('#shop-items-list'), 'vitrine de itens presente');
-assert.deepEqual($$('.eco-tab[data-shop-tab]').map((b) => b.dataset.shopTab), ['cosmeticos', 'itens'], 'abas: Cosméticos e Itens');
+assert.deepEqual($$('.eco-tab[data-shop-tab]').map((b) => b.dataset.shopTab), ['cosmeticos', 'cartas', 'itens'], 'abas: Cosméticos, Cartas e Itens');
+assert.ok($('#shop-pane-cartas'), 'aba Cartas (molduras) presente');
+assert.ok($('#card-cosmetic-grid'), 'grade de molduras de carta presente');
+assert.ok((window.GV_ECO?.CARD_COSMETICS || []).length >= 10, 'cosméticos de carta à venda carregados');
 console.log('✓ Loja: compra de materiais removida; cosméticos separados dos itens');
 
 // ---------- 5) Perfil de outro usuário ----------

@@ -568,6 +568,7 @@
                     </div>
                     <div class="eco-tabs" role="tablist" aria-label="Seções da loja">
                         <button class="eco-tab active" data-shop-tab="cosmeticos" role="tab">✨ Cosméticos</button>
+                        <button class="eco-tab" data-shop-tab="cartas" role="tab">🃏 Cartas</button>
                         <button class="eco-tab" data-shop-tab="itens" role="tab">🎒 Itens</button>
                     </div>
 
@@ -583,6 +584,11 @@
                         <p class="eco-hint">💡 Cada cosmético muda seu post <strong>de verdade</strong>: moldura e aura em volta do avatar, nome e título no nick, emblema animado, fundo no post, efeito de borda animada, selo no canto, reação exclusiva e capa no perfil. Monte seu loadout — 1 cosmético por categoria.</p>
                         <div class="cosmetic-grid" id="cosmetic-grid"></div>
                         <button class="secondary-btn wide" id="shop-load-more">Carregar mais</button>
+                    </div>
+
+                    <div class="eco-pane" id="shop-pane-cartas" role="tabpanel" hidden>
+                        <p class="card-sub">Molduras exclusivas pra <strong>todas as suas cartas</strong> na Arena ⚔️ — descubra a sua! Compre com gold e equipe a de dedo.</p>
+                        <div class="cosmetic-grid" id="card-cosmetic-grid"></div>
                     </div>
 
                     <div class="eco-pane" id="shop-pane-itens" role="tabpanel" hidden>
@@ -699,6 +705,142 @@
                     <div class="market-list" id="market-list"></div>
                     <h3 class="eco-h3">🧳 Meus anúncios</h3>
                     <div class="market-list" id="my-listings"></div>
+                </div>
+            </section>
+
+            <!-- ============ APP: ARENA ⚔️ ============ -->
+            <section class="app-window" id="app-arena" data-app="arena" aria-label="Arena">
+                <header class="app-header">
+                    <button class="app-back" data-close-app aria-label="Voltar para a tela inicial">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+                        <span>Início</span>
+                    </button>
+                    <h2 class="app-title">⚔️ Arena</h2>
+                    <span class="app-header-spacer"></span>
+                </header>
+                <div class="app-body">
+                    <div class="eco-balance card"><div><span class="eco-balance-label">💰 Seu saldo</span><strong class="eco-balance-value" id="arena-gold">0 gold</strong></div><span class="eco-rate">PvP ao vivo · crie cartas · aposte o que quiser</span></div>
+
+                    <!-- ARENA HUB -->
+                    <div id="arena-hub">
+                        <div class="eco-tabs" role="tablist" aria-label="Seções da Arena">
+                            <button class="eco-tab active" data-arena-tab="deck" role="tab">🎴 Deck</button>
+                            <button class="eco-tab" data-arena-tab="cards" role="tab">🃏 Minhas Cartas</button>
+                            <button class="eco-tab" data-arena-tab="create" role="tab">✨ Criar Carta</button>
+                            <button class="eco-tab" data-arena-tab="battle" role="tab">⚔️ Batalhar</button>
+                        </div>
+
+                        <div class="eco-pane" id="arena-pane-deck" role="tabpanel">
+                            <div class="arena-points card"><span>🎴 Pontos do deck</span><strong id="arena-deck-points">0/30</strong></div>
+                            <p class="card-sub">Sem repetir carta, no máximo 30 pontos. Toque numa carta da lista abaixo pra tirar do deck; monte na aba <strong>Minhas Cartas</strong>.</p>
+                            <div class="arena-deck-list" id="arena-deck-list"><p class="muted">Deck vazio — crie cartas primeiro ✨</p></div>
+                            <h3 class="eco-h3">🌳 A Árvore do Refúgio <span class="eco-h3-count">30 pontos pra espalhar</span></h3>
+                            <p class="card-sub">Cada ponto investido num ramo turbinha as cartas dele em <strong>+6%</strong> pra sempre. Cada carta daquele tipo no seu deck soma <strong>+2%</strong> de afinidade. Mexa ao vivo — o deck é seu.</p>
+                            <div class="arena-tree-total">Árvore: <strong id="arena-tree-points">0/30</strong> pontos</div>
+                            <div class="arena-tree" id="arena-tree"></div>
+                        </div>
+
+                        <div class="eco-pane" id="arena-pane-cards" role="tabpanel" hidden>
+                            <p class="eco-count" id="arena-cards-count">0/30 cartas criadas</p>
+                            <div class="arena-cards-grid" id="arena-cards-grid"></div>
+                        </div>
+
+                        <div class="eco-pane" id="arena-pane-create" role="tabpanel" hidden>
+                            <div class="arena-create-wrap">
+                                <div class="arena-create-form">
+                                    <label class="arena-field">Nome da carta
+                                        <input id="ac-name" maxlength="40" placeholder="Ex.: Fúria do Tietê" autocomplete="off">
+                                    </label>
+                                    <label class="arena-field">Emoji da arte (usado se não enviar imagem)
+                                        <div class="ac-emoji-row" id="ac-emoji-row"></div>
+                                    </label>
+                                    <label class="arena-field">Arte por imagem (opcional)
+                                        <div class="gift-amount-row">
+                                            <input id="ac-art-url" type="url" placeholder="https://… (cole o link)" autocomplete="off">
+                                            <button class="chip-btn" id="ac-art-upload" type="button">📷 Enviar</button>
+                                        </div>
+                                    </label>
+                                    <label class="arena-field">Categoria
+                                        <select id="ac-category"></select>
+                                    </label>
+                                    <div class="arena-field-row">
+                                        <label class="arena-field">Custo no deck
+                                            <select id="ac-cost"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select>
+                                        </label>
+                                        <label class="arena-field">Poder do efeito
+                                            <select id="ac-power"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select>
+                                        </label>
+                                    </div>
+                                    <label class="arena-field">Texto de flavor (opcional, até 120)
+                                        <input id="ac-flavor" maxlength="120" placeholder="“Não é sorte, é peixada.”" autocomplete="off">
+                                    </label>
+                                    <button class="primary-btn wide" id="ac-save-btn"><span class="btn-label">Criar carta ✨</span></button>
+                                </div>
+                                <div class="arena-create-preview">
+                                    <div class="card-face" id="ac-preview"></div>
+                                    <p class="card-sub center">É assim que ela vai aparecer na mesa</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="eco-pane" id="arena-pane-battle" role="tabpanel" hidden>
+                            <div class="arena-deck-check card" id="arena-deck-check"></div>
+                            <div id="arena-settle-banner"></div>
+                            <button class="primary-btn wide" id="arena-create-challenge-btn"><span class="btn-label">Criar desafio ⚔️</span></button>
+                            <h3 class="eco-h3">🎯 Desafios abertos <span class="eco-h3-count" id="arena-open-count"></span></h3>
+                            <div class="arena-challenge-list" id="arena-challenge-list"><p class="muted">Carregando desafios…</p></div>
+                            <h3 class="eco-h3">📜 Minhas partidas recentes</h3>
+                            <div class="arena-history-list" id="arena-history-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- ARENA DE BATALHA (tela cheia por cima do hub) -->
+                    <div id="arena-match" hidden>
+                        <div class="am-opponent card">
+                            <img class="am-avatar" id="am-opponent-avatar" alt="" onerror="this.style.visibility='hidden'">
+                            <div class="am-opponent-info">
+                                <strong id="am-opponent-name">Oponente</strong>
+                                <div class="am-hp-track"><div class="am-hp-fill" id="am-opponent-hp" style="width:100%"></div></div>
+                                <span class="am-meta" id="am-opponent-meta"></span>
+                            </div>
+                            <div class="am-opponent-hpnum" id="am-opponent-hpnum">60</div>
+                        </div>
+
+                        <div class="am-board" id="am-board-opponent"></div>
+                        <div class="am-structures" id="am-structures-opponent"></div>
+
+                        <div class="am-table" id="arena-table">
+                            <span class="am-table-hint" id="am-table-hint">solte a carta aqui pra jogar 🃏</span>
+                        </div>
+
+                        <div class="am-board" id="am-board-me"></div>
+                        <div class="am-structures" id="am-structures-me"></div>
+
+                        <div class="am-log" id="arena-log"></div>
+
+                        <div class="am-me card">
+                            <div class="am-opponent-info">
+                                <strong>Você <span class="am-turn-tag" id="am-turn-tag"></span></strong>
+                                <div class="am-hp-track mine"><div class="am-hp-fill mine" id="am-me-hp" style="width:100%"></div></div>
+                                <span class="am-meta" id="am-me-meta"></span>
+                            </div>
+                            <div class="am-opponent-hpnum" id="am-me-hpnum">60</div>
+                        </div>
+
+                        <div class="am-hand" id="arena-hand"></div>
+                        <div class="am-actions">
+                            <button class="secondary-btn" id="arena-pass-btn">Passar ⏭️</button>
+                            <button class="danger-btn" id="arena-forfeit-btn">Desistir 🏳️</button>
+                        </div>
+
+                        <div class="am-finish" id="arena-finish" hidden>
+                            <div class="am-finish-emoji" id="am-finish-emoji">🏆</div>
+                            <h3 id="am-finish-title">Você venceu!</h3>
+                            <p id="am-finish-sub" class="card-sub center"></p>
+                            <button class="primary-btn wide" id="am-settle-btn"><span class="btn-label">Receber pote 🏆</span></button>
+                            <button class="secondary-btn wide" id="am-leave-btn">Voltar pro hub</button>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -838,6 +980,21 @@
                 </div>
             </div>
 
+            <!-- ============ MODAL: APOSTA DA ARENA ⚔️ ============ -->
+            <div id="arena-bet-modal" class="modal" role="dialog" aria-modal="true" aria-label="Aposta da batalha">
+                <div class="modal-content card">
+                    <button class="close-modal" data-close-modal="arena-bet-modal" aria-label="Fechar">&times;</button>
+                    <h2 class="modal-title" id="arena-bet-title">⚔️ Criar desafio</h2>
+                    <p class="modal-sub" id="arena-bet-sub">Aposte gold e/ou cosméticos. Quem vencer leva tudo.</p>
+                    <label class="arena-field">Pote em gold (0 = só cosméticos)
+                        <input type="number" id="arena-bet-gold" min="0" inputmode="numeric" placeholder="0">
+                    </label>
+                    <div class="arena-bet-cosm-title">Cosméticos na aposta (seu baú) — opcional</div>
+                    <div class="arena-bet-cosmetics" id="arena-bet-cosmetics"></div>
+                    <button class="primary-btn wide" id="arena-bet-confirm"><span class="btn-label">Confirmar aposta ⚔️</span></button>
+                </div>
+            </div>
+
             <!-- ============ MODAL: SUPER LIKE / PIX ============ -->
             <div id="pix-modal" class="modal" role="dialog" aria-modal="true" aria-label="Super Like via PIX">
                 <div class="modal-content card pix-modal-content">
@@ -888,6 +1045,7 @@
 <input type="file" id="file-gallery-post-video" accept="video/*" hidden>
 <input type="file" id="file-gallery-chat" accept="image/*" hidden>
 <input type="file" id="file-gallery-avatar" accept="image/*" hidden>
+<input type="file" id="file-gallery-card" accept="image/*" hidden>
 
 
 

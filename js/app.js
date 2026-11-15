@@ -5,7 +5,7 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, deleteUser, updatePassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, increment, where, runTransaction, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, increment, where, runTransaction, limit, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 /* ================= FIREBASE ================= */
 const firebaseConfig = {
@@ -437,6 +437,7 @@ const APPS = [
     { id: 'construction', label: 'Obras', icon: '🏗️', tile: 'tile-construction' },
     { id: 'work', label: 'Trabalho', icon: '💼', tile: 'tile-work' },
     { id: 'market', label: 'Mercado', icon: '🛒', tile: 'tile-market' },
+    { id: 'arena', label: 'Arena', icon: '⚔️', tile: 'tile-arena' },
     { id: 'settings', label: 'Ajustes', icon: '⚙️', tile: 'tile-settings' },
 ];
 const DOCK_IDS = ['feed', 'chat', 'notifications', 'profile'];
@@ -487,6 +488,7 @@ function openApp(appId, pushHistory = true) {
 
     if (['shop', 'inventory', 'refinery', 'construction', 'work', 'market'].includes(appId)) refreshEconomyUI();
     if (appId === 'shop') { void fetchMarket().then(renderShopItems); }
+    if (appId === 'arena') { refreshArenaUI(); startArenaPolling(); }
     if (appId === 'market') refreshMarket();
     if (appId === 'work') renderBoard();
     if (appId === 'bank') refreshBank();
@@ -1803,7 +1805,10 @@ function normalizeEconomy(d = {}) {
         creditScore: typeof d.creditScore === 'number' ? d.creditScore : 50,
         stamina: typeof d.stamina === 'number' ? Math.max(0, Math.min(STAMINA_MAX, d.stamina)) : STAMINA_MAX,
         staminaAt: typeof d.staminaAt === 'number' ? d.staminaAt : Date.now(),
-        artifacts: d.artifacts && typeof d.artifacts === 'object' ? { ...d.artifacts } : {}
+        artifacts: d.artifacts && typeof d.artifacts === 'object' ? { ...d.artifacts } : {},
+        arenaTree: d.arenaTree && typeof d.arenaTree === 'object' ? { ...d.arenaTree } : {},
+        cardFrame: typeof d.cardFrame === 'string' ? d.cardFrame : '',
+        arenaDeck: Array.isArray(d.arenaDeck) ? d.arenaDeck.filter((x) => typeof x === 'string') : []
     };
 }
 
@@ -1839,6 +1844,9 @@ async function initEconomy() {
         if (typeof data.stamina !== 'number') patch.stamina = STAMINA_MAX;
         if (typeof data.staminaAt !== 'number') patch.staminaAt = Date.now();
         if (!data.artifacts || typeof data.artifacts !== 'object') patch.artifacts = {};
+        if (!data.arenaTree || typeof data.arenaTree !== 'object') patch.arenaTree = {};
+        if (typeof data.cardFrame !== 'string') patch.cardFrame = '';
+        if (!Array.isArray(data.arenaDeck)) patch.arenaDeck = [];
         if (!data.equippedCosmetics || typeof data.equippedCosmetics !== 'object') {
             // Migração: converte o slot único antigo em slots por categoria
             const migrated = {};
@@ -1965,7 +1973,7 @@ function pendingGain() {
 function renderEcoBalances() {
     if (!ECO) return;
     const gold = fmtGold(economyState?.gold);
-    ['shop-gold', 'inv-gold', 'construction-gold', 'work-gold'].forEach((id) => { const el = document.getElementById(id); if (el) el.textContent = gold; });
+    ['shop-gold', 'inv-gold', 'construction-gold', 'work-gold', 'arena-gold'].forEach((id) => { const el = document.getElementById(id); if (el) el.textContent = gold; });
     const rate = document.getElementById('shop-rate');
     if (rate) rate.textContent = incomeRate() ? `+${incomeRate()} gold/min de renda` : 'Construa para ter renda passiva';
 }
@@ -2343,6 +2351,7 @@ function refreshEconomyUI() {
     renderEcoBalances();
     renderProfileCosmetics();
     renderCosmeticShop();
+    renderCardCosmeticShop();
     renderInventory();
     renderCraftArea();
     renderConstruction();
@@ -2689,7 +2698,7 @@ document.addEventListener('click', async (e) => {
     if (shopTab) {
         document.querySelectorAll('[data-shop-tab]').forEach((b) => b.classList.toggle('active', b === shopTab));
         const target = shopTab.dataset.shopTab;
-        ['cosmeticos', 'itens'].forEach((name) => { const pane = document.getElementById(`shop-pane-${name}`); if (pane) pane.hidden = name !== target; });
+        ['cosmeticos', 'cartas', 'itens'].forEach((name) => { const pane = document.getElementById(`shop-pane-${name}`); if (pane) pane.hidden = name !== target; });
         return;
     }
     const workTab = t.closest?.('[data-work-tab]');
@@ -3508,6 +3517,1274 @@ function stopAmbientVibes() {
     ambientUsed = new Set();
 }
 
+/* ================= ARENA ⚔️ (cartas, deck, árvore e PvP ao vivo) ================= */
+/* Cartas criadas pelos jogadores vivem em `cards`; as partidas ao vivo em
+   `arena_matches`. ⚠️ Sem servidor: um cliente alterado pode forçar resultado
+   (vale como aposta entre amigos, não como cassino). O pote — gold e cosméticos
+   — fica CUSTODIADO na partida desde o início: quem perder confirma o prejuízo
+   na hora, e quem vencer resgata tudo (gold + cosméticos) numa liquidação só,
+   automática ao abrir o app (claimArenaSettlements). */
+
+let arenaCards = [];
+let arenaMatchUnsub = null;
+let arenaOpenMatchId = null;
+let arenaOpenMatchCache = null;
+let arenaBetMode = null;                 // { type: 'create' } | { type: 'accept', matchId }
+let arenaBetSelected = new Set();        // ids de cosméticos na aposta
+let arenaDraft = { artUrl: '', emoji: '🐲' };
+let arenaHandDrag = null;
+let arenaSelectedHand = null;
+let arenaPollTimer = null;
+
+const ARENA_EMOJI_POOL = ['🐲','🔥','💧','🌪️','🪨','⚡','🌙','☀️','🐺','🦁','🐍','🦅','🐢','🦂','🗡️','🛡️','🔮','💚','🏗️','🗿','🌊','🌋','💫','🍃'];
+const ARENA_DECK_MIN = 5;               // mínimo de cartas pra formar deck
+const ARENA_DECK_MAX_POINTS = 30;       // 30 pontos por deck
+const ARENA_TREE_MAX = 30;              // 30 pontos pra espalhar na árvore
+const ARENA_HP = 60;
+const ARENA_SHIELD_MAX = 40;
+const ARENA_HAND_MAX = 7;
+const ARENA_TOKEN_TURNS = 3;
+const ARENA_CARD_LIMIT = 30;            // teto de cartas criadas por jogador
+
+const arenaDeckIds = () => (economyState?.arenaDeck || []).filter((id) => typeof id === 'string');
+const arenaTreePts = () => Object.values(economyState?.arenaTree || {}).reduce((a, b) => a + (Number(b) || 0), 0);
+const arenaCardsById = () => Object.fromEntries(arenaCards.map((c) => [c.id, c]));
+
+/* Moldura equipada (cosmético de carta) — vale pra TODAS as suas cartas */
+function myCardFrame() {
+    if (!ECO) return null;
+    const id = economyState?.cardFrame;
+    if (!id) return null;
+    if (!(economyState?.cosmetics || []).includes(id)) return null; // apostado/perdido — não possui mais
+    return ECO.CARD_COSMETIC_BY_ID?.[id] || null;
+}
+function cardFaceHTML(card, { mini = false, extraClass = '', attrs = '' } = {}) {
+    const cat = ECO?.CARD_CATEGORY_BY_ID?.[card.category];
+    const frame = myCardFrame();
+    const style = frame ? `--f1:${escapeHtml(frame.c1)};--f2:${escapeHtml(frame.c2)}` : '';
+    const art = sanitizeUrl(card.artUrl || '');
+    const emoji = escapeHtml(card.emoji || '🃏');
+    const artHtml = art
+        ? `<span class="cf-art-emoji">${emoji}</span><img src="${escapeHtml(art)}" alt="" loading="lazy" onerror="this.remove()">`
+        : `<span class="cf-art-emoji">${emoji}</span>`;
+    const flavor = card.flavor ? escapeHtml(card.flavor) : '&nbsp;';
+    return `<div class="card-face${mini ? ' mini' : ''} ${extraClass}" style="${style}" ${attrs}>
+        <div class="cf-name">${escapeHtml(card.name || 'Sem nome')}</div>
+        <div class="cf-art">${artHtml}</div>
+        <div class="cf-flavor">${flavor}</div>
+        <div class="cf-bottom">
+            <span class="cf-gem cf-cost" title="Custo no deck">${Number(card.cost) || 1}</span>
+            <span class="cf-cat">${cat?.emoji || ''} ${escapeHtml(cat?.word || card.category || '')}</span>
+            <span class="cf-gem cf-power" title="Poder do efeito">${Number(card.power) || 1}</span>
+        </div>
+    </div>`;
+}
+
+/* ---------- Deck: estatísticas e validação ---------- */
+function arenaDeckStats(ids = arenaDeckIds()) {
+    const byId = arenaCardsById();
+    let points = 0;
+    const counts = {};
+    const cards = [];
+    for (const id of ids) {
+        const c = byId[id];
+        if (!c) continue;
+        points += Number(c.cost) || 0;
+        counts[c.category] = (counts[c.category] || 0) + 1;
+        cards.push(c);
+    }
+    return { points, counts, cards, size: cards.length };
+}
+function arenaTreeBonusFor(catId, counts = arenaDeckStats().counts, tree = economyState?.arenaTree || {}) {
+    const pts = Math.max(0, Number(tree[catId]) || 0);
+    const affinity = Number(counts[catId]) || 0;
+    const mult = 1 + pts * 0.06 + affinity * 0.02;
+    return { pts, affinity, mult, pct: Math.round((mult - 1) * 100) };
+}
+function validateArenaDeck() {
+    const stats = arenaDeckStats();
+    if (stats.size < ARENA_DECK_MIN) return { ok: false, reason: `monte um deck com pelo menos ${ARENA_DECK_MIN} cartas (hoje: ${stats.size})`, ...stats };
+    if (stats.points > ARENA_DECK_MAX_POINTS) return { ok: false, reason: `deck com ${stats.points} pts — o limite é ${ARENA_DECK_MAX_POINTS}`, ...stats };
+    return { ok: true, ...stats };
+}
+function arenaTreePointsUsed() { return arenaTreePts(); }
+
+/* ---------- Cartas: CRUD ---------- */
+async function loadArenaCards() {
+    if (!currentUser) return;
+    try {
+        const snap = await getDocs(query(collection(db, 'cards'), where('ownerId', '==', currentUser.uid)));
+        arenaCards = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        arenaCards.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+    } catch (err) {
+        console.warn('Não consegui carregar suas cartas (rules publicadas?):', err?.message);
+        arenaCards = [];
+    }
+    renderArenaCardsUI();
+}
+function renderArenaCardsUI() {
+    renderArenaDeckPane();
+    renderArenaCardsGrid();
+    updateArenaDeckCheck();
+}
+function renderArenaCardsGrid() {
+    const grid = $('#arena-cards-grid');
+    const countEl = $('#arena-cards-count');
+    if (!grid) return;
+    if (countEl) countEl.textContent = `${arenaCards.length}/${ARENA_CARD_LIMIT} cartas criadas`;
+    const deckSet = new Set(arenaDeckIds());
+    grid.innerHTML = arenaCards.length
+        ? arenaCards.map((c) => `<div class="card-in-grid">
+            ${cardFaceHTML(c, { mini: true })}
+            <button class="card-deck-toggle${deckSet.has(c.id) ? ' indk' : ''}" data-arena-deck-toggle="${escapeHtml(c.id)}">${deckSet.has(c.id) ? '− deck' : '+ deck'}</button>
+            <button class="card-delete" data-arena-card-delete="${escapeHtml(c.id)}">🗑️ apagar</button>
+        </div>`).join('')
+        : '<p class="inv-empty">Você ainda não criou nenhuma carta. Vai na aba ✨ Criar Carta!</p>';
+}
+async function saveArenaCard() {
+    if (!currentUser) return;
+    if (arenaCards.length >= ARENA_CARD_LIMIT) { showToast(`Teto de ${ARENA_CARD_LIMIT} cartas — apague uma pra criar outra 🗑️`, 'warn'); return; }
+    const name = ($('#ac-name')?.value || '').trim();
+    const flavor = ($('#ac-flavor')?.value || '').trim();
+    const artUrl = sanitizeUrl(($('#ac-art-url')?.value || '').trim());
+    const category = $('#ac-category')?.value || 'dano';
+    const cost = Number($('#ac-cost')?.value) || 3;
+    const power = Number($('#ac-power')?.value) || 3;
+    if (name.length < 3) { showToast('Dê um nome com pelo menos 3 letras ✏️', 'warn'); return; }
+    if (!artUrl && !arenaDraft.emoji) { showToast('Escolha um emoji ou envie uma imagem pra arte 🎨', 'warn'); return; }
+    if (!ECO?.CARD_CATEGORY_BY_ID?.[category]) { showToast('Categoria inválida', 'error'); return; }
+    try {
+        await addDoc(collection(db, 'cards'), {
+            ownerId: currentUser.uid,
+            ownerName: currentUserProfile.name || 'Usuário',
+            ownerAvatar: currentUserProfile.avatarUrl || '',
+            name, flavor: flavor.slice(0, 120),
+            emoji: arenaDraft.emoji || '🃏',
+            artUrl: artUrl || '',
+            category, cost, power,
+            createdAt: serverTimestamp()
+        });
+        showToast(`🃏 “${name}” criada! Boa sorte na Arena!`, 'success', 3500);
+        vibrate([12, 40, 12]);
+        $('#ac-name').value = '';
+        $('#ac-flavor').value = '';
+        $('#ac-art-url').value = '';
+        arenaDraft.artUrl = '';
+        renderArenaCreatePreview();
+        await loadArenaCards();
+    } catch (err) {
+        console.warn('Falha ao criar carta:', err?.message);
+        showToast('Não consegui salvar a carta. Verifique se as rules da Arena foram publicadas.', 'error', 5000);
+    }
+}
+async function deleteArenaCard(id) {
+    const card = arenaCards.find((c) => c.id === id);
+    const ok = await gvConfirm({ emoji: '🗑️', title: 'Apagar carta?', message: card ? `“${card.name}” será apagada para sempre.` : 'A carta será apagada.', okLabel: 'Apagar' });
+    if (!ok) return;
+    try {
+        await deleteDoc(doc(db, 'cards', id));
+    } catch (err) {
+        console.warn(err);
+        showToast('Não consegui apagar a carta.', 'error'); return;
+    }
+    const deck = arenaDeckIds().filter((x) => x !== id);
+    await saveEconomy({ arenaDeck: deck });
+    showToast('Carta apagada 🗑️', 'info');
+    await loadArenaCards();
+}
+
+/* ---------- Deck ---------- */
+async function toggleArenaCardInDeck(id) {
+    const deck = arenaDeckIds();
+    const idx = deck.indexOf(id);
+    if (idx >= 0) {
+        await saveEconomy({ arenaDeck: deck.filter((x) => x !== id) });
+        renderArenaCardsUI();
+        return;
+    }
+    const card = arenaCards.find((c) => c.id === id);
+    if (!card) return;
+    const stats = arenaDeckStats(deck);
+    if (stats.points + (Number(card.cost) || 0) > ARENA_DECK_MAX_POINTS) {
+        showToast(`Deck cheio! “${card.name}” custa ${card.cost} pts (${stats.points}/${ARENA_DECK_MAX_POINTS})`, 'warn');
+        return;
+    }
+    await saveEconomy({ arenaDeck: [...deck, id] });
+    vibrate(8);
+    renderArenaCardsUI();
+}
+function renderArenaDeckPane() {
+    const stats = arenaDeckStats();
+    const pts = $('#arena-deck-points');
+    if (pts) pts.textContent = `${stats.points}/${ARENA_DECK_MAX_POINTS}`;
+    const list = $('#arena-deck-list');
+    if (list) {
+        const byId = arenaCardsById();
+        list.innerHTML = stats.cards.length
+            ? stats.cards.map((c) => `<button class="arena-deck-row" data-arena-deck-toggle="${escapeHtml(c.id)}" title="Tocar para tirar do deck">
+                <span class="arena-deck-emoji">${escapeHtml(c.emoji || '🃏')}</span>
+                <span class="arena-deck-info"><span class="arena-deck-name">${escapeHtml(c.name)}</span><span class="arena-deck-meta">${ECO?.CARD_CATEGORY_BY_ID?.[c.category]?.emoji || ''} ${escapeHtml(ECO?.CARD_CATEGORY_BY_ID?.[c.category]?.word || c.category)}</span></span>
+                <span class="arena-deck-cost">${c.cost} pts</span>
+            </button>`).join('')
+            : '<p class="muted">Deck vazio — monte na aba 🃏 Minhas Cartas (+ deck)</p>';
+    }
+    renderArenaTree();
+}
+function renderArenaTree() {
+    const wrap = $('#arena-tree');
+    const totalEl = $('#arena-tree-points');
+    if (!wrap || !ECO) return;
+    const tree = economyState?.arenaTree || {};
+    const used = arenaTreePointsUsed();
+    if (totalEl) totalEl.textContent = `${used}/${ARENA_TREE_MAX}`;
+    const stats = arenaDeckStats();
+    wrap.innerHTML = ECO.CARD_CATEGORIES.map((cat) => {
+        const bonus = arenaTreeBonusFor(cat.id, stats.counts, tree);
+        const pts = bonus.pts;
+        return `<div class="arena-tree-row">
+            <span class="tree-emoji">${cat.emoji}</span>
+            <span class="tree-name">${escapeHtml(cat.word)}<span class="tree-bonus">+${bonus.pct}% (árvore ${pts} · deck ${bonus.affinity} carta${bonus.affinity === 1 ? '' : 's'})</span></span>
+            <span class="tree-controls">
+                <button class="tree-btn" data-arena-tree="${cat.id}" data-delta="-1" ${pts <= 0 ? 'disabled' : ''} aria-label="Tirar 1 ponto">−</button>
+                <span class="tree-pts">${pts}</span>
+                <button class="tree-btn" data-arena-tree="${cat.id}" data-delta="1" ${used >= ARENA_TREE_MAX ? 'disabled' : ''} aria-label="Pôr 1 ponto">+</button>
+            </span>
+        </div>`;
+    }).join('');
+}
+async function adjustArenaTree(catId, delta) {
+    if (!economyState) return;
+    const tree = { ...(economyState.arenaTree || {}) };
+    const cur = Math.max(0, Number(tree[catId]) || 0);
+    if (delta > 0 && arenaTreePointsUsed() >= ARENA_TREE_MAX) { showToast(`Árvore cheia! São ${ARENA_TREE_MAX} pontos no total 🌳`, 'warn'); return; }
+    const next = Math.max(0, Math.min(ARENA_TREE_MAX, cur + delta));
+    if (next === 0) delete tree[catId]; else tree[catId] = next;
+    await saveEconomy({ arenaTree: tree });
+    renderArenaCardsUI();
+}
+
+/* ---------- Loja: cosméticos de carta (molduras) ---------- */
+function renderCardCosmeticShop() {
+    const grid = $('#card-cosmetic-grid');
+    if (!grid || !ECO?.CARD_COSMETICS) return;
+    const owned = new Set(economyState?.cosmetics || []);
+    const equipped = economyState?.cardFrame || '';
+    grid.innerHTML = ECO.CARD_COSMETICS.map((c) => {
+        const isOwned = owned.has(c.id);
+        const isEquipped = equipped === c.id;
+        let btn;
+        if (isEquipped) btn = '<button class="cosmetic-buy equipped" disabled>⭐ Em uso</button>';
+        else if (isOwned) btn = `<button class="cosmetic-buy owned" data-equip-card-frame="${escapeHtml(c.id)}">🃏 Usar nas cartas</button>`;
+        else btn = `<button class="cosmetic-buy" data-buy-card-frame="${escapeHtml(c.id)}">🪙 ${c.price.toLocaleString('pt-BR')}</button>`;
+        return `<div class="cosmetic-card" title="${escapeHtml(c.name)} — ${escapeHtml(c.rarityName)}">
+            <span class="cosmetic-emoji" style="background:linear-gradient(160deg, ${escapeHtml(c.c1)}, ${escapeHtml(c.c2)});border-radius:14px;display:flex;align-items:center;justify-content:center;width:64px;height:88px;box-shadow:inset 0 0 0 3px rgba(255,255,255,.18), 0 4px 12px rgba(0,0,0,.4);font-size:30px">🃏</span>
+            <span class="cosmetic-name">${escapeHtml(c.name)}</span>
+            <span class="rarity-chip rarity-${escapeHtml(c.rarity)}">${escapeHtml(c.rarityName)}</span>
+            <span class="cosmetic-effect">${escapeHtml(c.desc || '')}</span>
+            ${isOwned ? '' : `<span class="cosmetic-price">🪙 ${c.price.toLocaleString('pt-BR')}</span>`}
+            ${btn}
+        </div>`;
+    }).join('');
+}
+async function buyCardFrame(id) {
+    const c = ECO?.CARD_COSMETIC_BY_ID?.[id];
+    if (!c || !economyState) return;
+    if (economyState.cosmetics.includes(id)) { showToast('Você já tem essa moldura ✨', 'info'); return; }
+    if (economyState.gold < c.price) { showToast(`Falta gold! São ${fmtGold(c.price)} 🪙`, 'warn'); return; }
+    addLedger('compra', `Moldura de carta: ${c.name}`, -c.price);
+    await saveEconomy({ gold: economyState.gold - c.price, cosmetics: [...economyState.cosmetics, id] });
+    vibrate([12, 40, 12]);
+    showToast(`🃏 ${c.name} é sua! Equipe pra mudar todas as cartas.`, 'success', 3500);
+}
+async function equipCardFrame(id) {
+    if (!economyState || !ECO?.CARD_COSMETIC_BY_ID?.[id]) return;
+    if (!economyState.cosmetics.includes(id)) { showToast('Compre a moldura antes 🪙', 'warn'); return; }
+    const next = economyState.cardFrame === id ? '' : id;
+    await saveEconomy({ cardFrame: next });
+    const c = ECO.CARD_COSMETIC_BY_ID[id];
+    showToast(next ? `🃏 Moldura “${c.name}” aplicada em todas as suas cartas!` : 'Moldura guardada de volta.', 'info');
+}
+
+/* ---------- Criação de carta: preview ao vivo ---------- */
+function renderArenaCreatePreview() {
+    const box = $('#ac-preview');
+    if (!box) return;
+    const catSel = $('#ac-category');
+    const draft = {
+        name: ($('#ac-name')?.value || '').trim() || 'Sua carta',
+        emoji: arenaDraft.emoji,
+        artUrl: sanitizeUrl(($('#ac-art-url')?.value || '').trim()),
+        category: catSel?.value || 'dano',
+        cost: Number($('#ac-cost')?.value) || 3,
+        power: Number($('#ac-power')?.value) || 3,
+        flavor: ($('#ac-flavor')?.value || '').trim()
+    };
+    box.outerHTML = cardFaceHTML(draft, { attrs: 'id="ac-preview"' });
+}
+function renderArenaEmojiRow() {
+    const row = $('#ac-emoji-row');
+    if (!row) return;
+    row.innerHTML = ARENA_EMOJI_POOL.map((e) => `<button type="button" class="ac-emoji-pick${e === arenaDraft.emoji ? ' selected' : ''}" data-arena-emoji="${e}">${e}</button>`).join('');
+}
+function fillArenaCategorySelect() {
+    const sel = $('#ac-category');
+    if (!sel || !ECO?.CARD_CATEGORIES) return;
+    sel.innerHTML = ECO.CARD_CATEGORIES.map((c) => `<option value="${c.id}">${c.emoji} ${escapeHtml(c.word)} — ${escapeHtml(c.desc)}</option>`).join('');
+}
+
+
+/* ---------- BATALHA ⚔️ (partida ao vivo no Firestore) ---------- */
+const arenaOtherSide = (side) => (side === 'A' ? 'B' : 'A');
+const arenaSideField = (side, field) => `${field}${side}`;
+const arenaMySideIn = (m) => (m?.playerA === currentUser?.uid ? 'A' : m?.playerB === currentUser?.uid ? 'B' : null);
+
+function arenaShuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
+function arenaCardSnapshot(c) {
+    return { id: c.id, name: c.name || 'Sem nome', emoji: c.emoji || '🃏', artUrl: c.artUrl || '', category: c.category, cost: Number(c.cost) || 1, power: Number(c.power) || 1, flavor: c.flavor || '' };
+}
+function arenaDeckSnapshot() {
+    const byId = arenaCardsById();
+    return arenaDeckIds().map((id) => byId[id]).filter(Boolean).map(arenaCardSnapshot);
+}
+function arenaCatCounts(cards) {
+    const counts = {};
+    for (const c of cards) counts[c.category] = (counts[c.category] || 0) + 1;
+    return counts;
+}
+function arenaMultOf(match, side, catId) {
+    const tree = match?.[`tree${side}`] || {};
+    const counts = match?.[`catCount${side}`] || {};
+    return 1 + (Number(tree[catId]) || 0) * 0.06 + (Number(counts[catId]) || 0) * 0.02;
+}
+const arenaAbsorb = (shield, dmg) => {
+    const absorbed = Math.min(Math.max(0, shield), dmg);
+    return { shieldLeft: Math.max(0, shield - absorbed), rest: dmg - absorbed };
+};
+const arenaEffectBase = (power) => Math.round(power * 3) + 2;
+
+function arenaMatchCardName(m, side) {
+    return side === 'A' ? (m.playerAName || 'Jogador A') : (m.playerBName || 'Jogador B');
+}
+function arenaLogPush(m, entries) {
+    const log = [...(m.log || []), ...entries].slice(-8);
+    return log;
+}
+
+/* Aplica os efeitos de início de turno do lado `side` sobre o match (cópia rasa já feita pelo chamador).
+   Retorna novas arrays de field/hand/deck + hp do oponente + logs. */
+function arenaStartOfTurnPatch(m, side) {
+    const foe = arenaOtherSide(side);
+    const hpFoeKey = arenaSideField(foe, 'hp');
+    const fieldKey = arenaSideField(side, 'field');
+    const handKey = arenaSideField(side, 'hand');
+    const deckKey = arenaSideField(side, 'deck');
+    const shieldFoeKey = arenaSideField(foe, 'shield');
+    const log = [];
+    let hpFoe = Number(m[hpFoeKey]) || ARENA_HP;
+    const shieldFoe = { ...(m[shieldFoeKey] || { phys: 0, mag: 0 }) };
+    const meName = arenaMatchCardName(m, side);
+
+    const field = [];
+    for (const unit of m[fieldKey] || []) {
+        const u = { ...unit };
+        if (u.kind === 'summon') {
+            const mult = arenaMultOf(m, side, 'invocacao');
+            const dmg = Math.max(1, Math.round((Number(u.power) || 1) * 2 * mult));
+            const { shieldLeft, rest } = arenaAbsorb(shieldFoe.phys, dmg);
+            shieldFoe.phys = shieldLeft;
+            hpFoe -= rest;
+            log.push(`${u.emoji || '🗿'} ${meName}: ${u.name} golpeou por ${dmg} (${rest} na vida)`);
+            u.turnsLeft = (Number(u.turnsLeft) || ARENA_TOKEN_TURNS) - 1;
+            if (u.turnsLeft > 0) field.push(u);
+            else log.push(`⏳ ${u.name} se desfez`);
+        } else if (u.kind === 'structure') {
+            const dmg = Math.max(1, Number(u.tick) || 1);
+            const { shieldLeft, rest } = arenaAbsorb(shieldFoe.mag, dmg);
+            shieldFoe.mag = shieldLeft;
+            hpFoe -= rest;
+            log.push(`🏗️ ${meName}: ${u.name} causou ${dmg} de dano`);
+            field.push(u);
+        } else {
+            field.push(u);
+        }
+    }
+
+    // Compra: repõe a mão até 5 (máx 7)
+    let hand = [...(m[handKey] || [])];
+    let deck = [...(m[deckKey] || [])];
+    while (hand.length < 5 && deck.length) {
+        hand.push(deck[0]);
+        deck = deck.slice(1);
+    }
+
+    const patch = {
+        [fieldKey]: field,
+        [handKey]: hand,
+        [deckKey]: deck,
+        [shieldFoeKey]: shieldFoe,
+        [hpFoeKey]: hpFoe
+    };
+    return { patch, log, hpFoe, foe };
+}
+
+function arenaFinishPatch(m, winnerUid, logEntries) {
+    return {
+        status: 'finished',
+        winner: winnerUid,
+        finishedAt: serverTimestamp(),
+        log: arenaLogPush(m, logEntries)
+    };
+}
+
+/* Joga uma carta da mão (transação) */
+async function playArenaCard(cardId) {
+    if (!currentUser || !arenaOpenMatchId) return;
+    const matchId = arenaOpenMatchId;
+    try {
+        await runTransaction(db, async (tx) => {
+            const mRef = doc(db, 'arena_matches', matchId);
+            const snap = await tx.get(mRef);
+            const m = snap.data();
+            if (!m || m.status !== 'active') throw new Error('A partida não está ativa.');
+            const side = arenaMySideIn(m);
+            if (!side) throw new Error('Você não faz parte desta partida.');
+            if (m.turn !== side) throw new Error('Ainda não é seu turno.');
+            const foe = arenaOtherSide(side);
+            const handKey = arenaSideField(side, 'hand');
+            const hand = [...(m[handKey] || [])];
+            const idx = hand.findIndex((c) => c.id === cardId);
+            if (idx < 0) throw new Error('Carta não está na sua mão.');
+            const card = hand[idx];
+            const cat = ECO?.CARD_CATEGORY_BY_ID?.[card.category];
+            if (!cat) throw new Error('Categoria desconhecida.');
+            const mult = arenaMultOf(m, side, card.category);
+            const eff = Number(card.power) * mult;
+            const meName = arenaMatchCardName(m, side);
+            const foeName = arenaMatchCardName(m, foe);
+
+            const patch = {};
+            const log = [];
+            let hpMe = Number(m[arenaSideField(side, 'hp')]) || ARENA_HP;
+            let hpFoe = Number(m[arenaSideField(foe, 'hp')]) || ARENA_HP;
+            const shieldMe = { ...(m[arenaSideField(side, 'shield')] || { phys: 0, mag: 0 }) };
+            const shieldFoe = { ...m[arenaSideField(foe, 'shield')] || { phys: 0, mag: 0 } };
+            const fieldKey = arenaSideField(side, 'field');
+            const field = [...(m[fieldKey] || [])];
+
+            const dealPhys = (dmg) => {
+                const { shieldLeft, rest } = arenaAbsorb(shieldFoe.phys, dmg);
+                shieldFoe.phys = shieldLeft; hpFoe -= rest;
+                return rest;
+            };
+            const dealMag = (dmg) => {
+                const { shieldLeft, rest } = arenaAbsorb(shieldFoe.mag, dmg);
+                shieldFoe.mag = shieldLeft; hpFoe -= rest;
+                return rest;
+            };
+
+            switch (cat.kind) {
+                case 'physical': {
+                    const dmg = Math.max(1, Math.round(eff * 3) + 2);
+                    const rest = dealPhys(dmg);
+                    log.push(`🗡️ ${meName} usou ${card.name}: ${dmg} de dano (${rest} na vida de ${foeName})`);
+                    break;
+                }
+                case 'magic': {
+                    const dmg = Math.max(1, Math.round(eff * 3) + 2);
+                    const rest = dealMag(dmg);
+                    log.push(`${cat.emoji} ${meName} usou ${card.name}: ${dmg} de dano mágico (${rest} na vida)`);
+                    break;
+                }
+                case 'heal': {
+                    const heal = Math.max(1, Math.round(eff * 3) + 2);
+                    hpMe = Math.min(ARENA_HP, hpMe + heal);
+                    log.push(`💚 ${meName} usou ${card.name}: +${heal} de vida`);
+                    break;
+                }
+                case 'shield': {
+                    const add = Math.max(1, Math.round(eff * 3) + 2);
+                    shieldMe.phys = Math.min(ARENA_SHIELD_MAX, shieldMe.phys + add);
+                    log.push(`🛡️ ${meName} ergueu ${card.name}: +${add} de escudo físico`);
+                    break;
+                }
+                case 'shieldmagic': {
+                    const add = Math.max(1, Math.round(eff * 3) + 2);
+                    shieldMe.mag = Math.min(ARENA_SHIELD_MAX, shieldMe.mag + add);
+                    log.push(`🔮 ${meName} ergueu ${card.name}: +${add} de escudo mágico`);
+                    break;
+                }
+                case 'summon': {
+                    field.push({ kind: 'summon', uid: `tk_${Date.now()}_${Math.floor(Math.random() * 1e6)}`, name: card.name, emoji: card.emoji || '🗿', category: card.category, power: Number(card.power) || 1, turnsLeft: ARENA_TOKEN_TURNS });
+                    log.push(`🗿 ${meName} invocou ${card.name}! (ataca nos próximos ${ARENA_TOKEN_TURNS} turnos)`);
+                    break;
+                }
+                case 'structure': {
+                    const dmg = Math.max(1, Math.round(eff * 2) + 1);
+                    const tick = Math.max(1, Math.round(eff));
+                    const rest = dealMag(dmg);
+                    field.push({ kind: 'structure', uid: `st_${Date.now()}_${Math.floor(Math.random() * 1e6)}`, name: card.name, emoji: '🏗️', category: card.category, tick });
+                    log.push(`🏗️ ${meName} ergueu ${card.name}: ${dmg} de dano imediato e ${tick}/turno`);
+                    break;
+                }
+                default:
+                    throw new Error('Efeito desconhecido.');
+            }
+
+            // Remove da mão e passa a vez; o turno do adversário começa com os gatilhos dele
+            hand.splice(idx, 1);
+            patch[arenaSideField(side, 'hp')] = hpMe;
+            patch[arenaSideField(side, 'shield')] = shieldMe;
+            patch[arenaSideField(foe, 'hp')] = hpFoe;
+            patch[arenaSideField(foe, 'shield')] = shieldFoe;
+            patch[fieldKey] = field;
+            patch[handKey] = hand;
+
+            if (hpFoe <= 0) {
+                Object.assign(patch, arenaFinishPatch(m, side === 'A' ? m.playerA : m.playerB, [...log, `🏆 ${foeName} caiu! ${meName} venceu!`]));
+            } else {
+                // Passa a vez e aplica o início do turno do adversário:
+                // as criaturas/estruturas DELE batem em VOCÊ, e ele compra.
+                // (start.hpFoe devolve a vida de QUEM recebeu a vez... não:
+                //  devolve a vida do oponente de quem está começando, ou seja,
+                //  a SUA vida — por isso a derrota aqui é sua.)
+                const mAfter = { ...m, ...patch };
+                const start = arenaStartOfTurnPatch(mAfter, foe);
+                Object.assign(patch, start.patch);
+                log.push(...start.log);
+                patch.turn = foe;
+                patch.turnNumber = (Number(m.turnNumber) || 1) + 1;
+                if (start.hpFoe <= 0) {
+                    Object.assign(patch, arenaFinishPatch(m, foe === 'A' ? m.playerA : m.playerB, [...log, `🏆 Os gatilhos de ${foeName} derrubaram ${meName}!`]));
+                } else {
+                    patch.status = 'active';
+                    patch.log = arenaLogPush(m, log);
+                }
+            }
+            tx.update(mRef, patch);
+        });
+        vibrate(15);
+        arenaSelectedHand = null;
+    } catch (err) {
+        console.warn('playArenaCard:', err);
+        showToast(err?.message || 'Não consegui jogar a carta.', 'warn');
+    }
+}
+
+/* Passar o turno */
+async function passArenaTurn() {
+    if (!currentUser || !arenaOpenMatchId) return;
+    const matchId = arenaOpenMatchId;
+    try {
+        await runTransaction(db, async (tx) => {
+            const mRef = doc(db, 'arena_matches', matchId);
+            const snap = await tx.get(mRef);
+            const m = snap.data();
+            if (!m || m.status !== 'active') throw new Error('A partida não está ativa.');
+            const side = arenaMySideIn(m);
+            if (!side) throw new Error('Você não faz parte desta partida.');
+            if (m.turn !== side) throw new Error('Ainda não é seu turno.');
+            const foe = arenaOtherSide(side);
+            const meName = arenaMatchCardName(m, side);
+            const foeName = arenaMatchCardName(m, foe);
+            const log = [`⏭️ ${meName} passou o turno`];
+            const patch = {};
+            const mAfter = { ...m };
+            const start = arenaStartOfTurnPatch(mAfter, foe);
+            Object.assign(patch, start.patch);
+            log.push(...start.log);
+            patch.turn = foe;
+            patch.turnNumber = (Number(m.turnNumber) || 1) + 1;
+            if (start.hpFoe <= 0) {
+                Object.assign(patch, arenaFinishPatch(m, foe === 'A' ? m.playerA : m.playerB, [...log, `🏆 Os gatilhos de ${foeName} derrubaram ${meName}!`]));
+            } else {
+                patch.status = 'active';
+                patch.log = arenaLogPush(m, log);
+            }
+            tx.update(mRef, patch);
+        });
+        arenaSelectedHand = null;
+    } catch (err) {
+        showToast(err?.message || 'Não consegui passar o turno.', 'warn');
+    }
+}
+
+/* Desistir (= derrota) */
+async function forfeitArenaMatch() {
+    if (!currentUser || !arenaOpenMatchId) return;
+    const ok = await gvConfirm({ emoji: '🏳️', title: 'Desistir da partida?', message: 'O oponente leva o pote inteiro.', okLabel: 'Desistir' });
+    if (!ok) return;
+    const matchId = arenaOpenMatchId;
+    try {
+        await runTransaction(db, async (tx) => {
+            const mRef = doc(db, 'arena_matches', matchId);
+            const snap = await tx.get(mRef);
+            const m = snap.data();
+            if (!m || m.status !== 'active') throw new Error('A partida não está ativa.');
+            const side = arenaMySideIn(m);
+            if (!side) throw new Error('Você não faz parte desta partida.');
+            const winner = side === 'A' ? m.playerB : m.playerA;
+            const loserName = arenaMatchCardName(m, side);
+            tx.update(mRef, arenaFinishPatch(m, winner, [`🏳️ ${loserName} desistiu`]));
+        });
+    } catch (err) {
+        showToast(err?.message || 'Não consegui desistir.', 'warn');
+    }
+}
+
+/* ---------- POTE: escrow e liquidação ---------- */
+async function reloadEconomyFromServer() {
+    if (!currentUser) return;
+    try {
+        const fresh = await getDoc(ecoUserRef());
+        economyState = normalizeEconomy(fresh.data() || {});
+        refreshEconomyUI();
+    } catch (err) { console.warn('reload econ:', err?.message); }
+}
+
+/* Liquida UMA partida encerrada em favor do vencedor. Idempotente. */
+async function settleArenaMatchDoc(matchRef, m) {
+    if (!m || m.status !== 'finished' || m.winner !== currentUser?.uid) return { gold: 0, cos: 0 };
+    let credited = { gold: 0, cos: 0 };
+    await runTransaction(db, async (tx) => {
+        const snap = await tx.get(matchRef);
+        const data = snap.data();
+        if (!data || data.status !== 'finished' || data.winner !== currentUser.uid) return;
+        const uRef = ecoUserRef();
+        const u = (await tx.get(uRef)).data() || {};
+        const stakeAGold = Number(data.stakeA?.gold) || 0;
+        const stakeBGold = Number(data.stakeB?.gold) || 0;
+        const cosA = Array.isArray(data.stakeA?.cosmetics) ? data.stakeA.cosmetics.filter((x) => typeof x === 'string') : [];
+        const cosB = Array.isArray(data.stakeB?.cosmetics) ? data.stakeB.cosmetics.filter((x) => typeof x === 'string') : [];
+        const owned = Array.isArray(u.cosmetics) ? u.cosmetics : [];
+        const patch = {
+            gold: (typeof u.gold === 'number' ? u.gold : 0) + stakeAGold + stakeBGold,
+            cosmetics: [...owned, ...cosA, ...cosB]
+        };
+        tx.set(uRef, patch, { merge: true });
+        tx.update(matchRef, { status: 'settled', settledAt: serverTimestamp() });
+        credited = { gold: stakeAGold + stakeBGold, cos: cosA.length + cosB.length };
+    });
+    return credited;
+}
+
+async function claimArenaSettlements({ silent = false } = {}) {
+    if (!currentUser) return 0;
+    let totalGold = 0, totalCos = 0, count = 0;
+    try {
+        const snap = await getDocs(query(collection(db, 'arena_matches'), where('winner', '==', currentUser.uid), limit(25)));
+        for (const d of snap.docs) {
+            const m = d.data();
+            if (m.status !== 'finished') continue;
+            const got = await settleArenaMatchDoc(d.ref, m);
+            if (got.gold || got.cos) { totalGold += got.gold; totalCos += got.cos; count++; }
+        }
+    } catch (err) { console.warn('Resgate de potes indisponível:', err?.message); }
+    if (count > 0) {
+        addLedger('arena', 'Pote de batalha na Arena', totalGold);
+        await reloadEconomyFromServer();
+        if (!silent) showToast(`🏆 Pote${count > 1 ? 's' : ''} resgatado${count > 1 ? 's' : ''}: +${fmtGold(totalGold)}${totalCos ? ` e ${totalCos} cosmético(s)` : ''}!`, 'success', 5000);
+    }
+    return count;
+}
+
+function arenaStakeText(stake) {
+    const gold = Number(stake?.gold) || 0;
+    const cos = (stake?.cosmetics || []).length;
+    const parts = [];
+    if (gold > 0) parts.push(`${fmtGold(gold)}`);
+    if (cos > 0) parts.push(`${cos} cosmético${cos > 1 ? 's' : ''}`);
+    return parts.length ? parts.join(' + ') : 'nada (amistosa)';
+}
+
+/* Criar desafio: aposta do desafiador (gold + cosméticos) sai da carteira */
+async function createArenaChallengeFromBet(stakeGold, stakeCos) {
+    const check = validateArenaDeck();
+    if (!check.ok) { showToast(`Monte seu deck primeiro — ${check.reason}`, 'warn', 4500); return false; }
+    const uid = currentUser.uid;
+    const myName = currentUserProfile.name || 'Usuário';
+    const myAvatar = currentUserProfile.avatarUrl || '';
+    const shuffled = arenaShuffle(arenaDeckSnapshot());
+    const handA = shuffled.slice(0, 5);
+    const restA = shuffled.slice(5);
+    const stats = arenaDeckStats();
+    try {
+        await runTransaction(db, async (tx) => {
+            const uRef = ecoUserRef();
+            const u = (await tx.get(uRef)).data() || {};
+            const gold = typeof u.gold === 'number' ? u.gold : 0;
+            if (gold < stakeGold) throw new Error('OURO_INSUFICIENTE');
+            const cos = Array.isArray(u.cosmetics) ? u.cosmetics : [];
+            for (const id of stakeCos) if (!cos.includes(id)) throw new Error('COSMETICO_AUSENTE');
+            tx.set(uRef, { gold: gold - stakeGold, cosmetics: cos.filter((c) => !stakeCos.includes(c)) }, { merge: true });
+            const matchRef = doc(collection(db, 'arena_matches'));
+            tx.set(matchRef, {
+                playerA: uid, playerAName: myName, playerAAvatar: myAvatar,
+                playerB: '', playerBName: '', playerBAvatar: '',
+                starter: 'A', status: 'waiting', turn: 'A', turnNumber: 1,
+                hpA: ARENA_HP, hpB: ARENA_HP,
+                shieldA: { phys: 0, mag: 0 }, shieldB: { phys: 0, mag: 0 },
+                deckA: restA, handA, deckB: [], handB: [],
+                fieldA: [], fieldB: [],
+                treeA: { ...(economyState?.arenaTree || {}) }, catCountA: arenaCatCounts(arenaDeckSnapshot()),
+                treeB: {}, catCountB: {},
+                stakeA: { gold: stakeGold, cosmetics: stakeCos },
+                stakeB: { gold: 0, cosmetics: [] },
+                potGold: stakeGold,
+                winner: '',
+                log: [`⚔️ ${myName} abriu um desafio — pote: ${arenaStakeText({ gold: stakeGold, cosmetics: stakeCos })}`],
+                createdAt: serverTimestamp()
+            });
+        });
+        addLedger('arena', 'Aposta em desafio da Arena', -stakeGold);
+        vibrate([12, 40, 12]);
+        showToast('Desafio criado! Agora é só esperar alguém aceitar ⚔️', 'success', 4000);
+        await reloadEconomyFromServer();
+        renderArenaBattlePane();
+        return true;
+    } catch (err) {
+        console.warn('createChallenge:', err);
+        showToast(err?.message === 'OURO_INSUFICIENTE' ? 'Gold insuficiente pra essa aposta 🪙' : err?.message === 'COSMETICO_AUSENTE' ? 'Esse cosmético não está mais no seu baú.' : 'Não consegui criar o desafio. Rules publicadas?', 'error', 4500);
+        return false;
+    }
+}
+
+async function acceptArenaChallengeFromBet(matchId, stakeGold, stakeCos) {
+    const check = validateArenaDeck();
+    if (!check.ok) { showToast(`Monte seu deck primeiro — ${check.reason}`, 'warn', 4500); return false; }
+    const uid = currentUser.uid;
+    const myName = currentUserProfile.name || 'Usuário';
+    const myAvatar = currentUserProfile.avatarUrl || '';
+    const shuffled = arenaShuffle(arenaDeckSnapshot());
+    const handB = shuffled.slice(0, 5);
+    const restB = shuffled.slice(5);
+    const catCountB = arenaCatCounts(arenaDeckSnapshot());
+    const treeB = { ...(economyState?.arenaTree || {}) };
+    try {
+        await runTransaction(db, async (tx) => {
+            const mRef = doc(db, 'arena_matches', matchId);
+            const mSnap = await tx.get(mRef);
+            const m = mSnap.data();
+            if (!m || m.status !== 'waiting') throw new Error('JOGO_ACABOU');
+            if (m.playerA === uid) throw new Error('PROPRIO');
+            const uRef = ecoUserRef();
+            const u = (await tx.get(uRef)).data() || {};
+            const gold = typeof u.gold === 'number' ? u.gold : 0;
+            if (gold < stakeGold) throw new Error('OURO_INSUFICIENTE');
+            const cos = Array.isArray(u.cosmetics) ? u.cosmetics : [];
+            for (const id of stakeCos) if (!cos.includes(id)) throw new Error('COSMETICO_AUSENTE');
+            tx.set(uRef, { gold: gold - stakeGold, cosmetics: cos.filter((c) => !stakeCos.includes(c)) }, { merge: true });
+            tx.update(mRef, {
+                status: 'active',
+                playerB: uid, playerBName: myName, playerBAvatar: myAvatar,
+                stakeB: { gold: stakeGold, cosmetics: stakeCos },
+                potGold: (Number(m.stakeA?.gold) || 0) + stakeGold,
+                turn: 'A', turnNumber: 1,
+                deckB: restB, handB,
+                treeB, catCountB,
+                acceptedAt: serverTimestamp(),
+                log: [...(m.log || []), `🤝 ${myName} aceitou! ${arenaMatchCardName(m, 'A')} começa. Boa batalha!`].slice(-8)
+            });
+        });
+        addLedger('arena', 'Aposta em desafio da Arena', -stakeGold);
+        vibrate([12, 40, 12]);
+        await reloadEconomyFromServer();
+        openArenaMatch(matchId);
+        return true;
+    } catch (err) {
+        console.warn('acceptChallenge:', err);
+        const msg = err?.message === 'JOGO_ACABOU' ? 'Esse desafio já foi aceito ou cancelado 😅'
+            : err?.message === 'PROPRIO' ? 'Você não pode aceitar o próprio desafio.'
+            : err?.message === 'OURO_INSUFICIENTE' ? 'Gold insuficiente pra essa aposta 🪙'
+            : err?.message === 'COSMETICO_AUSENTE' ? 'Esse cosmético não está mais no seu baú.'
+            : 'Não consegui aceitar. Rules publicadas?';
+        showToast(msg, 'warn', 4500);
+        renderArenaBattlePane();
+        return false;
+    }
+}
+
+async function cancelArenaChallenge(matchId) {
+    if (!currentUser) return;
+    try {
+        await runTransaction(db, async (tx) => {
+            const mRef = doc(db, 'arena_matches', matchId);
+            const mSnap = await tx.get(mRef);
+            const m = mSnap.data();
+            if (!m || m.status !== 'waiting' || m.playerA !== currentUser.uid) throw new Error('INVALIDA');
+            const uRef = ecoUserRef();
+            const u = (await tx.get(uRef)).data() || {};
+            const cos = Array.isArray(u.cosmetics) ? u.cosmetics : [];
+            const stakeCos = Array.isArray(m.stakeA?.cosmetics) ? m.stakeA.cosmetics : [];
+            tx.set(uRef, {
+                gold: (typeof u.gold === 'number' ? u.gold : 0) + (Number(m.stakeA?.gold) || 0),
+                cosmetics: [...cos, ...stakeCos]
+            }, { merge: true });
+            tx.update(mRef, { status: 'cancelled', cancelledAt: serverTimestamp() });
+        });
+        showToast('Desafio cancelado — aposta devolvida ↩️', 'info');
+        await reloadEconomyFromServer();
+        renderArenaBattlePane();
+    } catch (err) {
+        showToast('Não consegui cancelar esse desafio.', 'warn');
+    }
+}
+
+/* ---------- ARENA: telas ---------- */
+const ARENA_TABS = ['deck', 'cards', 'create', 'battle'];
+function setArenaTab(name) {
+    document.querySelectorAll('[data-arena-tab]').forEach((b) => b.classList.toggle('active', b.dataset.arenaTab === name));
+    ARENA_TABS.forEach((t) => { const pane = $(`#arena-pane-${t}`); if (pane) pane.hidden = t !== name; });
+    if (name === 'battle') void refreshArenaBattlePane();
+    if (name === 'create') { fillArenaCategorySelect(); renderArenaEmojiRow(); renderArenaCreatePreview(); }
+}
+
+function updateArenaDeckCheck() {
+    const el = $('#arena-deck-check');
+    if (!el) return;
+    const v = validateArenaDeck();
+    el.classList.toggle('ok', v.ok);
+    el.classList.toggle('bad', !v.ok);
+    el.innerHTML = v.ok
+        ? `🎴 <strong>Deck pronto!</strong> ${v.size} cartas · ${v.points}/${ARENA_DECK_MAX_POINTS} pts`
+        : `⚠️ ${escapeHtml(v.reason)}`;
+}
+
+function arenaChallengeRowHTML(m, isMine) {
+    const potGold = Number(m.stakeA?.gold) || 0;
+    const cos = (m.stakeA?.cosmetics || []).length;
+    return `<div class="arena-challenge"><span class="tree-emoji">⚔️</span>
+        <span class="arena-challenge-info"><strong>${escapeHtml(m.playerAName || 'Alguém')}</strong><br>
+            <span class="arena-pot">Pote: ${escapeHtml(arenaStakeText(m.stakeA))}</span></span>
+        ${isMine
+            ? `<button class="chip-btn" data-arena-cancel="${escapeHtml(m.id)}">Cancelar</button>`
+            : `<button class="primary-btn arena-accept-btn" data-arena-accept="${escapeHtml(m.id)}">Aceitar ⚔️</button>`}
+    </div>`;
+}
+function arenaHistoryRowHTML(m) {
+    const me = currentUser?.uid;
+    const iAmA = m.playerA === me;
+    const oppName = (iAmA ? m.playerBName : m.playerAName) || 'Rival';
+    const won = m.winner === me;
+    const potText = arenaStakeText({ gold: Number(m.potGold) || 0, cosmetics: [...(m.stakeA?.cosmetics || []), ...(m.stakeB?.cosmetics || [])] });
+    const date = m.finishedAt?.toDate?.() || m.createdAt?.toDate?.() || null;
+    const dateText = date ? date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
+    return `<div class="arena-history-row"><span>${won ? '🏆' : '💀'}</span>
+        <span style="flex:1">${won ? 'Vitória' : 'Derrota'} contra <strong>${escapeHtml(oppName)}</strong>${dateText ? ` · ${dateText}` : ''}</span>
+        <span class="arena-pot">${won ? `+${escapeHtml(potText)}` : ''}</span>
+    </div>`;
+}
+
+async function refreshArenaBattlePane() {
+    if (!currentUser) return;
+    updateArenaDeckCheck();
+    // Potes pendentes de resgate
+    try {
+        const snap = await getDocs(query(collection(db, 'arena_matches'), where('winner', '==', currentUser.uid), limit(15)));
+        const pending = snap.docs.filter((d) => d.data().status === 'finished');
+        const banner = $('#arena-settle-banner');
+        if (banner) {
+            banner.innerHTML = pending.length
+                ? `<div class="arena-settle">🏆 <span style="flex:1">Você tem <strong>${pending.length}</strong> pote${pending.length > 1 ? 's' : ''} de batalha pra resgatar!</span><button class="primary-btn arena-claim-btn" id="arena-claim-pots-btn">Resgatar</button></div>`
+                : '';
+        }
+    } catch (err) { console.warn('banner de potes:', err?.message); }
+    // Desafios abertos + meus desafios esperando
+    try {
+        const snap = await getDocs(query(collection(db, 'arena_matches'), where('status', '==', 'waiting'), limit(20)));
+        const mine = currentUser.uid;
+        const waiting = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const myWaiting = waiting.filter((m) => m.playerA === mine);
+        const open = waiting.filter((m) => m.playerA !== mine)
+            .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+        const countEl = $('#arena-open-count');
+        if (countEl) countEl.textContent = open.length ? `${open.length} aberto${open.length > 1 ? 's' : ''}` : '';
+        const list = $('#arena-challenge-list');
+        if (list) {
+            const html = myWaiting.map((m) => arenaChallengeRowHTML(m, true)).join('')
+                + open.map((m) => arenaChallengeRowHTML(m, false)).join('');
+            list.innerHTML = html || '<p class="muted">Nenhum desafio aberto agora. Crie o primeiro! ⚔️</p>';
+        }
+    } catch (err) {
+        console.warn('desafios abertos:', err?.message);
+        const list = $('#arena-challenge-list');
+        if (list) list.innerHTML = '<p class="muted">Não consegui carregar os desafios (rules da Arena publicadas?).</p>';
+    }
+    // Histórico recente (duas queries simples, mescladas no cliente)
+    try {
+        const [a, b] = await Promise.all([
+            getDocs(query(collection(db, 'arena_matches'), where('playerA', '==', currentUser.uid), limit(10))),
+            getDocs(query(collection(db, 'arena_matches'), where('playerB', '==', currentUser.uid), limit(10)))
+        ]);
+        const hist = [...a.docs, ...b.docs].map((d) => ({ id: d.id, ...d.data() }))
+            .filter((m) => m.status === 'finished' || m.status === 'settled')
+            .sort((x, y) => (y.finishedAt?.toMillis?.() || y.createdAt?.toMillis?.() || 0) - (x.finishedAt?.toMillis?.() || x.createdAt?.toMillis?.() || 0))
+            .slice(0, 10);
+        const box = $('#arena-history-list');
+        if (box) box.innerHTML = hist.length ? hist.map(arenaHistoryRowHTML).join('') : '<p class="muted">Nenhuma batalha ainda. O primeiro sangue é seu! ⚔️</p>';
+    } catch (err) { console.warn('histórico:', err?.message); }
+}
+
+/* ---------- Tela de batalha ---------- */
+function openArenaMatch(matchId) {
+    arenaOpenMatchId = matchId;
+    const hub = $('#arena-hub'); if (hub) hub.hidden = true;
+    const matchEl = $('#arena-match'); if (matchEl) matchEl.hidden = false;
+    arenaSelectedHand = null;
+    if (arenaMatchUnsub) { try { arenaMatchUnsub(); } catch { /* ignora */ } }
+    arenaMatchUnsub = onSnapshot(doc(db, 'arena_matches', matchId), (snap) => {
+        const data = snap.data();
+        if (!data) { showToast('Partida não encontrada 👀', 'warn'); leaveArenaMatch(); return; }
+        arenaOpenMatchCache = { id: matchId, ...data };
+        renderArenaMatch(arenaOpenMatchCache);
+    }, (err) => {
+        console.warn('onSnapshot match:', err?.message);
+        showToast('Não consegui ouvir a partida. Verifique as rules.', 'warn');
+    });
+}
+function leaveArenaMatch() {
+    arenaOpenMatchId = null;
+    arenaOpenMatchCache = null;
+    arenaSelectedHand = null;
+    if (arenaMatchUnsub) { try { arenaMatchUnsub(); } catch { /* ignora */ } arenaMatchUnsub = null; }
+    const hub = $('#arena-hub'); if (hub) hub.hidden = false;
+    const matchEl = $('#arena-match'); if (matchEl) matchEl.hidden = true;
+    const finish = $('#arena-finish'); if (finish) finish.hidden = true;
+    refreshArenaUI();
+}
+function arenaTokenHTML(u) {
+    if (u.kind === 'structure') {
+        return `<span class="am-struct" title="${escapeHtml(u.name || 'Estrutura')}">🏗️ ${escapeHtml(u.name || 'Estrutura')} · ${Number(u.tick) || 1}/turno</span>`;
+    }
+    const shortName = String(u.name || 'Criatura').slice(0, 14);
+    return `<span class="am-token" title="${escapeHtml(u.name || 'Criatura')}"><span>${escapeHtml(u.emoji || '🗿')}</span><small>${escapeHtml(shortName)}</small><b>${Number(u.power) || 1}⚔ · ${Number(u.turnsLeft) || 0}⌛</b></span>`;
+}
+function renderArenaMatch(m) {
+    const me = arenaMySideIn(m) || 'A';
+    const foe = arenaOtherSide(me);
+    const myUid = currentUser?.uid;
+    const oppName = arenaMatchCardName(m, foe);
+    const oppAvatarEl = $('#am-opponent-avatar');
+    const oppAvatar = foe === 'A' ? m.playerAAvatar : m.playerBAvatar;
+    if (oppAvatarEl) {
+        if (oppAvatar) { oppAvatarEl.src = oppAvatar; oppAvatarEl.style.visibility = 'visible'; }
+        else oppAvatarEl.style.visibility = 'hidden';
+    }
+    const setText = (id, txt) => { const el = $(id); if (el) el.textContent = txt; };
+    setText('#am-opponent-name', oppName);
+    const oppHp = Math.max(0, Number(m[`hp${foe}`]) || 0);
+    const myHp = Math.max(0, Number(m[`hp${me}`]) || 0);
+    const oppShield = m[`shield${foe}`] || { phys: 0, mag: 0 };
+    const myShield = m[`shield${me}`] || { phys: 0, mag: 0 };
+    const oppHpEl = $('#am-opponent-hp'); if (oppHpEl) oppHpEl.style.width = `${(oppHp / ARENA_HP) * 100}%`;
+    const myHpEl = $('#am-me-hp'); if (myHpEl) myHpEl.style.width = `${(myHp / ARENA_HP) * 100}%`;
+    setText('#am-opponent-hpnum', String(oppHp));
+    setText('#am-me-hpnum', String(myHp));
+    const oppHandCount = (m[`hand${foe}`] || []).length;
+    const oppDeckCount = (m[`deck${foe}`] || []).length;
+    setText('#am-opponent-meta', `🛡️ ${oppShield.phys} · 🔮 ${oppShield.mag} · 🂠 ${oppHandCount} na mão · ${oppDeckCount} no deck`);
+    setText('#am-me-meta', `🛡️ ${myShield.phys} · 🔮 ${myShield.mag} · turno ${Number(m.turnNumber) || 1}`);
+
+    // Turno
+    const myTurn = m.status === 'active' && m.turn === me;
+    const turnTag = $('#am-turn-tag');
+    if (turnTag) turnTag.textContent = m.status === 'active' ? (myTurn ? 'SUA VEZ' : 'a vez do rival…') : '';
+    const hint = $('#am-table-hint');
+    if (hint) hint.textContent = m.status === 'active' ? (myTurn ? 'solte a carta aqui pra jogar 🃏' : `aguardando ${oppName}…`) : '';
+
+    // Campos (criaturas) e estruturas
+    const oppFieldEl = $('#am-board-opponent');
+    if (oppFieldEl) oppFieldEl.innerHTML = (m[`field${foe}`] || []).filter(u => u.kind === 'summon').map(arenaTokenHTML).join('');
+    const myFieldEl = $('#am-board-me');
+    if (myFieldEl) myFieldEl.innerHTML = (m[`field${me}`] || []).filter(u => u.kind === 'summon').map(arenaTokenHTML).join('');
+    const oppStructEl = $('#am-structures-opponent');
+    if (oppStructEl) oppStructEl.innerHTML = (m[`field${foe}`] || []).filter(u => u.kind === 'structure').map(arenaTokenHTML).join('');
+    const myStructEl = $('#am-structures-me');
+    if (myStructEl) myStructEl.innerHTML = (m[`field${me}`] || []).filter(u => u.kind === 'structure').map(arenaTokenHTML).join('');
+
+    // Log
+    const logEl = $('#arena-log');
+    if (logEl) logEl.innerHTML = (m.log || []).slice(-4).map((l) => `<div>${escapeHtml(l)}</div>`).join('');
+
+    // Mão
+    const handEl = $('#arena-hand');
+    if (handEl) {
+        handEl.innerHTML = (m[`hand${me}`] || []).map((c) => {
+            const playable = m.status === 'active' && m.turn === me;
+            const selected = arenaSelectedHand === c.id;
+            return cardFaceHTML(c, { extraClass: `${playable ? '' : 'disabled'}${selected ? ' selected' : ''}`, attrs: `data-arena-hand-card="${escapeHtml(c.id)}" role="button" tabindex="0"` });
+        }).join('') || '<p class="muted" style="padding:14px">Mão vazia — passe o turno e compre mais 🂠</p>';
+    }
+
+    // Botões de ação
+    const passBtn = $('#arena-pass-btn'); if (passBtn) passBtn.disabled = !myTurn;
+    const forfeitBtn = $('#arena-forfeit-btn'); if (forfeitBtn) forfeitBtn.disabled = m.status !== 'active';
+
+    // Fim de jogo
+    const finishEl = $('#arena-finish');
+    const settleBtn = $('#am-settle-btn');
+    if (finishEl) {
+        if (m.status === 'finished' || m.status === 'settled' || m.status === 'cancelled') {
+            finishEl.hidden = false;
+            const won = m.winner === myUid;
+            const cancelled = m.status === 'cancelled';
+            $('#am-finish-emoji').textContent = cancelled ? '🏳️' : won ? '🏆' : '💀';
+            $('#am-finish-title').textContent = cancelled ? 'Partida cancelada' : won ? 'Você venceu!' : 'Você perdeu…';
+            const potText = arenaStakeText({ gold: Number(m.potGold) || 0, cosmetics: [...(m.stakeA?.cosmetics || []), ...(m.stakeB?.cosmetics || [])] });
+            const subEl = $('#am-finish-sub');
+            if (subEl) {
+                if (cancelled) subEl.textContent = 'O desafio foi cancelado antes de começar.';
+                else if (m.status === 'settled') subEl.textContent = won ? 'Pote resgatado. GG! 🤝' : 'O pote foi para o rival. GG!';
+                else subEl.textContent = won ? `Você leva: ${potText}` : 'O rival leva o pote. Tudo bem — revanche vinga!';
+            }
+            if (settleBtn) {
+                settleBtn.style.display = (won && m.status === 'finished') ? '' : 'none';
+                settleBtn.disabled = !(won && m.status === 'finished');
+                const label = settleBtn.querySelector('.btn-label');
+                if (label) label.textContent = 'Receber pote 🏆';
+            }
+        } else {
+            finishEl.hidden = true;
+        }
+    }
+}
+
+/* Drag & drop (Pointer Events — funciona com toque) */
+function arenaHandPointerDown(e) {
+    const cardEl = e.target.closest?.('[data-arena-hand-card]');
+    if (!cardEl || cardEl.classList.contains('disabled')) return;
+    const m = arenaOpenMatchCache;
+    if (!m) return;
+    const me = arenaMySideIn(m);
+    if (m.status !== 'active' || m.turn !== me) { showToast('Ainda não é seu turno ⏳', 'info'); return; }
+    const cardId = cardEl.dataset.arenaHandCard;
+    arenaHandDrag = { cardId, startX: e.clientX, startY: e.clientY, ghost: null, dragging: false };
+    document.addEventListener('pointermove', arenaHandPointerMove);
+    document.addEventListener('pointerup', arenaHandPointerUp, { once: true });
+    document.addEventListener('pointercancel', arenaHandPointerCancel, { once: true });
+}
+function arenaHandPointerMove(e) {
+    const d = arenaHandDrag;
+    if (!d) return;
+    const dx = e.clientX - d.startX, dy = e.clientY - d.startY;
+    if (!d.dragging && Math.hypot(dx, dy) > 12) {
+        d.dragging = true;
+        const ghost = document.createElement('div');
+        ghost.className = 'arena-ghost';
+        ghost.textContent = '🃏';
+        document.body.appendChild(ghost);
+        d.ghost = ghost;
+    }
+    if (d.dragging && d.ghost) {
+        d.ghost.style.left = `${e.clientX}px`;
+        d.ghost.style.top = `${e.clientY}px`;
+        const table = $('#arena-table');
+        if (table) {
+            const r = table.getBoundingClientRect();
+            const over = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+            table.classList.toggle('drop-target', over);
+        }
+    }
+}
+function arenaHandPointerUp(e) {
+    document.removeEventListener('pointermove', arenaHandPointerMove);
+    const d = arenaHandDrag;
+    arenaHandDrag = null;
+    const table = $('#arena-table');
+    if (table) table.classList.remove('drop-target');
+    if (!d) return;
+    if (d.dragging) {
+        if (d.ghost) d.ghost.remove();
+        if (table) {
+            const r = table.getBoundingClientRect();
+            const over = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+            if (over) { playArenaCard(d.cardId); return; }
+        }
+    } else {
+        // Toque simples: seleciona (toque de novo na mesa pra jogar)
+        arenaSelectedHand = arenaSelectedHand === d.cardId ? null : d.cardId;
+        if (arenaOpenMatchCache) renderArenaMatch(arenaOpenMatchCache);
+    }
+}
+function arenaHandPointerCancel() {
+    document.removeEventListener('pointermove', arenaHandPointerMove);
+    const d = arenaHandDrag;
+    arenaHandDrag = null;
+    if (d?.ghost) d.ghost.remove();
+    const table = $('#arena-table');
+    if (table) table.classList.remove('drop-target');
+}
+function arenaTableTap() {
+    if (!arenaSelectedHand) return;
+    const id = arenaSelectedHand;
+    arenaSelectedHand = null;
+    playArenaCard(id);
+}
+
+function refreshArenaUI() {
+    renderEcoBalances();
+    fillArenaCategorySelect();
+    renderArenaEmojiRow();
+    renderArenaCreatePreview();
+    renderCardCosmeticShop();
+    loadArenaCards().catch((err) => console.warn('loadArenaCards:', err));
+    void refreshArenaBattlePane();
+}
+function startArenaPolling() {
+    if (arenaPollTimer) return;
+    arenaPollTimer = setInterval(() => {
+        const win = document.getElementById('app-arena');
+        if (!win?.classList.contains('active')) return;
+        if (arenaOpenMatchId) return; // onSnapshot cobre a partida ao vivo
+        void refreshArenaBattlePane();
+    }, 6000);
+}
+
+/* ---------- ARENA: wiring ---------- */
+function openArenaBetModal(mode) {
+    arenaBetMode = mode;
+    arenaBetSelected = new Set();
+    const title = $('#arena-bet-title');
+    const sub = $('#arena-bet-sub');
+    if (title) title.textContent = mode?.type === 'accept' ? '⚔️ Aceitar desafio' : '⚔️ Criar desafio';
+    if (sub) sub.textContent = mode?.type === 'accept'
+        ? 'Empate o pote ou supere: coloque sua parte e leve tudo se vencer.'
+        : 'Defina sua aposta. Quem vencer leva o pote inteiro.';
+    const input = $('#arena-bet-gold');
+    if (input) input.value = '';
+    renderArenaBetCosmetics();
+    openModal('arena-bet-modal');
+}
+function renderArenaBetCosmetics() {
+    const box = $('#arena-bet-cosmetics');
+    if (!box || !ECO) return;
+    const equippedIds = new Set(Object.values(economyState?.equippedMap || {}));
+    if (economyState?.cardFrame) equippedIds.add(economyState.cardFrame); // moldura em uso fica de fora
+    const ownedIds = (economyState?.cosmetics || []);
+    const items = ownedIds
+        .filter((id) => !equippedIds.has(id)) // equipados ficam de fora da aposta
+        .map((id) => ECO.COSMETIC_BY_ID?.[id] || ECO.CARD_COSMETIC_BY_ID?.[id])
+        .filter(Boolean);
+    box.innerHTML = items.length
+        ? items.map((c) => `<label class="arena-bet-cosm"><input type="checkbox" value="${escapeHtml(c.id)}" ${arenaBetSelected.has(c.id) ? 'checked' : ''}><span>${escapeHtml(c.emoji || '✨')} ${escapeHtml(c.name)} <small class="muted">· ${escapeHtml(c.rarityName || '')}</small></span></label>`).join('')
+        : '<p class="muted">Nenhum cosmético disponível pra apostar (os equipados ficam de fora). Pode apostar só gold!</p>';
+}
+async function confirmArenaBet() {
+    const goldInput = $('#arena-bet-gold');
+    const stakeGold = Math.max(0, Math.floor(Number(goldInput?.value) || 0));
+    const owned = new Set(economyState?.cosmetics || []);
+    const stakeCos = [...arenaBetSelected].filter((id) => owned.has(id));
+    if (!economyState) return;
+    if (stakeGold > (economyState.gold || 0)) { showToast('Gold insuficiente pra essa aposta 🪙', 'warn'); return; }
+    const btn = $('#arena-bet-confirm');
+    if (btn) btn.disabled = true;
+    let ok = false;
+    if (arenaBetMode?.type === 'accept') ok = await acceptArenaChallengeFromBet(arenaBetMode.matchId, stakeGold, stakeCos);
+    else ok = await createArenaChallengeFromBet(stakeGold, stakeCos);
+    if (btn) btn.disabled = false;
+    if (ok) closeModal('arena-bet-modal');
+}
+
+/* Troca de abas e cliques dinâmicos da Arena (delegação) */
+document.addEventListener('click', async (e) => {
+    const t = e.target;
+
+    const arenaTab = t.closest?.('[data-arena-tab]');
+    if (arenaTab) { setArenaTab(arenaTab.dataset.arenaTab); return; }
+
+    const deckToggle = t.closest?.('[data-arena-deck-toggle]');
+    if (deckToggle) { await toggleArenaCardInDeck(deckToggle.dataset.arenaDeckToggle); return; }
+
+    const cardDelete = t.closest?.('[data-arena-card-delete]');
+    if (cardDelete) { await deleteArenaCard(cardDelete.dataset.arenaCardDelete); return; }
+
+    const treeBtn = t.closest?.('[data-arena-tree]');
+    if (treeBtn) { await adjustArenaTree(treeBtn.dataset.arenaTree, Number(treeBtn.dataset.delta) || 0); return; }
+
+    const emojiBtn = t.closest?.('[data-arena-emoji]');
+    if (emojiBtn) {
+        arenaDraft.emoji = emojiBtn.dataset.arenaEmoji || '🐲';
+        renderArenaEmojiRow();
+        renderArenaCreatePreview();
+        return;
+    }
+
+    const acceptBtn = t.closest?.('[data-arena-accept]');
+    if (acceptBtn) { openArenaBetModal({ type: 'accept', matchId: acceptBtn.dataset.arenaAccept }); return; }
+
+    const cancelBtn = t.closest?.('[data-arena-cancel]');
+    if (cancelBtn) { await cancelArenaChallenge(cancelBtn.dataset.arenaCancel); return; }
+
+    const buyFrame = t.closest?.('[data-buy-card-frame]');
+    if (buyFrame) { await buyCardFrame(buyFrame.dataset.buyCardFrame); renderCardCosmeticShop(); return; }
+
+    const equipFrame = t.closest?.('[data-equip-card-frame]');
+    if (equipFrame) { await equipCardFrame(equipFrame.dataset.equipCardFrame); renderCardCosmeticShop(); return; }
+
+    const claimPots = t.closest?.('#arena-claim-pots-btn');
+    if (claimPots) { await claimArenaSettlements(); renderArenaBattlePane(); return; }
+});
+
+/* Criar carta: preview ao vivo + upload de arte */
+['ac-name', 'ac-flavor', 'ac-art-url'].forEach((id) => {
+    document.getElementById(id)?.addEventListener('input', debounce(renderArenaCreatePreview, 150));
+});
+['ac-category', 'ac-cost', 'ac-power'].forEach((id) => {
+    document.getElementById(id)?.addEventListener('change', renderArenaCreatePreview);
+});
+$('#ac-art-upload')?.addEventListener('click', () => $('#file-gallery-card')?.click());
+$('#file-gallery-card')?.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    showToast('Enviando a arte… ☁️', 'info', 2500);
+    try {
+        const url = await uploadToImgbb(file);
+        const input = $('#ac-art-url');
+        if (input) input.value = url;
+        arenaDraft.artUrl = url;
+        renderArenaCreatePreview();
+        showToast('Arte pronta! Só salvar a carta 🎨', 'success');
+    } catch (err) { showToast(err?.message || 'Falha ao enviar a imagem.', 'error'); }
+});
+$('#ac-save-btn')?.addEventListener('click', saveArenaCard);
+
+/* Batalha: botões e modal de aposta */
+$('#arena-create-challenge-btn')?.addEventListener('click', () => {
+    const v = validateArenaDeck();
+    if (!v.ok) { showToast(`Monte seu deck primeiro — ${v.reason}`, 'warn', 4500); return; }
+    openArenaBetModal({ type: 'create' });
+});
+$('#arena-bet-confirm')?.addEventListener('click', confirmArenaBet);
+$('#arena-bet-cosmetics')?.addEventListener('change', (e) => {
+    const input = e.target.closest?.('input[type="checkbox"]');
+    if (!input) return;
+    if (input.checked) arenaBetSelected.add(input.value);
+    else arenaBetSelected.delete(input.value);
+});
+$('#arena-pass-btn')?.addEventListener('click', passArenaTurn);
+$('#arena-forfeit-btn')?.addEventListener('click', forfeitArenaMatch);
+$('#am-leave-btn')?.addEventListener('click', leaveArenaMatch);
+$('#am-settle-btn')?.addEventListener('click', async () => {
+    if (!arenaOpenMatchId) return;
+    const btn = $('#am-settle-btn');
+    if (btn) btn.disabled = true;
+    await claimArenaSettlements();
+    // O onSnapshot atualiza a tela pra "Pote recebido ✅"; força refl. local:
+    if (arenaOpenMatchCache && arenaOpenMatchCache.status === 'finished' && arenaOpenMatchCache.winner === currentUser?.uid) {
+        // claim pode não ter rodado se outra aba resgatou — tudo bem
+    }
+    if (btn && arenaOpenMatchCache?.status !== 'finished') { /* estado virá via snapshot */ }
+});
+$('#arena-hand')?.addEventListener('pointerdown', arenaHandPointerDown);
+$('#arena-table')?.addEventListener('click', arenaTableTap);
+
 /* ================= ESTADO DE AUTENTICAÇÃO ================= */
 onAuthStateChanged(auth, (user) => {
     if (user) {
@@ -3518,7 +4795,7 @@ onAuthStateChanged(auth, (user) => {
         startInboxListener();
         startDmInboxListener();
         startAmbientVibes();
-        initEconomy().then(claimGifts);
+        initEconomy().then(claimGifts).then(() => claimArenaSettlements());
         if (unlocked) showUnlockedScreen();
     } else {
         currentUser = null;
@@ -3553,7 +4830,7 @@ setInterval(tickClock, 1000);
 })();
 
 /* ================= ATUALIZAÇÃO DO APP (NOVA VERSÃO) ================= */
-const APP_VERSION = '4.4.0';
+const APP_VERSION = '4.5.0';
 const appVersionEl = $('#app-version');
 if (appVersionEl) appVersionEl.textContent = `Good Vibes 🌊 · O Refúgio · v${APP_VERSION}`;
 let swRegistration = null;
