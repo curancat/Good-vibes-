@@ -75,7 +75,7 @@ const $ = (s) => window.document.querySelector(s);
 const $$ = (s) => [...window.document.querySelectorAll(s)];
 
 // ---- Assertions ----
-assert.equal($$('#app-grid .app-icon').length, 13, 'grade deve ter 13 apps');
+assert.equal($$('#app-grid .app-icon').length, 14, 'grade deve ter 14 apps');
 assert.equal($$('#dock .app-icon').length, 4, 'dock deve ter 4 apps');
 assert.ok($('#sb-time').textContent.trim().length >= 4, 'relógio da status bar preenchido');
 assert.ok($('#hw-time').textContent.trim().length >= 4, 'relógio do widget preenchido');
@@ -84,8 +84,9 @@ assert.ok($('#hw-greeting-text').textContent.trim().length > 0, 'saudação pree
 assert.ok($('#hw-quote').textContent.trim().length > 0, 'quote preenchida');
 assert.equal(window.GV_ECO?.RAW_MATERIALS.length, 100, 'deve haver exatamente 100 materiais brutos');
 assert.equal(window.GV_ECO?.COSMETICS.length, 1000, 'deve haver exatamente 1.000 cosméticos');
+for (const id of ['app-bank', 'board-list', 'shame-list', 'bank-ledger']) { assert.ok($('#' + id), `#${id} presente`); }
 console.log('✓ economia: 100 materiais brutos e 1.000 cosméticos carregados');
-console.log('✓ tela inicial renderizou (13 apps, dock, relógios, saudação)');
+console.log('✓ tela inicial renderizou (14 apps, dock, relógios, saudação)');
 
 // Lockscreen → unlock
 $('#unlock-btn').click();

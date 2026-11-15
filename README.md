@@ -2,6 +2,19 @@
 
 Uma rede social privada entre amigos, agora com cara de **tela inicial de telefone**: cada menu é um aplicativo. Feita em HTML/CSS/JS puro (sem build), com Firebase (Auth + Firestore), instalável como **PWA** no celular.
 
+## 🏦 Banco do Refúgio & Quadro de Freelas (v4.0)
+
+O ouro agora tem **dono registrado** e o trabalho é **definido pela própria galera**:
+
+- **🏦 Banco do Refúgio (app próprio)** — conta do refúgio com saldo e **extrato completo** de todo gold que entra ou sai (renda, trabalhos, compras, presentes, penhoras…). Empréstimo com taxas transparentes: **6%** na liberação · **mora de 3%/dia** · **+25%** de surcharge após 30 dias · **penhora de 50%** de tudo que você ganhar até quitar · **Caderneta dos Devedores** (pública no app) após 30 dias de atraso. Score de crédito (0–100) sobe pagando em dia (+12) e cai pagando atrasado (−10) — e o **limite de crédito** (até 3.000 gold) depende do score
+- **📜 Quadro de Freelas (Trabalho → Quadro)** — **os usuários definem o trabalho**: publique qualquer tarefa com recompensa (mín. 10, máx. 10.000 gold). O gold sai do seu bolso na publicação (**escrow**) e só vai para quem aceitar e concluir — você paga quando aprovar, ou o trabalhador libera sozinho após **7 dias sem resposta**. Cancelar devolve tudo pro autor. "Trabalhinhos da ilha" continuam disponíveis como renda casual
+- **💳 Débito** — transferências de gold instantâneas pelo banco (via sistema; a pessoa recebe ao abrir o app)
+- **📒 Posse registrada** — cada movimento de gold vira entrada no seu **extrato** (`users/{uid}/ledger`); ninguém altera depois
+
+> ⚠️ **Ainda exige publicar as regras do Firestore** (`firestore.rules`): os blocos `loans` (empréstimos), `jobs` (freelas), `users/{uid}/ledger` (extrato) e a atualização de `gifts` para aceitar `type`/`jobId`. Sem publicar, o Quadro e o Empréstimo falham em silêncio. **É a terceira vez que peço esse republish — faça de uma vez, são 2 minutos** 🙏
+>
+> ⚠️ Sem servidor, nada impede trapaça via Console (gerar gold do nada) — o extrato prova o histórico, mas a fonte continua client-side. Para inviolabilidade total: Cloud Functions (Blaze). O banco pune, mas não faz milagre.
+
 ## 🪙 Economia do Refúgio (v3.0 — a maior atualização até agora)
 
 A rede social agora tem uma **economia própria**, com a moeda **gold**:

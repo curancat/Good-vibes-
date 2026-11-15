@@ -483,11 +483,70 @@
                         <div class="rule-item card"><span class="rule-emoji">🎟️</span><div><strong>Cadastro aberto, casa íntima</strong><p>Qualquer um pode criar conta, mas o Refúgio continua pequeno: a moderação é manual e, se a convivência apertar, novos cadastros podem ser pausados.</p></div></div>
                         <div class="rule-item card"><span class="rule-emoji">🛡️</span><div><strong>Moderação</strong><p>Algo te incomodou? Denuncie no PV: <a href="https://wa.me/5584999528925" target="_blank" rel="noopener">+55 84 99952-8925</a>. Contas que não respeitarem o ambiente serão desativadas ou excluídas.</p></div></div>
                         <div class="rule-item card"><span class="rule-emoji">🌊</span><div><strong>Energia da casa</strong><p>De tempos em tempos, com o app aberto, a casa distribui curtidas e descurtidas nos posts — é o app respirando junto com a galera, não uma pessoa tocando. Posts sensíveis (🔞) e do próprio autor ficam de fora.</p></div></div>
+                        <div class="rule-item card"><span class="rule-emoji">🏦</span><div><strong>Banco do Refúgio & Freelas</strong><p>Seu gold é SEU — todo movimento fica registrado no seu extrato e guardado pelo banco. Empréstimo em dia = bom score e crédito maior. Empréstimo vencido = mora de 3%/dia, surcharge de 25% após 30 dias, penhora de 50% dos seus ganhos e nome na Caderneta dos Devedores até quitar. Freelas publicados no Quadro têm a recompensa travada na publicação: ninguém some com o seu trabalho (nem com o seu escrow).</p></div></div>
                         <div class="rule-item card"><span class="rule-emoji">🪙</span><div><strong>Economia do Refúgio</strong><p>Gold é a moeda oficial do refúgio — ganha-se trabalhando, coletando e construindo. Vale só aqui e numa boa: sem trapacear pelo Console, sem vender gold de verdade, sem anunciar. Super Like (PIX) é outra história: é mimo real, tratado com o mesmo cuidado.</p></div></div>
                         <div class="rule-item card"><span class="rule-emoji">💸</span><div><strong>Super Like (PIX)</strong><p>É apenas um “mimo” para os criadores — não abuse. O site não processa o dinheiro, não cobra taxas e não se responsabiliza pelas transferências. <strong>Confira sempre os dados no app do seu banco</strong> antes de confirmar.</p></div></div>
                     </div>
                     <p class="rules-footnote">Lembrando: as regras valem para casos de desconforto de algum usuário — no geral, usem sem medo e abusem. 💜</p>
                     <p class="rules-thanks">Isso é tudo — muito obrigado pela atenção. 🙏</p>
+                </div>
+            </section>
+
+            <!-- ============ APP: BANCO ============ -->
+            <section class="app-window" id="app-bank" data-app="bank" aria-label="Banco do Refúgio">
+                <header class="app-header">
+                    <button class="app-back" data-close-app aria-label="Voltar para a tela inicial">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+                        <span>Início</span>
+                    </button>
+                    <h2 class="app-title">🏦 Banco do Refúgio</h2>
+                    <span class="app-header-spacer"></span>
+                </header>
+                <div class="app-body">
+                    <div class="eco-balance card bank-hero">
+                        <div>
+                            <span class="eco-balance-label">Conta corrente do refúgio</span>
+                            <strong class="eco-balance-value" id="bank-gold">0 gold</strong>
+                            <span class="bank-score" id="bank-score">Score: 50</span>
+                        </div>
+                        <span class="bank-emoji">🏦</span>
+                    </div>
+
+                    <div class="card bank-card" id="bank-loan-section">
+                        <h3>📄 Empréstimo</h3>
+                        <p class="card-sub">Taxas transparentes: <strong>6%</strong> de juro na liberação · mora de <strong>3% ao dia</strong> após o vencimento · <strong>+25%</strong> de surcharge se passar de 30 dias · <strong>penhora de 50%</strong> de tudo que você ganhar até quitar · nome na <strong>Caderneta dos Devedores</strong> após 30 dias.</p>
+                        <div id="bank-loan-active" hidden></div>
+                        <div id="bank-loan-form">
+                            <p class="bank-limit">Limite de crédito disponível: <strong id="bank-credit-limit">1.500 gold</strong> (cresce com o score)</p>
+                            <div class="bank-amount-row">
+                                <button class="chip-btn" data-loan-amount="100">100</button>
+                                <button class="chip-btn" data-loan-amount="500">500</button>
+                                <button class="chip-btn" data-loan-amount="1000">1.000</button>
+                                <button class="chip-btn" id="loan-max-btn">Máximo</button>
+                            </div>
+                            <div class="gift-amount-row">
+                                <input type="number" id="loan-amount" min="50" step="50" inputmode="numeric" placeholder="Valor desejado (mín. 50)" aria-label="Valor do empréstimo">
+                                <button class="primary-btn compact" id="loan-take-btn"><span class="btn-label">Pegar 📄</span></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card bank-card">
+                        <h3>💳 Débito — transferir gold</h3>
+                        <p class="card-sub">Transfere na hora, direto do seu saldo. A pessoa recebe quando abrir o app (transferência via sistema).</p>
+                        <button class="secondary-btn wide" id="bank-transfer-btn">Fazer transferência 💳</button>
+                    </div>
+
+                    <div class="card bank-card">
+                        <h3>📒 Extrato <span class="eco-h3-count" id="bank-ledger-count"></span></h3>
+                        <div class="bank-ledger" id="bank-ledger"></div>
+                    </div>
+
+                    <div class="card bank-card shame-card">
+                        <h3>📕 Caderneta dos Devedores</h3>
+                        <p class="card-sub">Quem deixa a dívida vencer por mais de 30 dias tem o nome publicado aqui, pelo banco, até quitar. Pense duas vezes.</p>
+                        <div class="shame-list" id="shame-list"></div>
+                    </div>
                 </div>
             </section>
 
@@ -609,10 +668,27 @@
                 <div class="app-body">
                     <div class="eco-balance card"><div><span class="eco-balance-label">💰 Seu saldo</span><strong class="eco-balance-value" id="work-gold">0 gold</strong></div><span class="eco-rate">Trabalhe ou colete para encher os bolsos</span></div>
                     <div class="eco-tabs" role="tablist" aria-label="Formas de ganhar">
-                        <button class="eco-tab active" data-work-tab="jobs" role="tab">💼 Trabalhos</button>
+                        <button class="eco-tab active" data-work-tab="board" role="tab">📜 Quadro</button>
                         <button class="eco-tab" data-work-tab="gather" role="tab">🌿 Coleta</button>
                     </div>
-                    <div class="eco-pane" id="work-pane-jobs" role="tabpanel">
+                    <div class="eco-pane" id="work-pane-board" role="tabpanel">
+                        <div class="board-post card">
+                            <h3 class="eco-h3" style="margin-top:2px">📜 Publicar um freela</h3>
+                            <p class="card-sub">Você define a tarefa e o preço. O gold sai do seu bolso na publicação e só vai para quem concluir — se cancelar, volta pra você.</p>
+                            <input type="text" id="board-title" maxlength="80" placeholder="Ex.: Pescar 2 caixas de sardinha pra festa" aria-label="Título do freela">
+                            <textarea id="board-desc" maxlength="280" rows="2" placeholder="Detalhes (opcional): onde, quando, como avisar…" aria-label="Detalhes do freela"></textarea>
+                            <div class="gift-amount-row">
+                                <input type="number" id="board-reward" min="10" max="10000" inputmode="numeric" placeholder="Recompensa em gold (mín. 10)" aria-label="Recompensa em gold">
+                                <button class="primary-btn compact" id="board-publish-btn"><span class="btn-label">Publicar 📜</span></button>
+                            </div>
+                        </div>
+                        <div class="board-filters">
+                            <button class="chip-btn accent" data-board-filter="open">Abertos</button>
+                            <button class="chip-btn" data-board-filter="mine">Meus freelas</button>
+                            <button class="chip-btn" data-board-filter="all">Todos</button>
+                        </div>
+                        <div class="job-list" id="board-list"></div>
+                        <h3 class="eco-h3">🏝️ Trabalhinhos da ilha <span class="eco-h3-count">renda casual</span></h3>
                         <div class="job-list" id="job-list"></div>
                     </div>
                     <div class="eco-pane" id="work-pane-gather" role="tabpanel" hidden>

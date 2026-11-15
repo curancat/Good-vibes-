@@ -27,6 +27,12 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if signedIn();
       allow create, update, delete: if signedIn() && request.auth.uid == userId;
+
+      // Extrato pessoal: só o dono lê/escreve, e ninguém altera depois
+      match /ledger/{entryId} {
+        allow read, create: if signedIn() && request.auth.uid == userId;
+        allow update, delete: if false;
+      }
     }
 
     // ---------- FEED ----------
@@ -54,6 +60,62 @@ service cloud.firestore {
       }
     }
 
+    // ---------- EMPRÉSTIMOS (Banco do Refúgio) ----------
+    // Dono cria e administra o próprio empréstimo; quem está com 30+ dias de
+    // atraso fica público na Caderneta dos Devedores (publicShame = true).
+    match /loans/{loanId} {
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.userName is string
+        && request.resource.data.principal is number
+        && request.resource.data.principal >= 50
+        && request.resource.data.totalDue is number
+        && request.resource.data.totalDue >= request.resource.data.principal
+        && request.resource.data.repaid == 0
+        && request.resource.data.status == 'active'
+        && request.resource.data.publicShame is bool;
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || resource.data.publicShame == true);
+      allow update: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['repaid', 'status', 'paidAt', 'publicShame']);
+      allow delete: if false;
+    }
+
+    // ---------- QUADRO DE FREELAS (trabalho definido pelos usuários) ----------
+    // Qualquer membro publica uma tarefa com recompensa (escrow debitado na
+    // publicação). Autor e trabalhador são as únicas partes que podem mexer.
+    match /jobs/{jobId} {
+      allow create: if signedIn()
+        && request.resource.data.poster == request.auth.uid
+        && request.resource.data.posterName is string
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 5
+        && request.resource.data.title.size() <= 80
+        && request.resource.data.reward is number
+        && request.resource.data.reward >= 10
+        && request.resource.data.reward <= 10000
+        && request.resource.data.status == 'open'
+        && request.resource.data.keys().hasOnly(['poster', 'posterName', 'title', 'desc', 'reward', 'status', 'workerId', 'workerName', 'reviewAt', 'acceptedAt', 'createdAt', 'cancelledAt', 'paidAt']);
+      allow read: if signedIn();
+      // Claim de freela ABERTO: quem aceita tem que virar o worker, sem mexer no resto
+      function jobClaimIsValid() {
+        return resource.data.status == 'open'
+          && request.resource.data.status == 'accepted'
+          && request.resource.data.workerId == request.auth.uid
+          && request.resource.data.title == resource.data.title
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'workerId', 'workerName', 'acceptedAt']);
+      }
+      allow update: if signedIn()
+        && (resource.data.poster == request.auth.uid
+            || resource.data.workerId == request.auth.uid
+            || jobClaimIsValid())
+        && request.resource.data.poster == resource.data.poster
+        && request.resource.data.reward == resource.data.reward;
+      allow delete: if false;
+    }
+
     // ---------- PRESENTES (presentes entre membros) ----------
     // Envio: quem cria manda constando como remetente.
     // Resgate: só o destinatário lê e marca como 'claimed'.
@@ -64,7 +126,7 @@ service cloud.firestore {
         && request.resource.data.to is string
         && request.resource.data.to != request.auth.uid
         && request.resource.data.status == 'pending'
-        && request.resource.data.keys().hasOnly(['from', 'fromName', 'to', 'status', 'createdAt', 'gold', 'materialId', 'materialQty'])
+        && request.resource.data.keys().hasOnly(['from', 'fromName', 'to', 'status', 'createdAt', 'gold', 'materialId', 'materialQty', 'type', 'jobId'])
         && (request.resource.data.gold is number || request.resource.data.materialId is string)
         && (!request.resource.data.keys().hasAny(['gold']) || request.resource.data.gold > 0)
         && (!request.resource.data.keys().hasAny(['materialQty']) || request.resource.data.materialQty > 0);

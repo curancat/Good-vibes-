@@ -1335,3 +1335,48 @@ input[type="color"] { width: 58px; height: 38px; border: 1px solid var(--border-
 .tile-refinery { background: linear-gradient(145deg, #64748b, #334155); }
 .tile-construction { background: linear-gradient(145deg, #fb923c, #c2410c); }
 .tile-work { background: linear-gradient(145deg, #34d399, #047857); }
+
+/* ============ BANCO DO REFÚGIO 🏦 ============ */
+.bank-hero { position: relative; overflow: hidden; }
+.bank-emoji { font-size: 42px; filter: grayscale(.1); }
+.bank-score { display: inline-block; margin-top: 6px; font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px; background: rgba(96,165,250,.18); color: #93c5fd; }
+.bank-score.bad { background: rgba(248,113,113,.2); color: #fca5a5; }
+.bank-score.great { background: rgba(52,211,153,.2); color: #6ee7b7; }
+.bank-card { padding: 14px 16px; margin-bottom: 12px; }
+.bank-card h3 { font-size: 15px; margin-bottom: 6px; }
+.bank-limit { font-size: 12.5px; color: var(--text-muted); margin: 10px 0; }
+.bank-amount-row { display: flex; gap: 6px; margin-bottom: 8px; }
+.bank-loan-active-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 4px 0; border-bottom: 1px dashed rgba(255,255,255,.08); }
+.bank-loan-active-row:last-of-type { border-bottom: none; }
+.bank-loan-active-row strong { color: #fca5a5; }
+.bank-ledger { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow: auto; }
+.ledger-row { display: flex; align-items: center; gap: 10px; font-size: 12px; padding: 6px 8px; border-radius: 10px; background: rgba(255,255,255,.03); }
+.ledger-delta { margin-left: auto; font-weight: 800; white-space: nowrap; }
+.ledger-in { color: #6ee7b7; }
+.ledger-out { color: #fca5a5; }
+.shame-card { border-color: rgba(248,113,113,.4) !important; }
+.shame-list { display: flex; flex-direction: column; gap: 6px; }
+.shame-row { display: flex; align-items: center; gap: 10px; font-size: 12px; padding: 8px 10px; border-radius: 10px; background: rgba(248,113,113,.08); border: 1px solid rgba(248,113,113,.3); }
+.shame-amount { margin-left: auto; font-weight: 800; color: #fca5a5; }
+
+/* ============ QUADRO DE FREELAS 📜 ============ */
+.board-post { padding: 12px 14px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
+.board-post input, .board-post textarea { width: 100%; }
+.board-filters { display: flex; gap: 6px; margin: 4px 0 10px; }
+.board-card { display: flex; flex-direction: column; gap: 6px; padding: 11px 12px; border-radius: 14px; border: 1px solid var(--border); background: var(--card-bg, rgba(255,255,255,.03)); }
+.board-head { display: flex; align-items: center; gap: 8px; }
+.board-reward { font-weight: 800; color: #fbbf24; margin-left: auto; white-space: nowrap; }
+.board-title { font-weight: 800; font-size: 13px; }
+.board-desc { font-size: 11px; color: var(--text-muted); }
+.board-poster { font-size: 10.5px; color: var(--text-muted); }
+.board-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.board-actions button { padding: 8px 10px; border-radius: 10px; border: none; font-weight: 800; font-size: 12px; cursor: pointer; }
+.board-accept { background: #34d399; color: #052e1c; }
+.board-done { background: #60a5fa; color: #0b2540; }
+.board-pay { background: #fbbf24; color: #111; }
+.board-cancel { background: rgba(248,113,113,.15); color: #fca5a5; border: 1px solid rgba(248,113,113,.4) !important; }
+.board-status { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.08); color: var(--text-muted); }
+.board-status.review { background: rgba(251,191,36,.2); color: #fde68a; }
+
+/* Tile do Banco */
+.tile-bank { background: linear-gradient(145deg, #38bdf8, #0369a1); }
