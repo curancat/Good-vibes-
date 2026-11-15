@@ -791,10 +791,8 @@ function applyAvatarCosmetics(container) {
     const raw = container.dataset.raw || container.innerHTML || '';
     const moldura = equippedCosmetic('moldura');
     const aura = equippedCosmetic('aura');
-    container.classList.remove('avatar-frame-self', 'avatar-aura-self'); // legado da v4.1.0
-    container.classList.toggle('has-cos-frame', !!(moldura || aura));
-    if (moldura || aura) container.innerHTML = framedAvatar(moldura, aura, raw);
-    else container.innerHTML = raw;
+    container.classList.toggle('cos-framed', !!(moldura || aura));
+    container.innerHTML = (moldura || aura) ? cosAvatarHTML(moldura, aura, raw) : raw;
 }
 
 $('#save-profile-btn')?.addEventListener('click', async () => {
@@ -985,7 +983,10 @@ function postCardHTML(docSnap) {
     const cosEfx = cosMap.fundo || cosMap.efeito || cosMap.selo || null;
     const avatarUrl = sanitizeUrl(data.authorAvatar || '');
     const initials = escapeHtml((data.authorName || 'GV').trim().substring(0, 2).toUpperCase() || 'GV');
-    const avatarHtml = framedAvatar(cosMap.moldura, cosMap.aura, `<span class="avatar-initials" aria-hidden="true">${initials}</span>` + (avatarUrl ? `<img src="${escapeHtml(avatarUrl)}" alt="" onerror="this.remove()">` : ''));
+    const cosFramed = !!(cosMap.moldura || cosMap.aura);
+    const avatarHtml = cosFramed
+        ? cosAvatarHTML(cosMap.moldura, cosMap.aura, `<span class="avatar-initials" aria-hidden="true">${initials}</span>` + (avatarUrl ? `<img src="${escapeHtml(avatarUrl)}" alt="" onerror="this.remove()">` : ''))
+        : `<span class="avatar-initials" aria-hidden="true">${initials}</span>` + (avatarUrl ? `<img src="${escapeHtml(avatarUrl)}" alt="" onerror="this.remove()">` : '');
     const authorNameHTML = nameHtmlFor(data.authorName || 'Usuário', cosMap.nome);
     const articleStyle = cosEfx ? ` style="--f1:${cosEfx.c1};--f2:${cosEfx.c2};--c1:${cosEfx.c1};--c2:${cosEfx.c2}"` : '';
     const articleClasses = ['post'];
@@ -1001,7 +1002,7 @@ function postCardHTML(docSnap) {
     return `
     <article class="${articleClasses.join(' ')}" data-post-id="${escapeHtml(postId)}" data-author-id="${escapeHtml(data.userId || '')}" data-author-name="${escapeHtml(data.authorName || 'Usuário')}"${articleStyle}>
         <div class="post-header">
-            <div class="post-avatar">${avatarHtml}</div>
+            <div class="post-avatar${cosFramed ? ' cos-framed' : ''}">${avatarHtml}</div>
             <div class="post-author-wrap">
                 <div class="post-author">${authorNameHTML} ${renderAuthorFlair(cosMap.emblema)}${renderAuthorFlair(cosMap.titulo)} ${nsfwBadge}</div>
                 ${sealHtml}
@@ -1892,9 +1893,20 @@ function renderAuthorFlair(c) {
 const nameHtmlFor = (name, c) => (c?.cat === 'nome'
     ? `<span class="author-name-grad" style="background-image:linear-gradient(135deg, ${c.c1 || '#fbbf24'}, ${c.c2 || '#f59e0b'})">${escapeHtml(name)}</span>`
     : escapeHtml(name));
-const frameWrap = (c, html) => `<span class="avatar-frame" style="--c1:${c.c1};--c2:${c.c2}">${html}</span>`;
-const auraWrap = (c, html) => `<span class="avatar-aura" style="--c1:${c.c1};--c2:${c.c2}">${html}</span>`;
-const framedAvatar = (mold, aura, html) => (mold && aura ? auraWrap(aura, frameWrap(mold, html)) : mold ? frameWrap(mold, html) : aura ? auraWrap(aura, html) : html);
+/* Avatar com moldura/aura: um único círculo autocontido (sem :has, sem herdar cascata) */
+const cosAvatarHTML = (moldura, aura, innerHTML) => {
+    if (!moldura && !aura) return innerHTML;
+    const src = moldura || aura;
+    const classes = ['cos-avatar'];
+    if (moldura) classes.push('cos-moldura');
+    if (aura) classes.push('cos-aura');
+    return `<span class="${classes.join(' ')}" style="--c1:${src.c1};--c2:${src.c2}"><span class="cos-avatar-inner">${innerHTML}</span></span>`;
+};
+const innerAvatarHTML = (url, name) => {
+    const safe = sanitizeUrl(url || '');
+    const initials = escapeHtml((name || 'GV').trim().substring(0, 2).toUpperCase() || 'GV');
+    return `<span class="avatar-initials" aria-hidden="true">${initials}</span>` + (safe ? `<img src="${escapeHtml(safe)}" alt="" onerror="this.remove()">` : '');
+};
 function authorCosmeticChip(cosmetic) {
     if (!cosmetic?.emoji) return '';
     if (cosmetic.cat === 'emblema' || cosmetic.cat === 'titulo') return renderAuthorFlair(cosmetic);

@@ -91,9 +91,9 @@ assert.ok(sampleC && sampleC.c1 && sampleC.c2 && sampleC.effect && sampleC.theme
 for (const id of ['profile-cover']) { assert.ok($('#' + id), `#${id} presente`); }
 assert.ok($('script') || true);
 const appSrc = readFileSync(`${root}/js/app.js`, 'utf8');
-for (const token of ['authorCosmetics', 'equippedCosmetics', 'cosmicMapOf', 'equipCosmetic', '`fx-${', 'reactions', 'applyAvatarCosmetics']) { assert.ok(appSrc.includes(token), `app.js menciona ${token}`); }
+for (const token of ['authorCosmetics', 'equippedCosmetics', 'cosmicMapOf', 'equipCosmetic', '`fx-${', 'reactions', 'applyAvatarCosmetics', 'cosAvatarHTML']) { assert.ok(appSrc.includes(token), `app.js menciona ${token}`); }
 const cssSrc = readFileSync(`${root}/css/style.css`, 'utf8');
-for (const token of ['.fx-flame', '.fx-neon', '.fx-aurora', '.avatar-frame', '.avatar-aura', '.author-title', '.author-emblem', '.post-seal', '.profile-cover', '.profile-cover[hidden]', '.reaction-btn']) { assert.ok(cssSrc.includes(token), `css contém ${token}`); }
+for (const token of ['.fx-flame', '.fx-neon', '.fx-aurora', '.cos-avatar', '.cos-aura', '.cos-avatar-inner', '.author-title', '.author-emblem', '.post-seal', '.profile-cover', '.profile-cover[hidden]', '.reaction-btn']) { assert.ok(cssSrc.includes(token), `css contém ${token}`); }
 console.log('✓ cosméticos com efeito real: slots por categoria, mapa authorCosmetics, animações CSS presentes');
 console.log('✓ economia: 100 materiais brutos e 1.000 cosméticos carregados');
 console.log('✓ tela inicial renderizou (14 apps, dock, relógios, saudação)');
