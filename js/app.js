@@ -781,8 +781,20 @@ function renderAvatar(container, url, name) {
     if (!container) return;
     const safe = sanitizeUrl(url || '');
     const initials = escapeHtml((name || 'GV').trim().substring(0, 2).toUpperCase() || 'GV');
-    container.innerHTML = `<span class="avatar-initials" aria-hidden="true">${initials}</span>` +
+    container.dataset.raw = `<span class="avatar-initials" aria-hidden="true">${initials}</span>` +
         (safe ? `<img src="${escapeHtml(safe)}" alt="Foto de ${escapeHtml(name || 'perfil')}" onerror="this.remove()">` : '');
+    applyAvatarCosmetics(container);
+}
+/* Moldura/Aura no avatar: wrapper circular com o gradiente do tema (mesmo efeito do feed) */
+function applyAvatarCosmetics(container) {
+    if (!container) return;
+    const raw = container.dataset.raw || container.innerHTML || '';
+    const moldura = equippedCosmetic('moldura');
+    const aura = equippedCosmetic('aura');
+    container.classList.remove('avatar-frame-self', 'avatar-aura-self'); // legado da v4.1.0
+    container.classList.toggle('has-cos-frame', !!(moldura || aura));
+    if (moldura || aura) container.innerHTML = framedAvatar(moldura, aura, raw);
+    else container.innerHTML = raw;
 }
 
 $('#save-profile-btn')?.addEventListener('click', async () => {
@@ -2108,22 +2120,8 @@ function renderProfileCosmetics() {
             pCard.style.removeProperty('--f2');
         }
     }
-    // Moldura/Aura no próprio avatar do perfil
-    const myAvatar = $('#my-avatar-display');
-    if (myAvatar) {
-        const moldura = equippedCosmetic('moldura');
-        const aura = equippedCosmetic('aura');
-        const src = moldura || aura;
-        myAvatar.classList.toggle('avatar-frame-self', !!moldura);
-        myAvatar.classList.toggle('avatar-aura-self', !!aura);
-        if (src) {
-            myAvatar.style.setProperty('--c1', src.c1);
-            myAvatar.style.setProperty('--c2', src.c2);
-        } else {
-            myAvatar.style.removeProperty('--c1');
-            myAvatar.style.removeProperty('--c2');
-        }
-    }
+    // Moldura/Aura no próprio avatar do perfil (mesmo wrapper do feed)
+    applyAvatarCosmetics($('#my-avatar-display'));
 }
 
 function refreshEconomyUI() {

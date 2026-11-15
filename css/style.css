@@ -1434,10 +1434,15 @@ input[type="color"] { width: 58px; height: 38px; border: 1px solid var(--border-
 @keyframes cover-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 .profile-cover-theme { font-size: 10px; font-weight: 800; color: rgba(255,255,255,.85); background: rgba(0,0,0,.35); padding: 3px 10px; border-radius: 999px; }
 
-/* Avatar do próprio perfil com moldura/aura */
-.avatar-frame-self { outline: 3px solid var(--c1); outline-offset: 3px; animation: frame-breathe 3.2s ease-in-out infinite; }
-.avatar-aura-self { animation: aura-self 2.4s ease-in-out infinite; }
-@keyframes aura-self { 0%,100% { box-shadow: 0 0 0 0 var(--c1), 0 0 18px 2px var(--c1); } 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--c1) 40%, transparent), 0 0 34px 6px var(--c1); } }
+/* Capa escondida nunca aparece (hidden deve vencer display:flex) */
+.profile-cover[hidden] { display: none !important; }
+/* Avatar do perfil com moldura/aura vira círculo preenchido pelo tema */
+.profile-avatar:has(> .avatar-frame), .profile-avatar:has(> .avatar-aura) { background: transparent; border: none; overflow: visible; box-shadow: none; }
+.profile-avatar > .avatar-frame, .profile-avatar > .avatar-aura { width: 108px; height: 108px; }
+.avatar-aura > .avatar-frame { width: auto; height: auto; }
+.profile-avatar .avatar-frame > .avatar-initials, .profile-avatar .avatar-frame > img,
+.profile-avatar .avatar-aura > .avatar-initials, .profile-avatar .avatar-aura > img { inset: 4px; border-radius: 50%; }
+.profile-avatar .avatar-aura::after { border-width: 3px; }
 
 /* Loja: linha de efeito no card */
 .cosmetic-effect { font-size: 9px; line-height: 1.25; color: var(--text-muted); min-height: 2.4em; }
