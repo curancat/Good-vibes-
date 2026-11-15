@@ -2,6 +2,27 @@
 
 Uma rede social privada entre amigos, agora com cara de **tela inicial de telefone**: cada menu é um aplicativo. Feita em HTML/CSS/JS puro (sem build), com Firebase (Auth + Firestore), instalável como **PWA** no celular.
 
+## ✨ Cosméticos de verdade (v4.1.0 — o visual agora muda mesmo)
+
+Os 1.000 cosméticos deixaram de ser "um nome ao lado do nick" e viraram **efeitos visuais reais**:
+
+- **🖼️ Moldura** — anel gradiente animado do tema em volta do seu avatar no feed, comentários e chat
+- **✨ Aura** — brilho pulsante em anéis atrás do seu avatar
+- **🎨 Nome** — seu nome com o gradiente do tema no feed, comentários e chat
+- **🎖️ Título** — pílula com o nome do tema ("Solar do Refúgio"…) ao lado do nick
+- **🏅 Emblema** — medalha animada com brilho varrendo ao lado do nick (combinável com o título)
+- **🌅 Fundo** — tinge os seus posts (degradê + borda) e o seu perfil
+- **📸 Efeito de Post** — animação de borda no post: 🔥 chama · ⚡ flash · 💜 neon · ✨ faísca · 🌌 aurora · 🌈 rainbow (hue-rotate) · ☄️ cometa · 🌞 glow · 🌊 shimmer — cada tema tem o seu
+- **🌄 Capa** — capa temática animada no topo do seu perfil (com o fundo do tema como reserva)
+- **🏷️ Selo** — fita rotacionada no canto dos seus posts
+- **🎉 Reação** — botão de reação **exclusivo seu** com o seu emoji no feed, com contador próprio (visível para todos)
+
+**Loadout por categoria** — agora são **10 slots** (um por categoria): dá para equipar moldura + aura + nome + título ao mesmo tempo. O baú lista todos os slots equipados com swatch do tema (toque para remover). A migração do cosmético único antigo é automática.
+
+**Vale a pena comprar** — cada card da loja e do baú mostra **exatamente o efeito que você leva** ("O que este cosmético faz"), e os 20 temas têm cores próprias (c1/c2) aplicadas em gradientes, glows e bordas.
+
+> Honestidade técnica, como sempre: os efeitos são renderizados **no cliente** a partir do dado do post/mensagem (`authorCosmetics`, com fallback para posts antigos). Dá para forjar visualmente pelo Console — o cosmético nunca muda seu gold, só o visual. Contadores de reação usam merge no Firestore (`reactions.<emoji>`) e as regras de post agora aceitam `reactions` no update — **republicar `firestore.rules` de novo** (Console → Firestore → Regras → Publicar) para curtidas/reações funcionarem para todo mundo.
+
 ## 🏦 Banco do Refúgio & Quadro de Freelas (v4.0)
 
 O ouro agora tem **dono registrado** e o trabalho é **definido pela própria galera**:

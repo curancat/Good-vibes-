@@ -1380,3 +1380,85 @@ input[type="color"] { width: 58px; height: 38px; border: 1px solid var(--border-
 
 /* Tile do Banco */
 .tile-bank { background: linear-gradient(145deg, #38bdf8, #0369a1); }
+
+/* ============ COSMÉTICOS COM EFEITO DE VERDADE ✨ ============ */
+/* Moldura: anel gradiente do tema */
+.avatar-frame { display: inline-flex; padding: 3px; border-radius: 50%; background: linear-gradient(140deg, var(--c1), var(--c2)); box-shadow: 0 0 0 2px rgba(0,0,0,.25), 0 4px 14px color-mix(in srgb, var(--c1) 45%, transparent); animation: frame-breathe 3.2s ease-in-out infinite; }
+@keyframes frame-breathe { 0%,100% { box-shadow: 0 0 0 2px rgba(0,0,0,.25), 0 4px 14px color-mix(in srgb, var(--c1) 45%, transparent); } 50% { box-shadow: 0 0 0 2px rgba(0,0,0,.25), 0 4px 22px color-mix(in srgb, var(--c1) 75%, transparent); } }
+.avatar-aura { display: inline-flex; position: relative; padding: 2px; border-radius: 50%; }
+.avatar-aura::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid var(--c1); opacity: .8; animation: aura-pulse 2.4s ease-out infinite; pointer-events: none; }
+@keyframes aura-pulse { 0% { transform: scale(.82); opacity: .9; } 100% { transform: scale(1.35); opacity: 0; } }
+
+/* Nome com gradiente do tema */
+.author-name-grad { background-clip: text; -webkit-background-clip: text; color: transparent; -webkit-text-fill-color: transparent; font-weight: 800; }
+
+/* Título: pílula do tema */
+.author-title { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; padding: 1px 9px; border-radius: 999px; font-size: 10px; font-weight: 800; letter-spacing: .02em; color: #0b1220; background: linear-gradient(120deg, var(--c1), var(--c2)); box-shadow: 0 2px 8px color-mix(in srgb, var(--c1) 40%, transparent); vertical-align: 2px; white-space: nowrap; }
+
+/* Emblema: medalha com brilho varrendo */
+.author-emblem { display: inline-flex; align-items: center; justify-content: center; width: 21px; height: 21px; margin-left: 5px; border-radius: 50%; font-size: 12px; background: radial-gradient(circle at 35% 35%, color-mix(in srgb, var(--c1) 90%, #fff 10%), var(--c2)); box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--c1) 70%, transparent), 0 2px 6px rgba(0,0,0,.4); animation: emblem-shine 3.5s ease-in-out infinite; vertical-align: -3px; }
+@keyframes emblem-shine { 0%,100% { transform: rotate(-6deg) scale(1); } 50% { transform: rotate(6deg) scale(1.12); } }
+
+/* Fundo: post e perfil ganham o toque do tema */
+.post-fundo { background: linear-gradient(165deg, color-mix(in srgb, var(--f1) 17%, transparent), transparent 62%) !important; border-left: 3px solid color-mix(in srgb, var(--f1) 55%, transparent) !important; }
+.profile-fundo { background: linear-gradient(170deg, color-mix(in srgb, var(--f1) 24%, transparent), transparent 65%) !important; }
+.profile-card { position: relative; overflow: hidden; }
+
+/* Efeitos de post (na borda/glow do artigo) */
+.fx { position: relative; isolation: isolate; }
+.fx::before { content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 2px; background: linear-gradient(120deg, var(--f1, #fbbf24), #fff3, var(--f2, #f59e0b), #fff3, var(--f1, #fbbf24)); background-size: 300% 300%; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: fx-pan 4s linear infinite; z-index: -1; pointer-events: none; }
+.fx-flame { --f1:#f97316; --f2:#dc2626; } .fx-flame::before { animation-duration: 1.6s; }
+.fx-flash { --f1:#fde047; --f2:#eab308; } .fx-flash::before { animation: fx-pan 4s linear infinite, fx-flash 3.4s steps(1) infinite; }
+@keyframes fx-flash { 0%,92%,100% { filter: brightness(1); } 94% { filter: brightness(1.8); } 97% { filter: brightness(1.4); } }
+.fx-neon { --f1:#e879f9; --f2:#7c3aed; } .fx-neon::before { animation-duration: 2.2s; }
+.fx-sparkle { --f1:#fef9c3; --f2:#f59e0b; }
+.fx-aurora { --f1:#5eead4; --f2:#7c3aed; } .fx-aurora::before { animation-duration: 7s; }
+.fx-rainbow { --f1:#fda4af; --f2:#22d3ee; } .fx-rainbow { animation: fx-hue 6s linear infinite; }
+@keyframes fx-hue { to { filter: hue-rotate(360deg); } }
+.fx-comet { --f1:#e0f2fe; --f2:#8b5cf6; }
+.fx-glow { --f1:#fbbf24; --f2:#f97316; }
+.fx-shimmer { --f1:#fbbf24; --f2:#f59e0b; }
+@keyframes fx-pan { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }
+
+/* Selo: fita no canto do post */
+.post-seal { position: absolute; top: 10px; right: -8px; z-index: 3; font-size: 17px; padding: 4px 26px 4px 10px; color: #0b1220; background: linear-gradient(120deg, var(--c1), var(--c2)); border-radius: 8px 0 0 8px; box-shadow: 0 3px 10px rgba(0,0,0,.35); animation: seal-drop .5s cubic-bezier(.2,1.4,.4,1); }
+@keyframes seal-drop { from { transform: translateY(-8px) rotate(2deg); opacity: 0; } }
+
+/* Reação: botão ativo */
+.reaction-btn { color: #fbbf24; }
+.reaction-btn.reacted { background: rgba(251,191,36,.22) !important; transform: scale(1.06); }
+
+/* Capa do perfil */
+.profile-cover { position: relative; height: 92px; border-radius: 16px; display: flex; align-items: flex-end; justify-content: space-between; padding: 10px 14px; margin-bottom: 12px; overflow: hidden; box-shadow: inset 0 -30px 40px rgba(0,0,0,.28); }
+.profile-cover-emoji { font-size: 40px; opacity: .9; filter: drop-shadow(0 2px 6px rgba(0,0,0,.4)); animation: cover-float 4s ease-in-out infinite; }
+@keyframes cover-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.profile-cover-theme { font-size: 10px; font-weight: 800; color: rgba(255,255,255,.85); background: rgba(0,0,0,.35); padding: 3px 10px; border-radius: 999px; }
+
+/* Avatar do próprio perfil com moldura/aura */
+.avatar-frame-self { outline: 3px solid var(--c1); outline-offset: 3px; animation: frame-breathe 3.2s ease-in-out infinite; }
+.avatar-aura-self { animation: aura-self 2.4s ease-in-out infinite; }
+@keyframes aura-self { 0%,100% { box-shadow: 0 0 0 0 var(--c1), 0 0 18px 2px var(--c1); } 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--c1) 40%, transparent), 0 0 34px 6px var(--c1); } }
+
+/* Loja: linha de efeito no card */
+.cosmetic-effect { font-size: 9px; line-height: 1.25; color: var(--text-muted); min-height: 2.4em; }
+.eco-effect-line { display: flex; align-items: center; gap: 6px; }
+.eco-swatch { display: inline-block; width: 14px; height: 14px; border-radius: 4px; flex: none; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+
+
+/* Loadout por categoria (baú) */
+.eco-equipped { display: flex; flex-direction: column; gap: 8px; }
+.eq-slot { position: relative; display: flex; align-items: center; gap: 12px; text-align: left; width: 100%; padding: 10px 12px; border-radius: 14px; background: rgba(255,255,255,.04); border: 1px solid var(--border); cursor: pointer; font: inherit; color: inherit; transition: border-color .15s, transform .15s; }
+.eq-slot:hover { border-color: var(--accent, #8b5cf6); transform: translateY(-1px); }
+.eq-slot .eco-equipped-emoji { font-size: 26px; }
+.eq-remove { margin-left: auto; color: var(--text-muted); font-size: 13px; padding: 4px 8px; border-radius: 8px; background: rgba(0,0,0,.25); flex: none; }
+.eco-hint { font-size: 10.5px; line-height: 1.45; color: var(--text-muted); background: rgba(139,92,246,.10); border: 1px solid rgba(139,92,246,.35); border-radius: 12px; padding: 8px 10px; margin: 4px 0 10px; }
+
+/* Moldura/aura dentro dos avatares quadrados → variantes circulares */
+.post-avatar:has(> .avatar-frame), .post-avatar:has(> .avatar-aura),
+.contact-avatar:has(> .avatar-frame), .contact-avatar:has(> .avatar-aura) { background: transparent; border-color: transparent; overflow: visible; }
+.avatar-frame { position: relative; display: inline-flex; box-sizing: border-box; width: 100%; height: 100%; }
+.avatar-aura { box-sizing: border-box; width: 100%; height: 100%; }
+.avatar-frame > .avatar-initials, .avatar-frame > img, .avatar-aura > .avatar-initials, .avatar-aura > img,
+.avatar-frame > .avatar-frame, .avatar-aura > .avatar-frame { position: absolute; inset: 3px; width: auto; height: auto; border-radius: 50%; }
+.avatar-aura > .avatar-aura { position: absolute; inset: 0; }
+.post, .post-fundo { position: relative; }

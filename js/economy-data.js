@@ -234,27 +234,46 @@ const COSMETIC_CATEGORIES = [
     { id: 'selo', word: 'Selo', emoji: '🏷️' }
 ];
 const COSMETIC_THEMES = [
-    { slug: 'solar', name: 'Solar', emoji: '☀️' },
-    { slug: 'lunar', name: 'Lunar', emoji: '🌙' },
-    { slug: 'oceano', name: 'Oceano', emoji: '🌊' },
-    { slug: 'floresta', name: 'Floresta', emoji: '🌿' },
-    { slug: 'fogo', name: 'Fogo', emoji: '🔥' },
-    { slug: 'gelo', name: 'Gelo', emoji: '❄️' },
-    { slug: 'raio', name: 'Raio', emoji: '⚡' },
-    { slug: 'pedra', name: 'Pedra', emoji: '🪨' },
-    { slug: 'jardim', name: 'Jardim', emoji: '🌸' },
-    { slug: 'neon', name: 'Neon', emoji: '💜' },
-    { slug: 'por_do_sol', name: 'Pôr do Sol', emoji: '🌇' },
-    { slug: 'aurora', name: 'Aurora', emoji: '🌌' },
-    { slug: 'cafe', name: 'Café', emoji: '☕' },
-    { slug: 'surf', name: 'Surf', emoji: '🏄' },
-    { slug: 'sereia', name: 'Sereia', emoji: '🧜' },
-    { slug: 'farol', name: 'Farol', emoji: '🗼' },
-    { slug: 'estrela', name: 'Estrela', emoji: '⭐' },
-    { slug: 'cometa', name: 'Cometa', emoji: '☄️' },
-    { slug: 'prisma', name: 'Prisma', emoji: '🌈' },
-    { slug: 'maré', name: 'Maré', emoji: '🐚' }
+    { slug: 'solar', name: 'Solar', emoji: '☀️', c1: '#fbbf24', c2: '#f97316' },
+    { slug: 'lunar', name: 'Lunar', emoji: '🌙', c1: '#c4b5fd', c2: '#6366f1' },
+    { slug: 'oceano', name: 'Oceano', emoji: '🌊', c1: '#22d3ee', c2: '#0369a1' },
+    { slug: 'floresta', name: 'Floresta', emoji: '🌿', c1: '#4ade80', c2: '#166534' },
+    { slug: 'fogo', name: 'Fogo', emoji: '🔥', c1: '#f97316', c2: '#dc2626' },
+    { slug: 'gelo', name: 'Gelo', emoji: '❄️', c1: '#a5f3fc', c2: '#3b82f6' },
+    { slug: 'raio', name: 'Raio', emoji: '⚡', c1: '#fde047', c2: '#eab308' },
+    { slug: 'pedra', name: 'Pedra', emoji: '🪨', c1: '#d6d3d1', c2: '#57534e' },
+    { slug: 'jardim', name: 'Jardim', emoji: '🌸', c1: '#f9a8d4', c2: '#db2777' },
+    { slug: 'neon', name: 'Neon', emoji: '💜', c1: '#e879f9', c2: '#7c3aed' },
+    { slug: 'por_do_sol', name: 'Pôr do Sol', emoji: '🌇', c1: '#fdba74', c2: '#e11d48' },
+    { slug: 'aurora', name: 'Aurora', emoji: '🌌', c1: '#5eead4', c2: '#7c3aed' },
+    { slug: 'cafe', name: 'Café', emoji: '☕', c1: '#d8b48a', c2: '#78350f' },
+    { slug: 'surf', name: 'Surf', emoji: '🏄', c1: '#38bdf8', c2: '#0f766e' },
+    { slug: 'sereia', name: 'Sereia', emoji: '🧜', c1: '#f0abfc', c2: '#0e7490' },
+    { slug: 'farol', name: 'Farol', emoji: '🗼', c1: '#fef08a', c2: '#b45309' },
+    { slug: 'estrela', name: 'Estrela', emoji: '⭐', c1: '#fef9c3', c2: '#f59e0b' },
+    { slug: 'cometa', name: 'Cometa', emoji: '☄️', c1: '#e0f2fe', c2: '#8b5cf6' },
+    { slug: 'prisma', name: 'Prisma', emoji: '🌈', c1: '#fda4af', c2: '#22d3ee' },
+    { slug: 'maré', name: 'Maré', emoji: '🐚', c1: '#5eead4', c2: '#1e40af' }
 ];
+/* Tema → efeito animado do post (categoria "efeito") */
+const THEME_FX = {
+    fogo: 'flame', raio: 'flash', neon: 'neon', estrela: 'sparkle', aurora: 'aurora',
+    prisma: 'rainbow', cometa: 'comet', solar: 'glow', lunar: 'glow', sereia: 'shimmer'
+};
+const fxAnimFor = (themeSlug) => THEME_FX[themeSlug] || 'shimmer';
+/* Descrição do efeito para a UI */
+const CAT_EFFECT_TEXT = {
+    moldura: 'Moldura do tema no seu avatar em todo lugar',
+    emblema: 'Medalha brilhante ao lado do seu nome',
+    titulo: 'Pílula com o nome do seu título no feed e comentários',
+    nome: 'Seu nome com o gradiente do tema no feed, comentários e chat',
+    fundo: 'Posts seus e seu perfil ganham o toque do tema',
+    aura: 'Brilho pulsante animado em volta do seu avatar',
+    reacao: 'Botão de reação com o SEU emoji no feed — todo mundo conta',
+    efeito: 'Seus posts ganham a animação do tema (chama, neon, cometa…)',
+    capa: 'Capa temática no topo do seu perfil',
+    selo: 'Selo do tema no canto dos seus posts'
+};
 const RARITIES = [
     { id: 'comum', name: 'Comum', gem: '⚪', price: 120, weight: 5 },
     { id: 'incomum', name: 'Incomum', gem: '🟢', price: 300, weight: 4 },
@@ -275,7 +294,12 @@ function buildCosmeticsCatalog() {
                     catEmoji: cat.emoji,
                     name: `${cat.word} ${theme.name} ${rar.name}`,
                     emoji: theme.emoji,
-                    theme: theme.name,
+                    theme: theme.slug,
+                    themeName: theme.name,
+                    c1: theme.c1,
+                    c2: theme.c2,
+                    fx: fxAnimFor(theme.slug),
+                    effect: CAT_EFFECT_TEXT[cat.id] || '',
                     rarity: rar.id,
                     rarityName: rar.name,
                     gem: rar.gem,

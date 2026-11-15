@@ -47,7 +47,7 @@ service cloud.firestore {
       // Conteúdo (texto, autor, mídia) é imutável para outras pessoas.
       allow update: if signedIn()
         && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['likes', 'dislikes', 'enquete']);
+             .hasOnly(['likes', 'dislikes', 'enquete', 'reactions']);
       allow delete: if signedIn() && resource.data.userId == request.auth.uid;
 
       match /comments/{commentId} {

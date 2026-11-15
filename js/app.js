@@ -969,19 +969,30 @@ function postCardHTML(docSnap) {
     const blurClass = shouldBlur ? 'nsfw-blur' : '';
     const warning = shouldBlur ? '<div class="nsfw-warning"><span>🔞 Conteúdo Sensível</span><small>Toque para revelar</small></div>' : '';
 
+    const cosMap = cosmicMapOf(data);
+    const cosEfx = cosMap.fundo || cosMap.efeito || cosMap.selo || null;
     const avatarUrl = sanitizeUrl(data.authorAvatar || '');
     const initials = escapeHtml((data.authorName || 'GV').trim().substring(0, 2).toUpperCase() || 'GV');
-    const avatarHtml = `<span class="avatar-initials" aria-hidden="true">${initials}</span>` + (avatarUrl ? `<img src="${escapeHtml(avatarUrl)}" alt="" onerror="this.remove()">` : '');
+    const avatarHtml = framedAvatar(cosMap.moldura, cosMap.aura, `<span class="avatar-initials" aria-hidden="true">${initials}</span>` + (avatarUrl ? `<img src="${escapeHtml(avatarUrl)}" alt="" onerror="this.remove()">` : ''));
+    const authorNameHTML = nameHtmlFor(data.authorName || 'Usuário', cosMap.nome);
+    const articleStyle = cosEfx ? ` style="--f1:${cosEfx.c1};--f2:${cosEfx.c2};--c1:${cosEfx.c1};--c2:${cosEfx.c2}"` : '';
+    const articleClasses = ['post'];
+    if (cosMap.fundo) articleClasses.push('post-fundo');
+    if (cosMap.efeito) articleClasses.push('fx', `fx-${cosMap.efeito.fx || 'shimmer'}`);
+    const sealHtml = cosMap.selo ? `<span class="post-seal" style="--c1:${cosMap.selo.c1};--c2:${cosMap.selo.c2}" title="${escapeHtml(cosMap.selo.name || 'Selo do Refúgio')}">${escapeHtml(cosMap.selo.emoji || '🏷️')}</span>` : '';
+    const myReaction = myEquippedCat('reacao');
+    const myReactionCount = myReaction ? Number(data.reactions?.[myReaction.emoji] || 0) : 0;
 
     const ts = data.timestamp?.toMillis ? data.timestamp.toMillis() : null;
     const voted = sessionStorage.getItem(`gv_vote_${postId}`) === '1';
 
     return `
-    <article class="post" data-post-id="${escapeHtml(postId)}" data-author-id="${escapeHtml(data.userId || '')}" data-author-name="${escapeHtml(data.authorName || 'Usuário')}">
+    <article class="${articleClasses.join(' ')}" data-post-id="${escapeHtml(postId)}" data-author-id="${escapeHtml(data.userId || '')}" data-author-name="${escapeHtml(data.authorName || 'Usuário')}"${articleStyle}>
         <div class="post-header">
             <div class="post-avatar">${avatarHtml}</div>
             <div class="post-author-wrap">
-                <div class="post-author">${escapeHtml(data.authorName || 'Usuário')} ${authorCosmeticChip(data.authorCosmetic)} ${nsfwBadge}</div>
+                <div class="post-author">${authorNameHTML} ${renderAuthorFlair(cosMap.emblema)}${renderAuthorFlair(cosMap.titulo)} ${nsfwBadge}</div>
+                ${sealHtml}
                 <div class="post-time">${ts ? timeAgo(ts) : 'agora mesmo'}</div>
             </div>
         </div>
@@ -999,6 +1010,7 @@ function postCardHTML(docSnap) {
             <button class="action-btn super-like" data-action="superlike" aria-label="Super Like via PIX">💸 Super Like</button>
             <button class="action-btn" data-action="comment" aria-label="Comentar">💬 Comentar</button>
             <button class="action-btn" data-action="share" aria-label="Compartilhar">↗️ Enviar</button>
+            ${myReaction ? `<button class="action-btn reaction-btn" data-action="react" data-emoji="${escapeHtml(myReaction.emoji)}" aria-label="Reagir com ${escapeHtml(myReaction.name)}" title="${escapeHtml(myReaction.name)}">${myReaction.emoji} <span class="reaction-count">${myReactionCount}</span></button>` : ''}
         </div>
     </article>`;
 }
@@ -1060,7 +1072,8 @@ $('#post-btn')?.addEventListener('click', async () => {
             userId: currentUser.uid,
             authorName: currentUserProfile.name || 'Usuário',
             authorAvatar: currentUserProfile.avatarUrl || '',
-            authorCosmetic: equippedCosmeticSummary(),
+            authorCosmetics: equippedCosmeticsSummary(),
+            authorCosmetic: cosWritePrimary(),
             text: text.trim(),
             isNsfw,
             mediaUrl: mediaUrl || '',
@@ -1122,6 +1135,21 @@ $('#feed-container')?.addEventListener('click', async (e) => {
     const action = actionBtn.dataset.action;
     if (!postId) return;
 
+    if (action === 'react') {
+        const emoji = actionBtn.dataset.emoji;
+        if (!emoji) return;
+        try {
+            await setDoc(doc(db, 'posts', postId), { reactions: { [emoji]: increment(1) } }, { merge: true });
+            const counter = actionBtn.querySelector('.reaction-count');
+            if (counter) counter.textContent = Number(counter.textContent || 0) + 1;
+            vibrate(8);
+            actionBtn.classList.add('reacted');
+        } catch (err) {
+            showToast('Não consegui reagir: ' + (err?.message || ''), 'error');
+        }
+        return;
+    }
+
     if (action === 'like' || action === 'dislike') {
         const field = action === 'like' ? 'likes' : 'dislikes';
         try {
@@ -1166,7 +1194,8 @@ window.openComments = (postId, authorId) => {
         }
         list.innerHTML = snapshot.docs.map((d) => {
             const data = d.data();
-            return `<div class="comment-item"><strong>${escapeHtml(data.authorName || 'Usuário')}</strong>${authorCosmeticChip(data.authorCosmetic)}${escapeHtml(data.text || '')}</div>`;
+            const cosMap = cosmicMapOf(data);
+            return `<div class="comment-item"><strong>${nameHtmlFor(data.authorName || 'Usuário', cosMap.nome)}</strong>${renderAuthorFlair(cosMap.emblema)}${renderAuthorFlair(cosMap.titulo)}${escapeHtml(data.text || '')}</div>`;
         }).join('');
         list.scrollTop = list.scrollHeight;
     }, (err) => {
@@ -1189,7 +1218,8 @@ $('#submit-comment-btn')?.addEventListener('click', async () => {
             userId: currentUser.uid,
             authorName: currentUserProfile.name || 'Usuário',
             authorAvatar: currentUserProfile.avatarUrl || '',
-            authorCosmetic: equippedCosmeticSummary(),
+            authorCosmetics: equippedCosmeticsSummary(),
+            authorCosmetic: cosWritePrimary(),
             text,
             timestamp: serverTimestamp()
         });
@@ -1249,7 +1279,7 @@ function chatBubbleHTML(data) {
     const { html, previews } = buildRichContent(decrypted);
     const ts = data.timestamp?.toMillis ? data.timestamp.toMillis() : null;
     return `<div class="chat-bubble ${isMe ? 'me' : 'them'}">
-        ${isMe ? '' : `<div class="chat-bubble-name">${escapeHtml(data.authorName || 'Usuário')}</div>`}
+        ${isMe ? '' : `<div class="chat-bubble-name">${(c => `${nameHtmlFor(data.authorName || 'Usuário', c.nome)} ${renderAuthorFlair(c.emblema)}${renderAuthorFlair(c.titulo)}`)(cosmicMapOf(data))}</div>`}
         <div>${html}</div>${previews}
         ${ts ? `<div class="chat-time">${toastTime(ts)}</div>` : ''}
     </div>`;
@@ -1379,6 +1409,8 @@ async function sendChatMessageText(messageText) {
         userId: currentUser.uid,
         authorName: currentUserProfile.name || 'Usuário',
         authorAvatar: currentUserProfile.avatarUrl || '',
+        authorCosmetics: equippedCosmeticsSummary(),
+        authorCosmetic: cosWritePrimary(),
         text: encrypted,
         timestamp: serverTimestamp()
     });
@@ -1742,6 +1774,7 @@ function normalizeEconomy(d = {}) {
         buildings: d.buildings && typeof d.buildings === 'object' ? { ...d.buildings } : {},
         cosmetics: Array.isArray(d.cosmetics) ? [...d.cosmetics] : [],
         equipped: typeof d.equippedCosmetic === 'string' ? d.equippedCosmetic : null,
+        equippedMap: d.equippedCosmetics && typeof d.equippedCosmetics === 'object' ? { ...d.equippedCosmetics } : {},
         lastCollectAt: typeof d.lastCollectAt === 'number' ? d.lastCollectAt : Date.now(),
         jobCd: d.jobCd && typeof d.jobCd === 'object' ? { ...d.jobCd } : {},
         gatherCd: d.gatherCd && typeof d.gatherCd === 'object' ? { ...d.gatherCd } : {},
@@ -1763,6 +1796,14 @@ async function initEconomy() {
         if (!data.jobCd || typeof data.jobCd !== 'object') patch.jobCd = {};
         if (!data.gatherCd || typeof data.gatherCd !== 'object') patch.gatherCd = {};
         if (typeof data.creditScore !== 'number') patch.creditScore = 50;
+        if (!data.equippedCosmetics || typeof data.equippedCosmetics !== 'object') {
+            // Migração: converte o slot único antigo em slots por categoria
+            const migrated = {};
+            const legacyId = typeof data.equippedCosmetic === 'string' ? data.equippedCosmetic : null;
+            const legacyCos = legacyId && window.GV_ECO?.COSMETIC_BY_ID?.[legacyId];
+            if (legacyCos) migrated[legacyCos.cat] = legacyCos.id;
+            patch.equippedCosmetics = migrated;
+        }
         if (Object.keys(patch).length) await setDoc(ecoUserRef(), patch, { merge: true });
         economyState = normalizeEconomy({ ...data, ...patch });
     } catch (err) {
@@ -1785,19 +1826,72 @@ async function saveEconomy(patch) {
     refreshEconomyUI();
 }
 
-/* ---------- util: cosmetic equipado ---------- */
-function equippedCosmetic() {
-    if (!economyState?.equipped) return null;
-    return ECO?.COSMETIC_BY_ID[economyState.equipped] || null;
+/* ---------- util: cosméticos equipados (um slot por categoria) ---------- */
+const EQUIP_SLOT_ORDER = ['moldura', 'aura', 'nome', 'titulo', 'emblema', 'fundo', 'efeito', 'capa', 'selo', 'reacao'];
+function equippedMapIds() { return economyState?.equippedMap || {}; }
+function equippedCosmetics() {
+    const out = {};
+    if (!ECO) return out;
+    const map = equippedMapIds();
+    for (const cat of EQUIP_SLOT_ORDER) {
+        const id = map[cat];
+        const c = id ? ECO.COSMETIC_BY_ID[id] : null;
+        if (c) out[cat] = c;
+    }
+    return out;
 }
-function equippedCosmeticSummary() {
-    const c = equippedCosmetic();
-    return c ? { emoji: c.emoji, name: c.name, gem: c.gem, rarity: c.rarity } : null;
+function equippedCosmetic(cat) {
+    if (cat) return equippedCosmetics()[cat] || null;
+    const all = equippedCosmetics();
+    return EQUIP_SLOT_ORDER.map((k) => all[k]).find(Boolean) || null;
 }
+const cosSummary = (c) => ({ id: c.id, cat: c.cat, emoji: c.emoji, name: c.name, theme: c.theme, themeName: c.themeName, fx: c.fx, c1: c.c1, c2: c.c2, gem: c.gem, rarity: c.rarity });
+const cosWritePrimary = () => { const p = equippedCosmetic(); return p ? cosSummary(p) : null; };
+function equippedCosmeticsSummary() {
+    const all = equippedCosmetics();
+    const out = {};
+    for (const [cat, c] of Object.entries(all)) out[cat] = cosSummary(c);
+    return Object.keys(out).length ? out : null;
+}
+/* Mapa de cosméticos de um doc (post/comentário/chat), com fallback p/ formato antigo */
+function cosmicMapOf(data) {
+    if (data?.authorCosmetics && typeof data.authorCosmetics === 'object') return data.authorCosmetics;
+    const legacy = data?.authorCosmetic;
+    if (legacy?.cat) return { [legacy.cat]: legacy };
+    return {};
+}
+/* Reação equipada (cosmético de reação ativo) */
+function myEquippedCat(cat) {
+    return equippedCosmetic(cat);
+}
+/* Flair no nome do autor (título / emblema) */
+function renderAuthorFlair(c) {
+    if (!c) return '';
+    const name = escapeHtml(c.name || 'Cosmético');
+    if (c.cat === 'titulo') {
+        const themeTxt = escapeHtml(c.themeName || c.theme || 'Refúgio');
+        return `<span class="author-title" style="--c1:${c.c1 || '#fbbf24'};--c2:${c.c2 || '#f59e0b'}" title="${name}">${c.emoji || ''} ${themeTxt} do Refúgio</span>`;
+    }
+    if (c.cat === 'emblema') {
+        return `<span class="author-emblem" style="--c1:${c.c1 || '#fbbf24'};--c2:${c.c2 || '#f59e0b'}" title="${name}">${c.emoji || '🏅'}</span>`;
+    }
+    return '';
+}
+const nameHtmlFor = (name, c) => (c?.cat === 'nome'
+    ? `<span class="author-name-grad" style="background-image:linear-gradient(135deg, ${c.c1 || '#fbbf24'}, ${c.c2 || '#f59e0b'})">${escapeHtml(name)}</span>`
+    : escapeHtml(name));
+const frameWrap = (c, html) => `<span class="avatar-frame" style="--c1:${c.c1};--c2:${c.c2}">${html}</span>`;
+const auraWrap = (c, html) => `<span class="avatar-aura" style="--c1:${c.c1};--c2:${c.c2}">${html}</span>`;
+const framedAvatar = (mold, aura, html) => (mold && aura ? auraWrap(aura, frameWrap(mold, html)) : mold ? frameWrap(mold, html) : aura ? auraWrap(aura, html) : html);
 function authorCosmeticChip(cosmetic) {
     if (!cosmetic?.emoji) return '';
-    const title = escapeHtml(cosmetic.name || 'Cosmético');
-    return `<span class="author-cosmetic" title="${title}">${escapeHtml(cosmetic.emoji)} ${title}</span>`;
+    if (cosmetic.cat === 'emblema' || cosmetic.cat === 'titulo') return renderAuthorFlair(cosmetic);
+    // Posts antigos (chip simples) continuam legíveis
+    if (!cosmetic.cat) {
+        const title = escapeHtml(cosmetic.name || 'Cosmético');
+        return `<span class="author-cosmetic" title="${title}">${escapeHtml(cosmetic.emoji)} ${title}</span>`;
+    }
+    return '';
 }
 
 /* ---------- renda passiva ---------- */
@@ -1821,7 +1915,7 @@ function renderEcoBalances() {
 }
 
 function cosmeticCardHTML(c, owned) {
-    const isEquipped = economyState?.equipped === c.id;
+    const isEquipped = economyState?.equippedMap?.[c.cat] === c.id;
     let btn;
     if (isEquipped) btn = '<button class="cosmetic-buy equipped" disabled>⭐ Equipado</button>';
     else if (owned) btn = `<button class="cosmetic-buy owned" data-equip-cosmetic="${c.id}">✅ No seu baú</button>`;
@@ -1830,6 +1924,7 @@ function cosmeticCardHTML(c, owned) {
         <span class="cosmetic-emoji">${c.catEmoji}${c.emoji}</span>
         <span class="cosmetic-name">${escapeHtml(c.name)}</span>
         <span class="rarity-chip rarity-${c.rarity}">${c.gem} ${escapeHtml(c.rarityName)}</span>
+        <span class="cosmetic-effect">${escapeHtml(c.effect || '')}</span>
         ${owned ? '' : `<span class="cosmetic-price">🪙 ${c.price.toLocaleString('pt-BR')}</span>`}
         ${btn}
     </div>`;
@@ -1885,11 +1980,17 @@ function renderInventory() {
     if (!ECO) return;
     const gold = fmtGold(economyState?.gold);
     const invGold = $('#inv-gold'); if (invGold) invGold.textContent = gold;
-    const equipped = equippedCosmetic();
+    const equippedAll = equippedCosmetics();
     const eq = $('#equipped-card');
-    if (eq) eq.innerHTML = equipped
-        ? `<span class="eco-equipped-emoji">${equipped.catEmoji}${equipped.emoji}</span><span class="eco-equipped-info"><small>Cosmético equipado</small><strong>${escapeHtml(equipped.name)}</strong><small>${equipped.gem} ${escapeHtml(equipped.rarityName)} · aparece ao lado do seu nome no feed</small></span>`
-        : `<span class="eco-equipped-emoji">🫥</span><span class="eco-equipped-info"><small>Nenhum cosmético equipado</small><strong>Toque em um cosmético do seu baú para equipar</strong></span>`;
+    if (eq) {
+        const entries = Object.values(equippedAll);
+        eq.innerHTML = entries.length
+            ? entries.map((c) => {
+                const catMeta = ECO.COSMETIC_CATEGORIES.find((k) => k.id === c.cat);
+                return `<button class="eq-slot" data-equip-cosmetic="${escapeHtml(c.id)}" title="Tocar para remover o slot de ${escapeHtml(catMeta?.word || c.cat)}"><span class="eco-equipped-emoji">${c.catEmoji}${c.emoji}</span><span class="eco-equipped-info"><small>${escapeHtml(catMeta?.word || c.cat)} · <i>${escapeHtml(c.rarityName)}</i></small><strong>${escapeHtml(c.name)}</strong><small class="eco-effect-line"><span class="eco-swatch" style="background:linear-gradient(135deg, ${c.c1}, ${c.c2})"></span>${escapeHtml(c.effect || '')}</small></span><span class="eq-remove">✕</span></button>`;
+            }).join('')
+            : `<span class="eco-equipped-emoji">🫥</span><span class="eco-equipped-info"><small>Nenhum cosmético equipado</small><strong>Toque nos cosméticos do seu baú para equipar — cada um muda seu visual pra valer ✨</strong></span>`;
+    }
 
     const grid = $('#inventory-grid');
     const ownedEntries = ECO.ALL_MATERIALS.filter((m) => matQty(m.id) > 0);
@@ -1977,9 +2078,58 @@ function renderWork() {
     }
 }
 
+function renderProfileCosmetics() {
+    const capaSlot = equippedCosmetic('capa');
+    const fundo = equippedCosmetic('fundo');
+    // Capa do perfil (cosmético de capa, ou o fundo como reserva)
+    const cover = $('#profile-cover');
+    if (cover) {
+        const capa = capaSlot || fundo || null;
+        if (capa) {
+            cover.hidden = false;
+            cover.style.background = `linear-gradient(120deg, ${capa.c1}, ${capa.c2})`;
+            cover.innerHTML = `<span class="profile-cover-emoji">${capa.emoji}</span><span class="profile-cover-theme">${escapeHtml(capa.themeName || '')} · ${escapeHtml(capa.rarityName || '')}</span>`;
+        } else {
+            cover.hidden = true;
+            cover.removeAttribute('style');
+            cover.innerHTML = '';
+        }
+    }
+    // Fundo do tema tinge o card do perfil
+    const pCard = document.querySelector('#app-profile .profile-card');
+    if (pCard) {
+        if (fundo) {
+            pCard.classList.add('profile-fundo');
+            pCard.style.setProperty('--f1', fundo.c1);
+            pCard.style.setProperty('--f2', fundo.c2);
+        } else {
+            pCard.classList.remove('profile-fundo');
+            pCard.style.removeProperty('--f1');
+            pCard.style.removeProperty('--f2');
+        }
+    }
+    // Moldura/Aura no próprio avatar do perfil
+    const myAvatar = $('#my-avatar-display');
+    if (myAvatar) {
+        const moldura = equippedCosmetic('moldura');
+        const aura = equippedCosmetic('aura');
+        const src = moldura || aura;
+        myAvatar.classList.toggle('avatar-frame-self', !!moldura);
+        myAvatar.classList.toggle('avatar-aura-self', !!aura);
+        if (src) {
+            myAvatar.style.setProperty('--c1', src.c1);
+            myAvatar.style.setProperty('--c2', src.c2);
+        } else {
+            myAvatar.style.removeProperty('--c1');
+            myAvatar.style.removeProperty('--c2');
+        }
+    }
+}
+
 function refreshEconomyUI() {
     if (!economyState || !ECO) return;
     renderEcoBalances();
+    renderProfileCosmetics();
     renderCosmeticShop();
     renderBuyList();
     renderSellList();
@@ -2015,12 +2165,17 @@ async function buyCosmetic(id) {
     showToast(`${c.emoji} ${c.name} virou seu! ✨`, 'success', 3500);
 }
 async function equipCosmetic(id) {
-    if (!economyState) return;
-    if (!economyState.cosmetics.includes(id)) return;
-    const next = economyState.equipped === id ? null : id;
-    economyState.equipped = next;
-    await saveEconomy({ equippedCosmetic: next });
-    showToast(next ? 'Cosmético equipado! Vai aparecer no feed ⭐' : 'Cosmético guardado de volta.', 'info');
+    if (!economyState || !ECO) return;
+    const c = ECO.COSMETIC_BY_ID[id];
+    if (!c || !economyState.cosmetics.includes(id)) return;
+    const map = { ...equippedMapIds() };
+    if (map[c.cat] === id) delete map[c.cat];
+    else map[c.cat] = id;
+    economyState = { ...economyState, equippedMap: map };
+    await saveEconomy({ equippedCosmetics: map });
+    const catMeta = ECO.COSMETIC_CATEGORIES.find((k) => k.id === c.cat);
+    const slot = catMeta?.word?.toLowerCase() || c.cat;
+    showToast(map[c.cat] ? `${c.emoji} Equipado em “${slot}”! Vai aparecer no feed ⭐` : `Cosmético guardado de volta.`, 'info');
 }
 async function buyMaterial(id, qty) {
     const m = ECO.MATERIAL_BY_ID[id];
@@ -2927,7 +3082,7 @@ setInterval(tickClock, 1000);
 })();
 
 /* ================= ATUALIZAÇÃO DO APP (NOVA VERSÃO) ================= */
-const APP_VERSION = '4.0.0';
+const APP_VERSION = '4.1.0';
 const appVersionEl = $('#app-version');
 if (appVersionEl) appVersionEl.textContent = `Good Vibes 🌊 · O Refúgio · v${APP_VERSION}`;
 let swRegistration = null;
