@@ -484,7 +484,7 @@
                         <div class="rule-item card"><span class="rule-emoji">🎟️</span><div><strong>Cadastro aberto, casa íntima</strong><p>Qualquer um pode criar conta, mas o Refúgio continua pequeno: a moderação é manual e, se a convivência apertar, novos cadastros podem ser pausados.</p></div></div>
                         <div class="rule-item card"><span class="rule-emoji">🛡️</span><div><strong>Moderação</strong><p>Algo te incomodou? Denuncie no PV: <a href="https://wa.me/5584999528925" target="_blank" rel="noopener">+55 84 99952-8925</a>. Contas que não respeitarem o ambiente serão desativadas ou excluídas.</p></div></div>
                         <div class="rule-item card"><span class="rule-emoji">🌊</span><div><strong>Energia da casa</strong><p>De tempos em tempos, com o app aberto, a casa distribui curtidas e descurtidas nos posts — é o app respirando junto com a galera, não uma pessoa tocando. Posts sensíveis (🔞) e do próprio autor ficam de fora.</p></div></div>
-                        <div class="rule-item card"><span class="rule-emoji">🏦</span><div><strong>Banco do Refúgio & Freelas</strong><p>Seu gold é SEU — todo movimento fica registrado no seu extrato e guardado pelo banco. Empréstimo em dia = bom score e crédito maior. Empréstimo vencido = mora de 3%/dia, surcharge de 25% após 30 dias, penhora de 50% dos seus ganhos e nome na Caderneta dos Devedores até quitar. Freelas publicados no Quadro têm a recompensa travada na publicação: ninguém some com o seu trabalho (nem com o seu escrow).</p></div></div>
+                        <div class="rule-item card"><span class="rule-emoji">🏦</span><div><strong>Banco do Refúgio & Freelas</strong><p>Seu gold é SEU — todo movimento fica registrado no seu extrato e guardado pelo banco. Empréstimo em dia = bom score e crédito maior. Empréstimo vencido = mora de 8%/dia, surcharge de 50% após 30 dias, penhora de 70% dos seus ganhos (100% com 60+ dias) e nome na Caderneta dos Devedores até quitar. Freelas publicados no Quadro têm a recompensa travada na publicação: ninguém some com o seu trabalho (nem com o seu escrow).</p></div></div>
                         <div class="rule-item card"><span class="rule-emoji">🪙</span><div><strong>Economia do Refúgio</strong><p>Gold é a moeda oficial do refúgio — ganha-se trabalhando, coletando e construindo. Vale só aqui e numa boa: sem trapacear pelo Console, sem vender gold de verdade, sem anunciar. Super Like (PIX) é outra história: é mimo real, tratado com o mesmo cuidado.</p></div></div>
                         <div class="rule-item card"><span class="rule-emoji">💸</span><div><strong>Super Like (PIX)</strong><p>É apenas um “mimo” para os criadores — não abuse. O site não processa o dinheiro, não cobra taxas e não se responsabiliza pelas transferências. <strong>Confira sempre os dados no app do seu banco</strong> antes de confirmar.</p></div></div>
                     </div>
@@ -515,7 +515,7 @@
 
                     <div class="card bank-card" id="bank-loan-section">
                         <h3>📄 Empréstimo</h3>
-                        <p class="card-sub">Taxas transparentes: <strong>6%</strong> de juro na liberação · mora de <strong>3% ao dia</strong> após o vencimento · <strong>+25%</strong> de surcharge se passar de 30 dias · <strong>penhora de 50%</strong> de tudo que você ganhar até quitar · nome na <strong>Caderneta dos Devedores</strong> após 30 dias.</p>
+                        <p class="card-sub">Taxas transparentes: <strong>6%</strong> de juro na liberação · mora de <strong>8% ao dia</strong> após o vencimento · <strong>+50%</strong> de surcharge se passar de 30 dias · <strong>penhora de 70%</strong> de tudo que você ganhar até quitar (<strong>100%</strong> com 60+ dias) · nome na <strong>Caderneta dos Devedores</strong> após 14 dias · score <strong>−18</strong> por pagar atrasado (<strong>−30</strong> com 60+ dias).</p>
                         <div id="bank-loan-active" hidden></div>
                         <div id="bank-loan-form">
                             <p class="bank-limit">Limite de crédito disponível: <strong id="bank-credit-limit">1.500 gold</strong> (cresce com o score)</p>
@@ -545,7 +545,7 @@
 
                     <div class="card bank-card shame-card">
                         <h3>📕 Caderneta dos Devedores</h3>
-                        <p class="card-sub">Quem deixa a dívida vencer por mais de 30 dias tem o nome publicado aqui, pelo banco, até quitar. Pense duas vezes.</p>
+                        <p class="card-sub">Quem deixa a dívida vencer por mais de 14 dias tem o nome publicado aqui, pelo banco, até quitar. Pense duas vezes — o banco não tem dó.</p>
                         <div class="shame-list" id="shame-list"></div>
                     </div>
                 </div>
@@ -569,7 +569,7 @@
                     <div class="eco-tabs" role="tablist" aria-label="Seções da loja">
                         <button class="eco-tab active" data-shop-tab="cosmeticos" role="tab">✨ Cosméticos</button>
                         <button class="eco-tab" data-shop-tab="comprar" role="tab">🧺 Comprar</button>
-                        <button class="eco-tab" data-shop-tab="vender" role="tab">💱 Vender</button>
+                        <button class="eco-tab" data-shop-tab="mercado" role="tab">🛒 Mercado</button>
                     </div>
 
                     <div class="eco-pane" id="shop-pane-cosmeticos" role="tabpanel">
@@ -587,13 +587,13 @@
                     </div>
 
                     <div class="eco-pane" id="shop-pane-comprar" role="tabpanel" hidden>
-                        <p class="card-sub">Matérias-primas da ilha, entrega na hora. Venda por <strong>60%</strong> do preço na aba Vender.</p>
+                        <p class="card-sub">Matérias-primas da ilha, entrega na hora. Quer vender algo seu? O <strong>Mercado</strong> é onde a galera compra e vende entre si — o sistema não compra.</p>
                         <div class="material-list" id="buy-material-list"></div>
                     </div>
 
-                    <div class="eco-pane" id="shop-pane-vender" role="tabpanel" hidden>
-                        <p class="card-sub">Vende por <strong>60%</strong> do preço de vitrine. Sem taxas, direto no seu saldo.</p>
-                        <div class="material-list" id="sell-material-list"></div>
+                    <div class="eco-pane" id="shop-pane-mercado" role="tabpanel" hidden>
+                        <p class="card-sub">O sistema <strong>não compra</strong> os seus itens — agora quem compra é a <strong>galera do Refúgio</strong>. Anuncie no Mercado e cobre o preço que quiser.</p>
+                        <button class="primary-btn wide" data-open-app="market"><span class="btn-label">Ir para o Mercado 🛒</span></button>
                     </div>
                 </div>
             </section>
@@ -654,6 +654,39 @@
                         <button class="primary-btn compact" id="collect-btn"><span class="btn-label">Coletar</span></button>
                     </div>
                     <div class="building-list" id="construction-list"></div>
+                </div>
+            </section>
+
+            <!-- ============ APP: MERCADO ============ -->
+            <section class="app-window" id="app-market" data-app="market" aria-label="Mercado do Refúgio">
+                <header class="app-header">
+                    <button class="app-back" data-close-app aria-label="Voltar para a tela inicial">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+                        <span>Início</span>
+                    </button>
+                    <h2 class="app-title">🛒 Mercado</h2>
+                    <span class="app-header-spacer"></span>
+                </header>
+                <div class="app-body">
+                    <div class="eco-balance card">
+                        <div><span class="eco-balance-label">💰 Seu saldo</span><strong class="eco-balance-value" id="market-gold">0 gold</strong></div>
+                        <span class="eco-rate">Quem compra é outro jogador — o sistema não compra nada</span>
+                    </div>
+                    <div class="card market-sell-card">
+                        <h3 class="eco-h3" style="margin-top:2px">📢 Anunciar um item</h3>
+                        <p class="card-sub">Sai do seu baú na hora (escrow) e fica travado no anúncio. Quando outro jogador comprar, o gold vai direto pra você — sem taxa, sem o sistema no meio. Pode retirar quando quiser.</p>
+                        <select id="market-item-select" aria-label="Item para anunciar"></select>
+                        <div class="gift-amount-row">
+                            <input type="number" id="market-qty" min="1" inputmode="numeric" placeholder="Quantidade" aria-label="Quantidade">
+                            <input type="number" id="market-price" min="1" inputmode="numeric" placeholder="Preço por unidade (gold)" aria-label="Preço por unidade em gold">
+                        </div>
+                        <div class="market-total-row"><span>Total do anúncio</span><strong id="market-total">0 gold</strong></div>
+                        <button class="primary-btn wide" id="market-publish-btn"><span class="btn-label">Publicar anúncio 📢</span></button>
+                    </div>
+                    <h3 class="eco-h3">🏪 Anúncios da galera <span class="eco-h3-count" id="market-count"></span></h3>
+                    <div class="market-list" id="market-list"></div>
+                    <h3 class="eco-h3">🧳 Meus anúncios</h3>
+                    <div class="market-list" id="my-listings"></div>
                 </div>
             </section>
 

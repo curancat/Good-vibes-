@@ -23,11 +23,39 @@ Os 1.000 cosméticos deixaram de ser "um nome ao lado do nick" e viraram **efeit
 
 > Honestidade técnica, como sempre: os efeitos são renderizados **no cliente** a partir do dado do post/mensagem (`authorCosmetics`, com fallback para posts antigos). Dá para forjar visualmente pelo Console — o cosmético nunca muda seu gold, só o visual. Contadores de reação usam merge no Firestore (`reactions.<emoji>`) e as regras de post agora aceitam `reactions` no update — **republicar `firestore.rules` de novo** (Console → Firestore → Regras → Publicar) para curtidas/reações funcionarem para todo mundo.
 
+## 🛒 Mercado entre jogadores + Banco mais punitivo (v4.2.0)
+
+### 🛒 Mercado do Refúgio (app próprio — 15º app na grade)
+
+**O sistema não compra mais os seus itens.** Agora quem compra é a galera: anuncie qualquer material (bruto ou refinado) no **Mercado**, cobre o preço por unidade que quiser, e o item fica **travado no anúncio (escrow)** até alguém comprar ou você retirar. Na venda:
+
+- Quem compra paga na hora — os itens vão pro baú dele
+- O gold vai pro vendedor num documento `gifts` (tipo `market`), resgatado quando ele abre o app — **sem o sistema no meio e sem taxas**
+- "Retirar" devolve os itens pro seu baú
+- Anúncio não pode ser comprado por você mesmo; só quem anunciou pode retirar (regras do Firestore)
+- Na Loja, a aba "Vender" (sistema comprava por 60%) virou um botão pro Mercado
+
+### 🏦 Banco do Refúgio — punição piorada (v4.2)
+
+| Coisa | Era | Agora |
+|---|---|---|
+| Mora | 3%/dia | **8%/dia** |
+| Surcharge após 30 dias | +25% | **+50%** |
+| Penhora sobre ganhos | 50% | **70%** (**100%** com 60+ dias de atraso) |
+| Nome na Caderneta dos Devedores | após 30 dias | **após 14 dias** |
+| Score ao pagar atrasado | −10 | **−18** (**−30** com 60+ dias) |
+
+Pagar em dia continua +12. Mora continua crescendo ao infinito (cap de 90 dias no cálculo). O banco não tem dó.
+
+> ⚠️ **Publicar o `firestore.rules` de novo** (Console → Firestore → Regras → cole → Publicar): além dos blocos da v4.0, agora tem a coleção **`market`** (anúncios + escrow + compra entre jogadores) e a chave **`marketId`** nos presentes.
+>
+> ⚠️ Como tudo no refúgio, o Mercado é client-authoritative: as regras impedem auto-compra e retirada alheia, mas nada impede um programador de forjar o doc do próprio baú pelo Console. O escrow é "de boa fé" como o resto da economia.
+
 ## 🏦 Banco do Refúgio & Quadro de Freelas (v4.0)
 
 O ouro agora tem **dono registrado** e o trabalho é **definido pela própria galera**:
 
-- **🏦 Banco do Refúgio (app próprio)** — conta do refúgio com saldo e **extrato completo** de todo gold que entra ou sai (renda, trabalhos, compras, presentes, penhoras…). Empréstimo com taxas transparentes: **6%** na liberação · **mora de 3%/dia** · **+25%** de surcharge após 30 dias · **penhora de 50%** de tudo que você ganhar até quitar · **Caderneta dos Devedores** (pública no app) após 30 dias de atraso. Score de crédito (0–100) sobe pagando em dia (+12) e cai pagando atrasado (−10) — e o **limite de crédito** (até 3.000 gold) depende do score
+- **🏦 Banco do Refúgio (app próprio)** — conta do refúgio com saldo e **extrato completo** de todo gold que entra ou sai (renda, trabalhos, compras, presentes, penhoras…). Empréstimo com taxas transparentes: **6%** na liberação · **mora de 8%/dia** · **+50%** de surcharge após 30 dias · **penhora de 70%** de tudo que você ganhar até quitar (**100%** com 60+ dias) · **Caderneta dos Devedores** (pública no app) após 14 dias de atraso. Score de crédito (0–100) sobe pagando em dia (+12) e cai pagando atrasado (−18, ou −30 com 60+ dias) — e o **limite de crédito** (até 3.000 gold) depende do score
 - **📜 Quadro de Freelas (Trabalho → Quadro)** — **os usuários definem o trabalho**: publique qualquer tarefa com recompensa (mín. 10, máx. 10.000 gold). O gold sai do seu bolso na publicação (**escrow**) e só vai para quem aceitar e concluir — você paga quando aprovar, ou o trabalhador libera sozinho após **7 dias sem resposta**. Cancelar devolve tudo pro autor. "Trabalhinhos da ilha" continuam disponíveis como renda casual
 - **💳 Débito** — transferências de gold instantâneas pelo banco (via sistema; a pessoa recebe ao abrir o app)
 - **📒 Posse registrada** — cada movimento de gold vira entrada no seu **extrato** (`users/{uid}/ledger`); ninguém altera depois
@@ -40,7 +68,7 @@ O ouro agora tem **dono registrado** e o trabalho é **definido pela própria ga
 
 A rede social agora tem uma **economia própria**, com a moeda **gold**:
 
-- **🪙 Loja** — 1.000 cosméticos (10 categorias × 20 temas × 5 raridades: molduras, emblemas, títulos, auras, fundos, capas, selos…), comprados com gold e equipáveis; equipado, seu cosmético aparece **ao lado do seu nome no feed e nos comentários**. Venda o que não quer por 60% do preço
+- **🪙 Loja** — 1.000 cosméticos (10 categorias × 20 temas × 5 raridades: molduras, emblemas, títulos, auras, fundos, capas, selos…), comprados com gold e equipáveis
 - **🧺 Comprar e Vender materiais** — 100 matérias-primas brutas (madeira, pedra, minério de ferro a platina, cristais, flores, pérolas…) com preço de vitrine +26 refinados
 - **💼 Trabalho** — 8 freelas (de Carregador de Feira à Lenda do Surf) com cooldown próprio e bônus de material, e **🌿 Coleta** em 6 pontos (Floresta, Mina Velha, Rio & Praia, Campo Florido, Montanha, Pântano), 25s de recarga, 2 drops por visita
 - **⚒️ Refinaria** — 36 receitas transformando matéria-prima em refinados (barras, tijolos, gemas lapidadas, pergaminho…)

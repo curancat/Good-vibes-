@@ -126,7 +126,7 @@ service cloud.firestore {
         && request.resource.data.to is string
         && request.resource.data.to != request.auth.uid
         && request.resource.data.status == 'pending'
-        && request.resource.data.keys().hasOnly(['from', 'fromName', 'to', 'status', 'createdAt', 'gold', 'materialId', 'materialQty', 'type', 'jobId'])
+        && request.resource.data.keys().hasOnly(['from', 'fromName', 'to', 'status', 'createdAt', 'gold', 'materialId', 'materialQty', 'type', 'jobId', 'marketId'])
         && (request.resource.data.gold is number || request.resource.data.materialId is string)
         && (!request.resource.data.keys().hasAny(['gold']) || request.resource.data.gold > 0)
         && (!request.resource.data.keys().hasAny(['materialQty']) || request.resource.data.materialQty > 0);
@@ -134,6 +134,46 @@ service cloud.firestore {
       allow update: if signedIn() && resource.data.to == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'claimedAt'])
         && request.resource.data.status == 'claimed';
+      allow delete: if false;
+    }
+
+
+    // ---------- MERCADO 🛒 (venda entre jogadores) ----------
+    // O vendedor posta o item (escrow: sai do baú no anúncio). Quem compra
+    // marca como vendido; o pagamento vai num doc em gifts (tipo 'market'),
+    // resgatado pelo vendedor quando abrir o app — mesmo padrão dos freelas.
+    match /market/{listingId} {
+      allow create: if signedIn()
+        && request.resource.data.seller == request.auth.uid
+        && request.resource.data.sellerName is string
+        && request.resource.data.itemId is string
+        && request.resource.data.qty is number
+        && request.resource.data.qty >= 1
+        && request.resource.data.priceEach is number
+        && request.resource.data.priceEach >= 1
+        && request.resource.data.price is number
+        && request.resource.data.price >= request.resource.data.priceEach
+        && request.resource.data.status == 'open'
+        && request.resource.data.keys().hasOnly(['seller', 'sellerName', 'itemId', 'qty', 'priceEach', 'price', 'status', 'buyerId', 'buyerName', 'createdAt', 'soldAt', 'cancelledAt']);
+      allow read: if signedIn();
+      // Compra por OUTRO jogador (aberto→vendido) ou retirada pelo próprio vendedor
+      function marketBuyIsValid() {
+        return resource.data.status == 'open'
+          && request.resource.data.status == 'sold'
+          && request.resource.data.buyerId == request.auth.uid
+          && resource.data.seller != request.auth.uid
+          && request.resource.data.seller == resource.data.seller
+          && request.resource.data.itemId == resource.data.itemId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'buyerId', 'buyerName', 'soldAt']);
+      }
+      function marketCancelIsValid() {
+        return resource.data.status == 'open'
+          && request.resource.data.status == 'cancelled'
+          && resource.data.seller == request.auth.uid
+          && request.resource.data.seller == resource.data.seller
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt']);
+      }
+      allow update: if signedIn() && (marketBuyIsValid() || marketCancelIsValid());
       allow delete: if false;
     }
 

@@ -436,6 +436,7 @@ const APPS = [
     { id: 'refinery', label: 'Refinaria', icon: '⚒️', tile: 'tile-refinery' },
     { id: 'construction', label: 'Obras', icon: '🏗️', tile: 'tile-construction' },
     { id: 'work', label: 'Trabalho', icon: '💼', tile: 'tile-work' },
+    { id: 'market', label: 'Mercado', icon: '🛒', tile: 'tile-market' },
     { id: 'settings', label: 'Ajustes', icon: '⚙️', tile: 'tile-settings' },
 ];
 const DOCK_IDS = ['feed', 'chat', 'notifications', 'profile'];
@@ -484,7 +485,8 @@ function openApp(appId, pushHistory = true) {
     if (appId === 'chat') { setBadge('chat', 0); window.lastReadChatTimestamp = Date.now(); try { localStorage.setItem('gv_last_chat_read', String(window.lastReadChatTimestamp)); } catch { /* ignora */ } }
     if (appId === 'notifications') { setBadge('notifications', 0); renderNotificationsList(); }
 
-    if (['shop', 'inventory', 'refinery', 'construction', 'work'].includes(appId)) refreshEconomyUI();
+    if (['shop', 'inventory', 'refinery', 'construction', 'work', 'market'].includes(appId)) refreshEconomyUI();
+    if (appId === 'market') refreshMarket();
     if (appId === 'work') renderBoard();
     if (appId === 'bank') refreshBank();
     const body = target.querySelector('.app-body');
@@ -1765,7 +1767,6 @@ window.addEventListener('appinstalled', () => {
    pelo Console — vale como diversão, não como dinheiro de verdade. */
 const ECO = window.GV_ECO;
 const STARTER_GOLD = 250;
-const SELL_RATE = ECO?.SELL_RATE ?? 0.6;
 const COLLECT_CAP_MINUTES = 12 * 60; // renda acumula no máximo 12h
 const GATHER_CD_MS = 25 * 1000;
 
@@ -1778,7 +1779,6 @@ const giftState = { mode: 'gold' };
 const ecoUserRef = () => doc(db, 'users', currentUser.uid);
 const fmtGold = (n) => `${Math.floor(Number(n) || 0).toLocaleString('pt-BR')} gold`;
 const matQty = (id) => (economyState?.inv?.[id] || 0);
-const sellPriceOf = (m) => Math.max(1, Math.floor(m.price * SELL_RATE));
 
 function normalizeEconomy(d = {}) {
     return {
@@ -1984,20 +1984,12 @@ function materialRowHTML(m, mode) {
     if (mode === 'buy') {
         return `<div class="material-row"><span class="material-emoji">${m.emoji}</span><span class="material-info"><span class="material-name">${escapeHtml(m.name)}</span><span class="material-meta">🪙 ${m.price.toLocaleString('pt-BR')} · você tem ${owned}</span></span><span class="material-actions"><button class="buy1" data-buy-mat="${m.id}" data-qty="1">+1</button><button class="buy10" data-buy-mat="${m.id}" data-qty="10">+10</button></span></div>`;
     }
-    if (owned <= 0) return '';
-    const sell = sellPriceOf(m);
-    return `<div class="material-row"><span class="material-emoji">${m.emoji}</span><span class="material-info"><span class="material-name">${escapeHtml(m.name)}</span><span class="material-meta">vende por 🪙 ${sell.toLocaleString('pt-BR')} · você tem ${owned}</span></span><span class="material-actions"><button class="sell1" data-sell-mat="${m.id}" data-qty="1">−1</button><button class="sell10" data-sell-mat="${m.id}" data-qty="10">−10</button></span></div>`;
+    return '';
 }
 
 function renderBuyList() {
     const list = $('#buy-material-list');
     if (list && ECO) list.innerHTML = ECO.RAW_MATERIALS.map((m) => materialRowHTML(m, 'buy')).join('');
-}
-function renderSellList() {
-    const list = $('#sell-material-list');
-    if (!list || !ECO) return;
-    const rows = ECO.ALL_MATERIALS.map((m) => materialRowHTML(m, 'sell')).filter(Boolean).join('');
-    list.innerHTML = rows || '<p class="inv-empty">Seu baú está vazio. Trabalhe e colete para ter o que vender 🎒</p>';
 }
 
 function renderInventory() {
@@ -2142,7 +2134,6 @@ function refreshEconomyUI() {
     renderProfileCosmetics();
     renderCosmeticShop();
     renderBuyList();
-    renderSellList();
     renderInventory();
     renderRefinery();
     renderConstruction();
@@ -2197,20 +2188,6 @@ async function buyMaterial(id, qty) {
     await saveEconomy({ gold: economyState.gold - total, inv });
     vibrate(8);
     showToast(`+${qty}× ${m.name} 🧺`, 'success');
-}
-async function sellMaterial(id, qty) {
-    const m = ECO.MATERIAL_BY_ID[id];
-    if (!m || !economyState) return;
-    const have = matQty(id);
-    const n = Math.min(qty, have);
-    if (n <= 0) return;
-    const inv = { ...economyState.inv, [id]: have - n };
-    if (inv[id] <= 0) delete inv[id];
-    const earned = await collectGain(sellPriceOf(m) * n, `Venda: ${m.name}`);
-    addLedger('venda', `Venda: ${m.name} ×${n}`, earned);
-    await saveEconomy({ gold: economyState.gold + earned, inv });
-    vibrate(8);
-    showToast(`+${fmtGold(earned)} no bolso 🪙`, 'success');
 }
 async function craftRecipe(id) {
     const r = ECO.RECIPES.find((x) => x.id === id);
@@ -2407,8 +2384,13 @@ async function claimGifts() {
                         patch.gold = (typeof u.gold === 'number' ? u.gold : 0) + gold;
                         received.push(g.type === 'job'
                             ? `💼 ${fmtGold(gold)} de freela — ${g.fromName || 'alguém'}`
-                            : `🪙 ${fmtGold(gold)} de ${g.fromName || 'alguém'}`);
-                        addLedger(g.type === 'job' ? 'freela' : 'presente', g.type === 'job' ? `Freela pago por ${g.fromName || 'alguém'}` : `Presente de ${g.fromName || 'alguém'}`, gold);
+                            : g.type === 'market'
+                                ? `🤝 ${fmtGold(gold)} de venda no Mercado — ${g.fromName || 'alguém'}`
+                                : `🪙 ${fmtGold(gold)} de ${g.fromName || 'alguém'}`);
+                        addLedger(g.type === 'job' ? 'freela' : g.type === 'market' ? 'mercado' : 'presente',
+                            g.type === 'job' ? `Freela pago por ${g.fromName || 'alguém'}`
+                                : g.type === 'market' ? `Venda no Mercado para ${g.fromName || 'alguém'}`
+                                    : `Presente de ${g.fromName || 'alguém'}`, gold);
                     } else if (g.materialId) {
                         const inv = { ...(u.inv || {}) };
                         const qty = Number(g.materialQty || 1);
@@ -2444,7 +2426,7 @@ document.addEventListener('click', async (e) => {
     if (shopTab) {
         document.querySelectorAll('[data-shop-tab]').forEach((b) => b.classList.toggle('active', b === shopTab));
         const target = shopTab.dataset.shopTab;
-        ['cosmeticos', 'comprar', 'vender'].forEach((name) => { const pane = document.getElementById(`shop-pane-${name}`); if (pane) pane.hidden = name !== target; });
+        ['cosmeticos', 'comprar', 'mercado'].forEach((name) => { const pane = document.getElementById(`shop-pane-${name}`); if (pane) pane.hidden = name !== target; });
         return;
     }
     const workTab = t.closest?.('[data-work-tab]');
@@ -2473,8 +2455,6 @@ document.addEventListener('click', async (e) => {
     if (equipBtn) { await equipCosmetic(equipBtn.dataset.equipCosmetic); return; }
     const buyMat = t.closest?.('[data-buy-mat]');
     if (buyMat) { await buyMaterial(buyMat.dataset.buyMat, Number(buyMat.dataset.qty || 1)); return; }
-    const sellMat = t.closest?.('[data-sell-mat]');
-    if (sellMat) { await sellMaterial(sellMat.dataset.sellMat, Number(sellMat.dataset.qty || 1)); return; }
     const craft = t.closest?.('[data-craft]');
     if (craft) { await craftRecipe(craft.dataset.craft); return; }
     const build = t.closest?.('[data-build]');
@@ -2530,9 +2510,12 @@ async function addLedger(type, label, delta) {
 
 /* ---------- Empréstimo: matemática única e transparente ---------- */
 const LOAN_INTEREST = 0.06;          // 6% na liberação
-const LOAN_LATE_DAILY = 0.03;        // 3% ao dia de mora
-const LOAN_OVERDUE_SURCHARGE = 1.25; // +25% após 30 dias
+const LOAN_LATE_DAILY = 0.08;        // 8% ao dia de mora
+const LOAN_OVERDUE_SURCHARGE = 1.5;  // +50% após 30 dias
 const LOAN_DUE_DAYS = 7;
+const LOAN_SHAME_DAYS = 14;          // Caderneta dos Devedores a partir de 14 dias
+const GARNISH_PCT = 0.7;             // penhora de 70% dos ganhos até quitar
+const GARNISH_TOTAL_DAYS = 60;       // 60+ dias: penhora de 100%
 const creditLimitFor = (score) => Math.floor((Math.max(0, Math.min(100, score ?? 50)) / 100) * 3000);
 const scoreLabel = (s) => s >= 80 ? '🟢 Excelente pagador' : s >= 55 ? '🔵 Em dia com a vida' : s >= 30 ? '🟡 Atenção: pendências' : '🔴 Nome sujo no banco';
 
@@ -2552,13 +2535,14 @@ async function getActiveLoan() {
     return { id: d.id, ...d.data() };
 }
 
-/* 50% de penhora sobre qualquer ganho (trabalho, renda, vendas, freelas pagos) */
+/* Penhora sobre qualquer ganho (trabalho, renda, freelas…). 70% normal; 100% após 60 dias de atraso */
 async function collectGain(goldDelta, sourceLabel) {
     if (!currentUser || !economyState || goldDelta <= 0) return goldDelta;
     try {
         if (!activeLoan) activeLoan = await getActiveLoan();
         if (activeLoan && Date.now() > (activeLoan.dueAt || 0)) {
-            const garnish = Math.floor(goldDelta / 2);
+            const pct = loanTerms(activeLoan).lateDays >= GARNISH_TOTAL_DAYS ? 1 : GARNISH_PCT;
+            const garnish = Math.floor(goldDelta * pct);
             if (garnish > 0) {
                 const lref = doc(db, 'loans', activeLoan.id);
                 await runTransaction(db, async (tx) => {
@@ -2569,7 +2553,7 @@ async function collectGain(goldDelta, sourceLabel) {
                 });
                 activeLoan = { ...activeLoan, repaid: (activeLoan.repaid || 0) + garnish };
                 addLedger('penhora', `Penhora — ${sourceLabel}`, -garnish);
-                showToast(`🏦 Penhora: 50% (${fmtGold(garnish)}) foi para o banco do refúgio`, 'warn', 5000);
+                showToast(`🏦 Penhora: ${Math.round(pct * 100)}% (${fmtGold(garnish)}) foi para o banco do refúgio`, 'warn', 5000);
                 return goldDelta - garnish;
             }
         }
@@ -2594,8 +2578,8 @@ function renderBankLoanCard() {
         form.hidden = true;
         active.innerHTML = `<div class="bank-loan-active-row"><span>💰 Pegou</span><strong>${fmtGold(activeLoan.principal)}</strong></div>
             <div class="bank-loan-active-row"><span>🧾 Dívida agora</span><strong>${fmtGold(debt)}</strong></div>
-            <div class="bank-loan-active-row"><span>📅 Venceu</span><strong>${due.toLocaleDateString('pt-BR')}${lateDays ? ` · ${lateDays} dia(s) de atraso · +3%/dia${lateDays >= 30 ? ' · +25% surcharge' : ''}` : ''}</strong></div>
-            <div class="bank-loan-active-row"><span>⚠️ Punição</span><strong>${lateDays > 0 ? 'Penhora de 50% dos seus ganhos' : 'Ainda não há mora — pague no prazo!'}</strong></div>
+            <div class="bank-loan-active-row"><span>📅 Venceu</span><strong>${due.toLocaleDateString('pt-BR')}${lateDays ? ` · ${lateDays} dia(s) de atraso · +8%/dia${lateDays >= 30 ? ' · +50% surcharge' : ''}` : ''}</strong></div>
+            <div class="bank-loan-active-row"><span>⚠️ Punição</span><strong>${lateDays > 0 ? (lateDays >= GARNISH_TOTAL_DAYS ? 'Penhora TOTAL (100%) dos seus ganhos' : 'Penhora de 70% dos seus ganhos') : 'Ainda não há mora — pague no prazo!'}</strong></div>
             <div class="gift-amount-row" style="margin-top:8px">
                 <input type="number" id="loan-repay-amount" min="1" inputmode="numeric" placeholder="Quanto quer pagar agora?" aria-label="Valor para abater">
                 <button class="primary-btn compact" id="loan-repay-btn"><span class="btn-label">Abater</span></button>
@@ -2660,7 +2644,7 @@ async function refreshBank(loadRemote = true) {
     }
     if (loadRemote) {
         try { activeLoan = await getActiveLoan(); } catch { activeLoan = null; }
-        if (activeLoan && loanTerms(activeLoan).lateDays >= 30 && !activeLoan.publicShame) {
+        if (activeLoan && loanTerms(activeLoan).lateDays >= LOAN_SHAME_DAYS && !activeLoan.publicShame) {
             activeLoan.publicShame = true;
             try { await setDoc(doc(db, 'loans', activeLoan.id), { publicShame: true }, { merge: true }); } catch (err) { console.warn('Não consegui marcar a Caderneta:', err?.message); }
         }
@@ -2728,7 +2712,7 @@ async function repayLoan(payAmount) {
             if (!l || l.status !== 'active') throw new Error('Esse empréstimo já foi quitado.');
             const newRepaid = (l.repaid || 0) + pay;
             const settled = (l.totalDue || 0) - newRepaid <= 0;
-            tx.set(ref, { gold: gold - pay, creditScore: adjustScore(d.creditScore ?? 50, settled, wasLate) }, { merge: true });
+            tx.set(ref, { gold: gold - pay, creditScore: adjustScore(d.creditScore ?? 50, settled, wasLate, lateDays) }, { merge: true });
             tx.set(lref, { repaid: newRepaid, ...(settled ? { status: 'paid', paidAt: serverTimestamp() } : {}) }, { merge: true });
         });
         const fresh = await getDoc(ecoUserRef());
@@ -2737,14 +2721,14 @@ async function repayLoan(payAmount) {
         activeLoan = await getActiveLoan();
         refreshEconomyUI();
         await refreshBank(false);
-        showToast(wasLate ? `📄 Pago ${fmtGold(pay)}. O banco registrou o atraso no seu score 😤` : `📄 Empréstimo pago em dia! +12 no score 👏`, 'success', 4500);
+        showToast(wasLate ? `📄 Pago ${fmtGold(pay)}. O banco registrou o atraso no seu score (${lateDays >= GARNISH_TOTAL_DAYS ? '−30' : '−18'}) 😤` : `📄 Empréstimo pago em dia! +12 no score 👏`, 'success', 4500);
     } catch (err) {
         showToast(err?.message || 'Não consegui pagar agora.', 'error', 4500);
     }
 }
-const adjustScore = (score, settled, wasLate) => {
+const adjustScore = (score, settled, wasLate, lateDays = 0) => {
     if (!settled) return score;
-    return wasLate ? Math.max(0, score - 10) : Math.min(100, score + 12);
+    return wasLate ? Math.max(0, score - (lateDays >= GARNISH_TOTAL_DAYS ? 30 : 18)) : Math.min(100, score + 12);
 };
 
 /* ---------- QUADRO DE FREELAS 📜 (trabalho definido pelos usuários) ---------- */
@@ -2957,9 +2941,221 @@ async function payFreela(id) {
     }
 }
 
+/* ---------- MERCADO 🛒 (venda entre jogadores — o sistema NÃO compra) ---------- */
+let marketListings = [];
+
+async function fetchMarket() {
+    try {
+        // Sem orderBy + where combinados (evita índice composto): ordena no cliente
+        const snap = await getDocs(query(collection(db, 'market'), limit(60)));
+        marketListings = snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .filter((l) => l.status === 'open')
+            .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+    } catch (err) {
+        console.warn('Mercado indisponível (regras do Firestore?):', err?.message);
+        marketListings = [];
+    }
+}
+const marketItemOf = (itemId) => ECO?.ALL_MATERIALS.find((m) => m.id === itemId) || { id: itemId, name: itemId, emoji: '📦', price: 0 };
+
+function marketCardHTML(l) {
+    const m = marketItemOf(l.itemId);
+    const mine = l.seller === currentUser?.uid;
+    const qty = Number(l.qty) || 1;
+    const total = Number(l.price) || 0;
+    const each = Number(l.priceEach) || Math.floor(total / Math.max(1, qty));
+    const canAfford = (economyState?.gold || 0) >= total;
+    const buyBtn = mine
+        ? `<button class="chip-btn danger" data-market-cancel="${l.id}">Retirar</button>`
+        : `<button class="primary-btn compact" data-market-buy="${l.id}" ${canAfford ? '' : 'disabled'}>Comprar</button>`;
+    return `<div class="market-card">
+        <span class="market-emoji">${m.emoji}</span>
+        <span class="market-info">
+            <span class="market-name">${qty}× ${escapeHtml(m.name)}</span>
+            <span class="market-meta">🪙 ${each.toLocaleString('pt-BR')}/un · ${mine ? 'seu anúncio' : `por ${escapeHtml(l.sellerName || 'alguém')}`}</span>
+            <span class="market-price">Total: ${fmtGold(total)}</span>
+        </span>
+        ${buyBtn}
+    </div>`;
+}
+
+function updateMarketTotal() {
+    const qty = Math.floor(Number($('#market-qty')?.value) || 0);
+    const each = Math.floor(Number($('#market-price')?.value) || 0);
+    const total = $('#market-total');
+    if (total) total.textContent = fmtGold(qty * each);
+}
+
+function renderMarket() {
+    const gold = $('#market-gold');
+    if (gold) gold.textContent = fmtGold(economyState?.gold || 0);
+    const sel = $('#market-item-select');
+    if (sel && ECO) {
+        const owned = ECO.ALL_MATERIALS.filter((m) => matQty(m.id) > 0);
+        const cur = sel.value;
+        sel.innerHTML = owned.length
+            ? owned.map((m) => `<option value="${m.id}">${m.emoji} ${escapeHtml(m.name)} (tenho ${matQty(m.id)})</option>`).join('')
+            : '<option value="">Nada no baú pra vender — trabalhe e colete primeiro 🎒</option>';
+        if (cur && owned.some((m) => m.id === cur)) sel.value = cur;
+    }
+    updateMarketTotal();
+    const list = $('#market-list');
+    const count = $('#market-count');
+    if (list) {
+        const others = marketListings.filter((l) => l.seller !== currentUser?.uid);
+        list.innerHTML = others.length
+            ? others.map(marketCardHTML).join('')
+            : '<p class="inv-empty">Nada à venda por enquanto. Pode ser o primeiro a anunciar 📢</p>';
+        if (count) count.textContent = `${others.length} anúncio(s)`;
+    }
+    const mineBox = $('#my-listings');
+    if (mineBox) {
+        const mine = marketListings.filter((l) => l.seller === currentUser?.uid);
+        mineBox.innerHTML = mine.length
+            ? mine.map(marketCardHTML).join('')
+            : '<p class="inv-empty">Seus anúncios ficam aqui até alguém comprar.</p>';
+    }
+}
+
+async function refreshMarket() {
+    if (!currentUser) return;
+    await fetchMarket();
+    renderMarket();
+}
+
+async function publishMarketListing() {
+    if (!currentUser || !economyState || !ECO) return;
+    const id = $('#market-item-select')?.value;
+    const item = id ? ECO.MATERIAL_BY_ID[id] : null;
+    const qty = Math.floor(Number($('#market-qty')?.value) || 0);
+    const priceEach = Math.floor(Number($('#market-price')?.value) || 0);
+    if (!item) { showToast('Escolha um item pra anunciar 🎒', 'warn'); return; }
+    if (qty < 1) { showToast('Quantidade mínima: 1', 'warn'); return; }
+    if (priceEach < 1) { showToast('Preço mínimo: 1 gold por unidade 🪙', 'warn'); return; }
+    const have = matQty(id);
+    if (qty > have) { showToast(`Você só tem ${have}× ${item.name} 👀`, 'warn'); return; }
+    const total = qty * priceEach;
+    // Escrow: os itens saem do baú e ficam travados no anúncio até vender ou expirar
+    const inv = { ...economyState.inv };
+    inv[id] = have - qty;
+    if (inv[id] <= 0) delete inv[id];
+    try {
+        await runTransaction(db, async (tx) => {
+            const ref = ecoUserRef();
+            const u = (await tx.get(ref)).data() || {};
+            const invNow = { ...(u.inv || {}) };
+            const haveNow = invNow[id] || 0;
+            if (haveNow < qty) throw new Error(`O baú mudou — você só tem ${haveNow}× ${item.name}`);
+            invNow[id] = haveNow - qty;
+            if (invNow[id] <= 0) delete invNow[id];
+            tx.set(ref, { inv: invNow }, { merge: true });
+            tx.set(doc(collection(db, 'market')), {
+                seller: currentUser.uid,
+                sellerName: currentUserProfile.name || 'Alguém',
+                itemId: id, qty, priceEach, price: total,
+                status: 'open', createdAt: serverTimestamp()
+            });
+        });
+        economyState = { ...economyState, inv };
+        await saveEconomy({ inv });
+        addLedger('mercado', `Anunciou ${qty}× ${item.name} por ${fmtGold(total)}`, 0);
+        const qtyEl = $('#market-qty'), priceEl = $('#market-price');
+        if (qtyEl) qtyEl.value = '';
+        if (priceEl) priceEl.value = '';
+        await refreshMarket();
+        vibrate(10);
+        showToast(`📢 ${qty}× ${item.name} no Mercado por ${fmtGold(total)}!`, 'success');
+    } catch (err) {
+        showToast(err?.message || 'Não consegui anunciar.', 'error', 4500);
+    }
+}
+
+async function buyMarketListing(id) {
+    if (!currentUser || !economyState || !ECO) return;
+    const l = marketListings.find((x) => x.id === id);
+    if (!l) { showToast('Anúncio não encontrado — atualizando…', 'info'); await refreshMarket(); return; }
+    if (l.seller === currentUser.uid) { showToast('Esse anúncio é seu 😄', 'info'); return; }
+    const qty = Number(l.qty) || 1;
+    const total = Number(l.price) || 0;
+    const m = marketItemOf(l.itemId);
+    try {
+        await runTransaction(db, async (tx) => {
+            const mref = doc(db, 'market', id);
+            const ms = await tx.get(mref);
+            const md = ms.data();
+            if (!md || md.status !== 'open') throw new Error('Esse anúncio já foi vendido ou retirado.');
+            if (md.seller === currentUser.uid) throw new Error('Esse anúncio é seu 😄');
+            const buyerRef = ecoUserRef();
+            const u = (await tx.get(buyerRef)).data() || {};
+            const gold = typeof u.gold === 'number' ? u.gold : 0;
+            if (gold < total) throw new Error(`Faltam ${fmtGold(total - gold)} 🪙`);
+            const inv = { ...(u.inv || {}) };
+            inv[md.itemId] = (inv[md.itemId] || 0) + (Number(md.qty) || 1);
+            tx.set(buyerRef, { gold: gold - total, inv }, { merge: true });
+            tx.set(mref, { status: 'sold', buyerId: currentUser.uid, buyerName: currentUserProfile.name || 'Alguém', soldAt: serverTimestamp() }, { merge: true });
+            // Pagamento pro vendedor via presente (ele resgata ao abrir o app)
+            tx.set(doc(collection(db, 'gifts')), {
+                from: currentUser.uid,
+                fromName: currentUserProfile.name || 'Alguém',
+                to: md.seller,
+                status: 'pending',
+                createdAt: serverTimestamp(),
+                gold: total,
+                type: 'market',
+                marketId: id
+            });
+        });
+        const fresh = await getDoc(ecoUserRef());
+        economyState = normalizeEconomy(fresh.data() || {});
+        addLedger('mercado', `Compra: ${qty}× ${m.name} de ${l.sellerName || 'alguém'}`, -total);
+        refreshEconomyUI();
+        await refreshMarket();
+        vibrate([12, 30, 12]);
+        showToast(`🤝 ${qty}× ${m.name} é seu! O gold foi pro vendedor.`, 'success', 4000);
+    } catch (err) {
+        showToast(err?.message || 'Não consegui comprar.', 'error', 4500);
+        await refreshMarket();
+    }
+}
+
+async function cancelMarketListing(id) {
+    if (!currentUser || !economyState) return;
+    try {
+        let refunded = null;
+        await runTransaction(db, async (tx) => {
+            const mref = doc(db, 'market', id);
+            const ms = await tx.get(mref);
+            const md = ms.data();
+            if (!md || md.status !== 'open') throw new Error('Esse anúncio já não está aberto.');
+            if (md.seller !== currentUser.uid) throw new Error('Só quem anunciou pode retirar.');
+            const uref = ecoUserRef();
+            const u = (await tx.get(uref)).data() || {};
+            const inv = { ...(u.inv || {}) };
+            inv[md.itemId] = (inv[md.itemId] || 0) + (Number(md.qty) || 1);
+            tx.set(uref, { inv }, { merge: true });
+            tx.set(mref, { status: 'cancelled', cancelledAt: serverTimestamp() }, { merge: true });
+            refunded = { itemId: md.itemId, qty: Number(md.qty) || 1 };
+        });
+        const fresh = await getDoc(ecoUserRef());
+        economyState = normalizeEconomy(fresh.data() || {});
+        const m = refunded ? marketItemOf(refunded.itemId) : null;
+        addLedger('mercado', `Retirou do mercado: ${refunded?.qty || 0}× ${m?.name || ''}`, 0);
+        refreshEconomyUI();
+        await refreshMarket();
+        showToast('Anúncio retirado — os itens voltaram pro seu baú 🎒', 'info');
+    } catch (err) {
+        showToast(err?.message || 'Não consegui retirar.', 'error', 4500);
+    }
+}
+
 /* ---------- wiring ---------- */
 document.addEventListener('click', async (e) => {
     const t = e.target;
+    const marketBuy = t.closest?.('[data-market-buy]');
+    if (marketBuy) { await buyMarketListing(marketBuy.dataset.marketBuy); return; }
+    const marketCancel = t.closest?.('[data-market-cancel]');
+    if (marketCancel) { await cancelMarketListing(marketCancel.dataset.marketCancel); return; }
     const boardFilterBtn = t.closest?.('[data-board-filter]');
     if (boardFilterBtn) {
         boardFilter = boardFilterBtn.dataset.boardFilter;
@@ -2986,6 +3182,9 @@ document.addEventListener('click', async (e) => {
 });
 
 $('#board-publish-btn')?.addEventListener('click', publishFreela);
+$('#market-publish-btn')?.addEventListener('click', publishMarketListing);
+$('#market-qty')?.addEventListener('input', updateMarketTotal);
+$('#market-price')?.addEventListener('input', updateMarketTotal);
 $('#bank-transfer-btn')?.addEventListener('click', () => {
     giftState.mode = 'gold';
     document.querySelectorAll('[data-gift-tab]').forEach((b) => b.classList.toggle('active', b.dataset.giftTab === 'gold'));
@@ -3092,7 +3291,7 @@ setInterval(tickClock, 1000);
 })();
 
 /* ================= ATUALIZAÇÃO DO APP (NOVA VERSÃO) ================= */
-const APP_VERSION = '4.1.0';
+const APP_VERSION = '4.2.0';
 const appVersionEl = $('#app-version');
 if (appVersionEl) appVersionEl.textContent = `Good Vibes 🌊 · O Refúgio · v${APP_VERSION}`;
 let swRegistration = null;
