@@ -2,6 +2,38 @@
 
 Uma rede social privada entre amigos, agora com cara de **tela inicial de telefone**: cada menu é um aplicativo. Feita em HTML/CSS/JS puro (sem build), com Firebase (Auth + Firestore), instalável como **PWA** no celular.
 
+## 🛠️ Trabalho de verdade: Mesa de Trabalho, Coleta com energia e Perfil TikTok (v4.3.0)
+
+### 🛒 Loja limpa — cosméticos de um lado, itens do outro
+
+- **Sumiu a "compra de materiais"** da Loja (nada de sistema vendendo matéria-prima): a aba **Comprar** foi removida e o sistema não vende nem compra nada
+- A Loja agora tem **duas abas**: ✨ **Cosméticos** e 🎒 **Itens** — e a aba Itens é uma **vitrine do próprio Refúgio**: os anúncios abertos no Mercado (itens de outros jogadores), com botão pra abrir o Mercado e anunciar os seus
+
+### 🛠️ Mesa de Trabalho (ex-Refinaria) — craft estilo Minecraft
+
+- A Refinaria virou **Mesa de Trabalho** 🛠️: uma **grade 3x3 de verdade**, igual Minecraft
+- **Arraste** os materiais do seu baú para as células (funciona no toque/celular via pointer events) **ou toque no material e depois na célula**
+- Cada uma das **36 receitas tem um formato próprio** (prancha deitada, barra de ferro na coluna, essências em 2x2…). O item do canto mostra o resultado **ao vivo** quando o formato fecha — senão fica "?"
+- O botão **Craftar ⚒️** só acende quando a receita é reconhecida; os itens só saem do seu baú ao craftar, e a grade pode ser limpa a qualquer momento sem perder nada
+- As receitas aceitam a grade em **qualquer posição** (o formato pode estar em cima, no meio, embaixo — o jogo reconhece), mas não girado de lado: decore os formatos!
+
+### ⛏️ Coleta virou TRABALHO — energia + minigame
+
+- Chega de coletar de graça a cada 25 segundos: agora cada visita custa **⚡ 20 de energia** (100 no máximo, recarrega +1 a cada 20s — cerca de 33min para encher)
+- Cada local é um **minigame**: um marcador varre a barra e você **para ele na zona verde** — acertar no centro (zona dourada) rende **+2 materiais**, na borda **+1**, errar rende **nada**. São **3 rodadas** por visita
+- Locais fáceis (Floresta, Campo) têm zona larga e marcador lento; difíceis (Mina, Montanha) têm zona estreita e marcador veloz
+- Cada local tem **descanso real**: Floresta/Campo 2min · Rio&Praia/Pântano 2,5min · Mina 3min · Montanha 3,5min
+- Sem energia? O botão mostra "⚡ sem energia" e a coleta recarrega com o tempo — trabalho mesmo 💪
+
+### 👤 Perfil de qualquer jogador — direto do feed/chat (estilo TikTok)
+
+- **Toque no nome ou avatar de qualquer post, comentário, mensagem ou contato** e abre o **perfil da pessoa**: capa (a capa cosmética que a pessoa mais recente usava, quando houver), avatar grande, nome com os cosméticos equipados, títulos e emblemas
+- Abaixo, **todos os posts daquele usuário em ordem (mais recentes primeiro)** — os posts funcionam de verdade (curtir, comentar, NSFW, enquetes) sem sair do perfil
+- "Carregar mais posts ⬇️" pagina a lista; **"Enviar mensagem 💬"** abre a conversa privada (criptografada) com a pessoa na hora
+- Os contadores de posts vêm direto do Firestore (query `userId == uid`, ordenada no cliente — sem precisar de índice composto)
+
+> Honestidade técnica, de novo: tudo isso continua **client-authoritative** — o craft, a energia e o minigame rodam no seu celular (o Firestore guarda o seu baú/energia, mas nada impede um console esperto de forjar o doc). E o **perfil público mostra o que os posts mostram**: capa e avatar vêm do último post público da pessoa (e do doc `users/{uid}`, que qualquer logado consegue ler por design — inclusive nome e avatar; a chave PIX também fica nesse doc, visível pra quem souber olhar o Console. Se quiser, num próximo passo eu blindo esses campos de outros usuários com regras).
+
 ## ✨ Cosméticos de verdade (v4.1.0 — o visual agora muda mesmo)
 
 Os 1.000 cosméticos deixaram de ser "um nome ao lado do nick" e viraram **efeitos visuais reais**:

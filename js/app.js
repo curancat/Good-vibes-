@@ -433,7 +433,7 @@ const APPS = [
     { id: 'bank', label: 'Banco', icon: '🏦', tile: 'tile-bank' },
     { id: 'shop', label: 'Loja', icon: '🪙', tile: 'tile-shop' },
     { id: 'inventory', label: 'Inventário', icon: '🎒', tile: 'tile-inventory' },
-    { id: 'refinery', label: 'Refinaria', icon: '⚒️', tile: 'tile-refinery' },
+    { id: 'refinery', label: 'Mesa de Trabalho', icon: '🛠️', tile: 'tile-refinery' },
     { id: 'construction', label: 'Obras', icon: '🏗️', tile: 'tile-construction' },
     { id: 'work', label: 'Trabalho', icon: '💼', tile: 'tile-work' },
     { id: 'market', label: 'Mercado', icon: '🛒', tile: 'tile-market' },
@@ -486,6 +486,7 @@ function openApp(appId, pushHistory = true) {
     if (appId === 'notifications') { setBadge('notifications', 0); renderNotificationsList(); }
 
     if (['shop', 'inventory', 'refinery', 'construction', 'work', 'market'].includes(appId)) refreshEconomyUI();
+    if (appId === 'shop') { void fetchMarket().then(renderShopItems); }
     if (appId === 'market') refreshMarket();
     if (appId === 'work') renderBoard();
     if (appId === 'bank') refreshBank();
@@ -1004,12 +1005,14 @@ function postCardHTML(docSnap) {
     return `
     <article class="${articleClasses.join(' ')}" data-post-id="${escapeHtml(postId)}" data-author-id="${escapeHtml(data.userId || '')}" data-author-name="${escapeHtml(data.authorName || 'Usuário')}"${articleStyle}>
         <div class="post-header">
-            <div class="post-avatar${cosFramed ? ' cos-framed' : ''}">${avatarHtml}</div>
-            <div class="post-author-wrap">
-                <div class="post-author">${authorNameHTML} ${renderAuthorFlair(cosMap.emblema)}${renderAuthorFlair(cosMap.titulo)} ${nsfwBadge}</div>
-                ${sealHtml}
-                <div class="post-time">${ts ? timeAgo(ts) : 'agora mesmo'}</div>
-            </div>
+            <button class="post-author-btn" data-open-user="${escapeHtml(data.userId || '')}" aria-label="Ver o perfil de ${escapeHtml(data.authorName || 'usuário')}">
+                <span class="post-avatar${cosFramed ? ' cos-framed' : ''}">${avatarHtml}</span>
+                <span class="post-author-wrap">
+                    <span class="post-author">${authorNameHTML} ${renderAuthorFlair(cosMap.emblema)}${renderAuthorFlair(cosMap.titulo)} ${nsfwBadge}</span>
+                    ${sealHtml}
+                    <span class="post-time">${ts ? timeAgo(ts) : 'agora mesmo'}</span>
+                </span>
+            </button>
         </div>
         <div class="nsfw-container${shouldBlur ? ' clickable' : ''}" data-nsfw-toggle="${shouldBlur ? '1' : '0'}">
             ${warning}
@@ -1114,7 +1117,7 @@ $('#post-btn')?.addEventListener('click', async () => {
 });
 
 /* Ações de post via delegação (like / dislike / superlike / share / nsfw / enquete / comentário) */
-$('#feed-container')?.addEventListener('click', async (e) => {
+const feedActionClickHandler = async (e) => {
     const actionBtn = e.target.closest('[data-action]');
     const voteBtn = e.target.closest('[data-vote-post]');
     const nsfwToggle = e.target.closest('[data-nsfw-toggle="1"]');
@@ -1189,7 +1192,8 @@ $('#feed-container')?.addEventListener('click', async (e) => {
         if (navigator.share) { try { await navigator.share({ title: 'Good Vibes 🌊', url }); } catch { /* cancelado */ } }
         else { const ok = await clipboardCopy(url); showToast(ok ? 'Link copiado! Cole onde quiser 📋' : 'Não consegui copiar o link.', ok ? 'success' : 'error'); }
     }
-});
+};
+['#feed-container', '#user-profile-posts'].forEach((sel) => { document.querySelector(sel)?.addEventListener('click', feedActionClickHandler); });
 
 /* ================= COMENTÁRIOS ================= */
 window.openComments = (postId, authorId) => {
@@ -1210,7 +1214,7 @@ window.openComments = (postId, authorId) => {
         list.innerHTML = snapshot.docs.map((d) => {
             const data = d.data();
             const cosMap = cosmicMapOf(data);
-            return `<div class="comment-item"><strong>${nameHtmlFor(data.authorName || 'Usuário', cosMap.nome)}</strong>${renderAuthorFlair(cosMap.emblema)}${renderAuthorFlair(cosMap.titulo)}${escapeHtml(data.text || '')}</div>`;
+            return `<div class="comment-item"><button class="comment-author-btn" data-open-user="${escapeHtml(data.userId || '')}"><strong>${nameHtmlFor(data.authorName || 'Usuário', cosMap.nome)}</strong>${renderAuthorFlair(cosMap.emblema)}${renderAuthorFlair(cosMap.titulo)}</button>${escapeHtml(data.text || '')}</div>`;
         }).join('');
         list.scrollTop = list.scrollHeight;
     }, (err) => {
@@ -1294,7 +1298,7 @@ function chatBubbleHTML(data) {
     const { html, previews } = buildRichContent(decrypted);
     const ts = data.timestamp?.toMillis ? data.timestamp.toMillis() : null;
     return `<div class="chat-bubble ${isMe ? 'me' : 'them'}">
-        ${isMe ? '' : `<div class="chat-bubble-name">${(c => `${nameHtmlFor(data.authorName || 'Usuário', c.nome)} ${renderAuthorFlair(c.emblema)}${renderAuthorFlair(c.titulo)}`)(cosmicMapOf(data))}</div>`}
+        ${isMe ? '' : `<button class="chat-bubble-name" data-open-user="${escapeHtml(data.userId || '')}">${(c => `${nameHtmlFor(data.authorName || 'Usuário', c.nome)} ${renderAuthorFlair(c.emblema)}${renderAuthorFlair(c.titulo)}`)(cosmicMapOf(data))}</button>`}
         <div>${html}</div>${previews}
         ${ts ? `<div class="chat-time">${toastTime(ts)}</div>` : ''}
     </div>`;
@@ -1314,7 +1318,7 @@ function renderPrivateContacts(chatBox) {
             const avatar = sanitizeUrl(data.avatarUrl || '');
             const initials = escapeHtml(name.slice(0, 2).toUpperCase() || 'U');
             const avatarHtml = `<span class="contact-avatar"><span class="avatar-initials" aria-hidden="true">${initials}</span>${avatar ? `<img src="${escapeHtml(avatar)}" alt="" onerror="this.remove()">` : ''}</span>`;
-            html += `<button class="contact-item" data-dm-uid="${escapeHtml(d.id)}" data-dm-name="${escapeHtml(name)}">${avatarHtml}<strong>${escapeHtml(name)}</strong></button>`;
+            html += `<div class="contact-item"><button class="contact-item-main" data-dm-uid="${escapeHtml(d.id)}" data-dm-name="${escapeHtml(name)}">${avatarHtml}<strong>${escapeHtml(name)}</strong></button><button class="contact-profile-btn" data-open-user="${escapeHtml(d.id)}" aria-label="Ver perfil de ${escapeHtml(name)}" title="Ver perfil">👤</button></div>`;
             found++;
         });
         if (!found) html += '<p class="muted">Nenhum outro membro por aqui ainda.</p>';
@@ -1768,7 +1772,10 @@ window.addEventListener('appinstalled', () => {
 const ECO = window.GV_ECO;
 const STARTER_GOLD = 250;
 const COLLECT_CAP_MINUTES = 12 * 60; // renda acumula no máximo 12h
-const GATHER_CD_MS = 25 * 1000;
+const STAMINA_MAX = 100;
+const STAMINA_REGEN_MS = 20 * 1000;   // +1 energia a cada 20s
+const GATHER_STAMINA_COST = 20;       // energia por visita de coleta
+const GATHER_ROUNDS = 3;
 
 let economyState = null;      // { gold, inv, buildings, cosmetics, equipped, lastCollectAt, jobCd, gatherCd }
 let economyTicker = null;
@@ -1791,8 +1798,25 @@ function normalizeEconomy(d = {}) {
         lastCollectAt: typeof d.lastCollectAt === 'number' ? d.lastCollectAt : Date.now(),
         jobCd: d.jobCd && typeof d.jobCd === 'object' ? { ...d.jobCd } : {},
         gatherCd: d.gatherCd && typeof d.gatherCd === 'object' ? { ...d.gatherCd } : {},
-        creditScore: typeof d.creditScore === 'number' ? d.creditScore : 50
+        creditScore: typeof d.creditScore === 'number' ? d.creditScore : 50,
+        stamina: typeof d.stamina === 'number' ? Math.max(0, Math.min(STAMINA_MAX, d.stamina)) : STAMINA_MAX,
+        staminaAt: typeof d.staminaAt === 'number' ? d.staminaAt : Date.now()
     };
+}
+
+/* Energia: regenera com o tempo (+1 a cada 20s). Atualiza só em memória;
+   persiste no próximo saveEconomy — Simples e suficiente. */
+function regenStamina() {
+    if (!economyState) return STAMINA_MAX;
+    const now = Date.now();
+    const elapsed = Math.max(0, now - (economyState.staminaAt || now));
+    const gain = Math.floor(elapsed / STAMINA_REGEN_MS);
+    if (gain > 0) {
+        economyState.stamina = Math.min(STAMINA_MAX, (economyState.stamina || 0) + gain);
+        economyState.staminaAt = (economyState.staminaAt || now) + gain * STAMINA_REGEN_MS;
+        if (economyState.stamina >= STAMINA_MAX) economyState.staminaAt = now;
+    }
+    return economyState.stamina;
 }
 
 async function initEconomy() {
@@ -1809,6 +1833,8 @@ async function initEconomy() {
         if (!data.jobCd || typeof data.jobCd !== 'object') patch.jobCd = {};
         if (!data.gatherCd || typeof data.gatherCd !== 'object') patch.gatherCd = {};
         if (typeof data.creditScore !== 'number') patch.creditScore = 50;
+        if (typeof data.stamina !== 'number') patch.stamina = STAMINA_MAX;
+        if (typeof data.staminaAt !== 'number') patch.staminaAt = Date.now();
         if (!data.equippedCosmetics || typeof data.equippedCosmetics !== 'object') {
             // Migração: converte o slot único antigo em slots por categoria
             const migrated = {};
@@ -1933,7 +1959,7 @@ function pendingGain() {
 function renderEcoBalances() {
     if (!ECO) return;
     const gold = fmtGold(economyState?.gold);
-    ['shop-gold', 'inv-gold', 'refinery-gold', 'construction-gold', 'work-gold'].forEach((id) => { const el = document.getElementById(id); if (el) el.textContent = gold; });
+    ['shop-gold', 'inv-gold', 'construction-gold', 'work-gold'].forEach((id) => { const el = document.getElementById(id); if (el) el.textContent = gold; });
     const rate = document.getElementById('shop-rate');
     if (rate) rate.textContent = incomeRate() ? `+${incomeRate()} gold/min de renda` : 'Construa para ter renda passiva';
 }
@@ -1979,19 +2005,6 @@ function renderCosmeticShop() {
     }
 }
 
-function materialRowHTML(m, mode) {
-    const owned = matQty(m.id);
-    if (mode === 'buy') {
-        return `<div class="material-row"><span class="material-emoji">${m.emoji}</span><span class="material-info"><span class="material-name">${escapeHtml(m.name)}</span><span class="material-meta">🪙 ${m.price.toLocaleString('pt-BR')} · você tem ${owned}</span></span><span class="material-actions"><button class="buy1" data-buy-mat="${m.id}" data-qty="1">+1</button><button class="buy10" data-buy-mat="${m.id}" data-qty="10">+10</button></span></div>`;
-    }
-    return '';
-}
-
-function renderBuyList() {
-    const list = $('#buy-material-list');
-    if (list && ECO) list.innerHTML = ECO.RAW_MATERIALS.map((m) => materialRowHTML(m, 'buy')).join('');
-}
-
 function renderInventory() {
     if (!ECO) return;
     const gold = fmtGold(economyState?.gold);
@@ -2028,20 +2041,178 @@ function renderInventory() {
     }
 }
 
-function renderRefinery() {
-    const list = $('#refinery-list');
-    if (!list || !economyState || !ECO) return;
-    list.innerHTML = ECO.RECIPES.map((r) => {
-        const out = ECO.MATERIAL_BY_ID[r.out];
-        const canCraft = Object.entries(r.inputs).every(([id, qty]) => matQty(id) >= qty);
-        const chips = Object.entries(r.inputs).map(([id, qty]) => {
-            const m = ECO.MATERIAL_BY_ID[id];
-            const have = matQty(id);
-            const ok = have >= qty;
-            return `<span class="mat-chip ${ok ? 'mat-ok' : 'mat-missing'}">${m?.emoji || ''} ${escapeHtml(m?.name || id)} ${have}/${qty}</span>`;
-        }).join('');
-        return `<div class="recipe-card"><div class="recipe-head"><span class="recipe-out">${out?.emoji || '📦'}</span><span class="recipe-name">${escapeHtml(out?.name || r.out)}</span><span class="recipe-qty">×${r.qty}</span></div><div class="recipe-inputs">${chips}</div><button class="recipe-craft" data-craft="${r.id}" ${canCraft ? '' : 'disabled'}>Refinar ⚒️</button></div>`;
+/* ============ MESA DE TRABALHO 🛠️ (craft 3x3 com formato, estilo Minecraft) ============ */
+let craftGrid = Array(9).fill(null);   // ids de materiais posicionados (reserva lógica, não sai do baú até craftar)
+let craftSelected = null;              // material escolhido por toque (fluxo tap-to-place)
+
+const craftGridReservations = () => {
+    const used = {};
+    for (const id of craftGrid) if (id) used[id] = (used[id] || 0) + 1;
+    return used;
+};
+
+function matchCraftRecipe(grid) {
+    if (!ECO) return null;
+    for (const r of ECO.RECIPES) {
+        if (!r.shape || !r.key) continue;
+        const rows = r.shape.length, cols = Math.max(...r.shape.map((row) => row.length));
+        for (let dy = 0; dy <= 3 - rows; dy++) {
+            for (let dx = 0; dx <= 3 - cols; dx++) {
+                const expected = new Array(9).fill(null);
+                for (let ry = 0; ry < rows; ry++) {
+                    for (let cx = 0; cx < cols; cx++) {
+                        const ch = r.shape[ry][cx] || '.';
+                        if (ch !== '.') expected[(dy + ry) * 3 + (dx + cx)] = r.key[ch] || null;
+                    }
+                }
+                let ok = true;
+                for (let i = 0; i < 9; i++) { if ((grid[i] || null) !== expected[i]) { ok = false; break; } }
+                if (ok) return r;
+            }
+        }
+    }
+    return null;
+}
+
+function renderCraftArea() {
+    const tray = $('#craft-tray');
+    const gridEl = $('#craft-grid');
+    if (!ECO || !economyState || !gridEl) return;
+
+    // Grade 3x3
+    const used = craftGridReservations();
+    gridEl.innerHTML = craftGrid.map((id, i) => {
+        if (!id) return `<button class="craft-cell" data-craft-cell="${i}" aria-label="Célula ${i + 1} vazia"></button>`;
+        const m = ECO.MATERIAL_BY_ID[id];
+        return `<button class="craft-cell filled" data-craft-cell="${i}" aria-label="Célula ${i + 1}: ${escapeHtml(m?.name || id)} — toque para devolver">${m?.emoji || '📦'}</button>`;
     }).join('');
+
+    // Bandeja com o que o jogador tem (menos o que está na grade)
+    const owned = ECO.ALL_MATERIALS
+        .map((m) => ({ m, qty: (economyState.inv[m.id] || 0) - (used[m.id] || 0) }))
+        .filter((x) => x.qty > 0);
+    if (tray) {
+        tray.innerHTML = owned.length
+            ? owned.map(({ m, qty }) => `<button class="craft-tray-item${craftSelected === m.id ? ' selected' : ''}" data-craft-mat="${escapeHtml(m.id)}" aria-pressed="${craftSelected === m.id}" aria-label="${escapeHtml(m.name)}, ${qty} no baú"><span class="tray-emoji">${m.emoji}</span><span class="tray-qty">×${qty}</span><span class="tray-name">${escapeHtml(m.name)}</span></button>`).join('')
+            : '<p class="craft-tray-empty">Baú vazio por aqui — trabalhe 💼 e colete 🌿 pra conseguir materiais!</p>';
+    }
+
+    // Resultado
+    const match = matchCraftRecipe(craftGrid);
+    const resultEl = $('#craft-result');
+    const resultName = $('#craft-result-name');
+    const craftBtn = $('#craft-do-btn');
+    if (resultEl && resultName && craftBtn) {
+        if (match) {
+            const out = ECO.MATERIAL_BY_ID[match.out];
+            resultEl.innerHTML = `${out?.emoji || '📦'}${match.qty > 1 ? `<span class="cell-qty">×${match.qty}</span>` : ''}`;
+            resultEl.classList.add('ready');
+            resultName.textContent = `${out?.name || match.out} (×${match.qty})`;
+            craftBtn.disabled = false;
+        } else {
+            resultEl.innerHTML = '<span class="craft-result-empty">?</span>';
+            resultEl.classList.remove('ready');
+            resultName.textContent = craftGrid.some(Boolean) ? 'formato sem receita…' : 'sem receita';
+            craftBtn.disabled = true;
+        }
+    }
+}
+
+function placeCraftMaterial(id, cellIndex) {
+    if (!ECO || !economyState) return;
+    if (!ECO.MATERIAL_BY_ID[id]) return;
+    const cell = Number(cellIndex);
+    if (!(cell >= 0 && cell < 9)) return;
+    const used = craftGridReservations();
+    const already = craftGrid[cell] === id;
+    const reserved = (used[id] || 0) - (already ? 1 : 0);
+    const available = (economyState.inv[id] || 0) - reserved;
+    if (available < 1) { showToast('Você não tem esse material sobrando 👀', 'warn'); return; }
+    craftGrid[cell] = id;
+    renderCraftArea();
+}
+
+function clearCraftGrid() {
+    craftGrid = Array(9).fill(null);
+    craftSelected = null;
+    renderCraftArea();
+}
+
+async function craftNow() {
+    if (!ECO || !economyState) return;
+    const match = matchCraftRecipe(craftGrid);
+    if (!match) { showToast('Esse formato não bate com nenhuma receita 🤔', 'warn'); return; }
+    const inv = { ...economyState.inv };
+    for (const id of craftGrid) {
+        if (!id) continue;
+        inv[id] = (inv[id] || 0) - 1;
+        if (inv[id] <= 0) delete inv[id];
+    }
+    inv[match.out] = (inv[match.out] || 0) + match.qty;
+    craftGrid = Array(9).fill(null);
+    craftSelected = null;
+    addLedger('craft', `Craft: ${ECO.MATERIAL_BY_ID[match.out]?.name || match.out} ×${match.qty}`, 0);
+    await saveEconomy({ inv });
+    vibrate([12, 40, 12, 40, 18]);
+    const out = ECO.MATERIAL_BY_ID[match.out];
+    showToast(`⚒️ ${out?.emoji || ''} ${out?.name || match.out} ×${match.qty} craftado!`, 'success');
+}
+
+/* Drag & drop por pointer events (funciona no celular) + fallback de toque */
+let craftDrag = null;       // { id, startX, startY, ghost, moved }
+function craftPointerDown(e) {
+    const item = e.target.closest?.('[data-craft-mat]');
+    if (!item) return;
+    const id = item.dataset.craftMat;
+    craftDrag = { id, startX: e.clientX, startY: e.clientY, ghost: null, moved: false };
+    const move = (ev) => {
+        if (!craftDrag) return;
+        const dx = ev.clientX - craftDrag.startX, dy = ev.clientY - craftDrag.startY;
+        if (!craftDrag.moved && Math.hypot(dx, dy) > 9) {
+            craftDrag.moved = true;
+            const ghost = document.createElement('div');
+            ghost.className = 'craft-ghost';
+            ghost.textContent = ECO?.MATERIAL_BY_ID?.[id]?.emoji || '📦';
+            document.body.appendChild(ghost);
+            craftDrag.ghost = ghost;
+        }
+        if (craftDrag.ghost) {
+            craftDrag.ghost.style.left = `${ev.clientX}px`;
+            craftDrag.ghost.style.top = `${ev.clientY}px`;
+            const under = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('[data-craft-cell]');
+            document.querySelectorAll('.craft-cell.drop-target').forEach((c) => c.classList.toggle('drop-target', c === under));
+        }
+    };
+    const up = (ev) => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        window.removeEventListener('pointercancel', up);
+        if (!craftDrag) return;
+        const wasDrag = craftDrag.moved;
+        craftDrag.ghost?.remove();
+        document.querySelectorAll('.craft-cell.drop-target').forEach((c) => c.classList.remove('drop-target'));
+        const id = craftDrag.id;
+        craftDrag = null;
+        if (!wasDrag) {
+            // Toque simples: alterna a seleção para tap-to-place
+            craftSelected = craftSelected === id ? null : id;
+            renderCraftArea();
+            return;
+        }
+        const cellEl = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('[data-craft-cell]');
+        if (cellEl) placeCraftMaterial(id, Number(cellEl.dataset.craftCell));
+    };
+    window.addEventListener('pointermove', move, { passive: true });
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+}
+
+function craftCellClick(e) {
+    const cell = e.target.closest?.('[data-craft-cell]');
+    if (!cell) return;
+    const i = Number(cell.dataset.craftCell);
+    if (craftSelected) { placeCraftMaterial(craftSelected, i); return; }
+    if (craftGrid[i]) { craftGrid[i] = null; renderCraftArea(); }
 }
 
 function renderConstruction() {
@@ -2082,14 +2253,22 @@ function renderWork() {
             return `<div class="job-card"><span class="job-emoji">${j.emoji}</span><span class="job-info"><span class="job-name">${escapeHtml(j.name)}</span><span class="job-pay">🪙 ${j.goldMin}–${j.goldMax}${bonusTxt}</span><span class="job-desc">${escapeHtml(j.desc)} · recarrega em ${j.cdMinutes}min</span></span><button class="job-btn" data-job="${j.id}" ${remaining > 0 ? 'disabled' : ''}>${remaining > 0 ? formatCountdown(remaining) : 'Trabalhar 💪'}</button></div>`;
         }).join('');
     }
+    const stamina = regenStamina();
+    const countEl = $('#stamina-count'); if (countEl) countEl.textContent = String(Math.floor(stamina));
+    const fillEl = $('#stamina-fill'); if (fillEl) fillEl.style.width = `${(stamina / STAMINA_MAX) * 100}%`;
     const gatherList = $('#gather-list');
     if (gatherList && economyState && ECO) {
         const now = Date.now();
         gatherList.innerHTML = ECO.GATHER_LOCATIONS.map((loc) => {
             const readyAt = Number(economyState.gatherCd[loc.id] || 0);
             const remaining = Math.max(0, readyAt - now);
+            const cdMin = Math.round((loc.cdSeconds || 120) / 60);
             const dropsTxt = loc.drops.slice(0, 4).map(([id]) => ECO.MATERIAL_BY_ID[id]?.emoji || '').join(' ') + '…';
-            return `<div class="gather-card"><span class="gather-emoji">${loc.emoji}</span><span class="gather-info"><span class="gather-name">${escapeHtml(loc.name)}</span><span class="gather-desc">${dropsTxt} 1–2 materiais por visita</span></span><button class="gather-btn" data-gather="${loc.id}" ${remaining > 0 ? 'disabled' : ''}>${remaining > 0 ? formatCountdown(remaining) : 'Coletar 🌿'}</button></div>`;
+            const difficulty = (loc.spot || 25) >= 26 ? '🟢 fácil' : (loc.spot || 25) >= 20 ? '🟡 médio' : '🔴 difícil';
+            const noStamina = stamina < GATHER_STAMINA_COST;
+            const disabled = remaining > 0 || noStamina;
+            const label = remaining > 0 ? formatCountdown(remaining) : (noStamina ? '⚡ sem energia' : 'Coletar ⛏️');
+            return `<div class="gather-card"><span class="gather-emoji">${loc.emoji}</span><span class="gather-info"><span class="gather-name">${escapeHtml(loc.name)}</span><span class="gather-desc">${dropsTxt} zona ${difficulty} · ${cdMin}min de descanso</span><span class="gather-meta">⚡ ${GATHER_STAMINA_COST} energia por visita</span></span><button class="gather-btn" data-gather="${loc.id}" ${disabled ? 'disabled' : ''}>${label}</button></div>`;
         }).join('');
     }
 }
@@ -2133,9 +2312,8 @@ function refreshEconomyUI() {
     renderEcoBalances();
     renderProfileCosmetics();
     renderCosmeticShop();
-    renderBuyList();
     renderInventory();
-    renderRefinery();
+    renderCraftArea();
     renderConstruction();
     renderWork();
 }
@@ -2177,33 +2355,6 @@ async function equipCosmetic(id) {
     const catMeta = ECO.COSMETIC_CATEGORIES.find((k) => k.id === c.cat);
     const slot = catMeta?.word?.toLowerCase() || c.cat;
     showToast(map[c.cat] ? `${c.emoji} Equipado em “${slot}”! Vai aparecer no feed ⭐` : `Cosmético guardado de volta.`, 'info');
-}
-async function buyMaterial(id, qty) {
-    const m = ECO.MATERIAL_BY_ID[id];
-    if (!m || !economyState) return;
-    const total = m.price * qty;
-    if (economyState.gold < total) { showToast(`Saldo insuficiente (faltam ${fmtGold(total - economyState.gold)})`, 'warn'); return; }
-    const inv = { ...economyState.inv, [id]: (economyState.inv[id] || 0) + qty };
-    addLedger('compra', `Compra: ${m.name} ×${qty}`, -total);
-    await saveEconomy({ gold: economyState.gold - total, inv });
-    vibrate(8);
-    showToast(`+${qty}× ${m.name} 🧺`, 'success');
-}
-async function craftRecipe(id) {
-    const r = ECO.RECIPES.find((x) => x.id === id);
-    if (!r || !economyState) return;
-    const ok = Object.entries(r.inputs).every(([mid, qty]) => matQty(mid) >= qty);
-    if (!ok) { showToast('Faltam materiais 👀', 'warn'); return; }
-    const inv = { ...economyState.inv };
-    for (const [mid, qty] of Object.entries(r.inputs)) {
-        inv[mid] = (inv[mid] || 0) - qty;
-        if (inv[mid] <= 0) delete inv[mid];
-    }
-    inv[r.out] = (inv[r.out] || 0) + r.qty;
-    await saveEconomy({ inv });
-    vibrate([10, 30, 10]);
-    const out = ECO.MATERIAL_BY_ID[r.out];
-    showToast(`⚒️ ${out?.emoji || ''} ${out?.name || r.out} pronto!`, 'success');
 }
 async function buildStructure(id) {
     const b = ECO.BUILDINGS.find((x) => x.id === id);
@@ -2252,29 +2403,130 @@ async function doJob(id) {
     vibrate([10, 30, 10]);
     showToast(`💼 ${job.name}: +${fmtGold(pay)}${bonusTxt}`, 'success', 3500);
 }
-async function gatherHere(id) {
-    const loc = ECO.GATHER_LOCATIONS.find((l) => l.id === id);
+/* ============ MINIGAME DE COLETA ⛏️ (parar o marcador na zona verde) ============ */
+const gatherGame = { loc: null, results: [], pos: 12, dir: 1, raf: 0, lastTs: 0, spotCenter: 50, spotWidth: 22, over: false };
+
+const gatherWeightRoll = (loc) => {
+    const totalWeight = loc.drops.reduce((sum, d) => sum + d[1], 0);
+    let roll = Math.random() * totalWeight;
+    for (const [mid, weight] of loc.drops) { roll -= weight; if (roll <= 0) return mid; }
+    return loc.drops[0][0];
+};
+
+function gatherNewSpot() {
+    const w = gatherGame.spotWidth;
+    gatherGame.spotCenter = w / 2 + 4 + Math.random() * (100 - w - 8);
+    const spot = $('#gather-spot');
+    if (spot) { spot.style.left = `${gatherGame.spotCenter - w / 2}%`; spot.style.width = `${w}%`; }
+    const perfect = $('#gather-spot-perfect');
+    const pw = w / 3;
+    if (perfect) { perfect.style.left = `${gatherGame.spotCenter - pw / 2}%`; perfect.style.width = `${pw}%`; }
+}
+
+function gatherRenderPips() {
+    const pips = $('#gather-rounds');
+    if (!pips) return;
+    pips.innerHTML = Array.from({ length: GATHER_ROUNDS }, (_, i) => {
+        const r = gatherGame.results[i];
+        return `<span class="gather-round-pip${r ? ` ${r === 'perfect' ? 'perfect' : r === 'hit' ? 'hit' : 'miss'}` : ''}"></span>`;
+    }).join('');
+}
+
+function gatherGameLoop(ts) {
+    if (!gatherGame.loc || gatherGame.over) return;
+    if (!gatherGame.lastTs) gatherGame.lastTs = ts;
+    const dt = Math.min(64, ts - gatherGame.lastTs);
+    gatherGame.lastTs = ts;
+    const velocity = 55 + (gatherGame.loc.speed || 1) * 45;   // % por segundo
+    gatherGame.pos += gatherGame.dir * velocity * (dt / 1000);
+    if (gatherGame.pos >= 100) { gatherGame.pos = 100; gatherGame.dir = -1; }
+    else if (gatherGame.pos <= 0) { gatherGame.pos = 0; gatherGame.dir = 1; }
+    const marker = $('#gather-marker');
+    if (marker) marker.style.left = `${gatherGame.pos}%`;
+    gatherGame.raf = requestAnimationFrame(gatherGameLoop);
+}
+
+function startGatherGame(id) {
+    const loc = ECO?.GATHER_LOCATIONS.find((l) => l.id === id);
     if (!loc || !economyState) return;
-    if ((economyState.gatherCd[id] || 0) > Date.now()) return;
-    const totalWeight = loc.drops.reduce((s, d) => s + d[1], 0);
+    const readyAt = Number(economyState.gatherCd[id] || 0);
+    if (readyAt > Date.now()) { showToast('Esse local ainda está descansando 😌', 'info'); return; }
+    const stamina = regenStamina();
+    if (stamina < GATHER_STAMINA_COST) { showToast(`Energia insuficiente ⚡ — recarrega com o tempo (faltam ${Math.ceil((GATHER_STAMINA_COST - stamina) * STAMINA_REGEN_MS / 60000)}min)`, 'warn'); return; }
+    gatherGame.loc = loc;
+    gatherGame.results = [];
+    gatherGame.pos = Math.random() < 0.5 ? 4 : 96;
+    gatherGame.dir = gatherGame.pos < 50 ? 1 : -1;
+    gatherGame.lastTs = 0;
+    gatherGame.over = false;
+    gatherGame.spotWidth = Number(loc.spot) || 22;
+    $('#gather-game-emoji').textContent = loc.emoji;
+    $('#gather-game-title').textContent = loc.name;
+    $('#gather-game-sub').textContent = `Rodada 1 de ${GATHER_ROUNDS} — pare o marcador na zona verde!`;
+    const feedback = $('#gather-feedback'); if (feedback) { feedback.textContent = '\u00a0'; feedback.className = 'gather-feedback'; }
+    $('#gather-hit-btn').hidden = false;
+    $('#gather-done-btn').hidden = true;
+    gatherRenderPips();
+    gatherNewSpot();
+    openModal('gather-game-modal');
+    cancelAnimationFrame(gatherGame.raf);
+    gatherGame.raf = requestAnimationFrame(gatherGameLoop);
+}
+
+async function hitGatherGame() {
+    const loc = gatherGame.loc;
+    if (!loc || gatherGame.over || !economyState) return;
+    const dist = Math.abs(gatherGame.pos - gatherGame.spotCenter);
+    const perfectHalf = gatherGame.spotWidth / 6;         // zona dourada = ⅓ da verde
+    const goodHalf = gatherGame.spotWidth / 2;
+    const result = dist <= perfectHalf ? 'perfect' : dist <= goodHalf ? 'hit' : 'miss';
+    gatherGame.results.push(result);
+    gatherRenderPips();
+    const feedback = $('#gather-feedback');
+    vibrate(result === 'miss' ? 60 : [8, 20, 8]);
+    if (result === 'perfect') { if (feedback) { feedback.textContent = 'PERFEITO! ✨ +2 materiais'; feedback.className = 'gather-feedback perfect'; } }
+    else if (result === 'hit') { if (feedback) { feedback.textContent = 'Bom! 💪 +1 material'; feedback.className = 'gather-feedback good'; } }
+    else if (feedback) { feedback.textContent = 'Errou… 😵'; feedback.className = 'gather-feedback miss'; }
+
+    if (gatherGame.results.length < GATHER_ROUNDS) {
+        $('#gather-game-sub').textContent = `Rodada ${gatherGame.results.length + 1} de ${GATHER_ROUNDS}`;
+        gatherNewSpot();
+        return;
+    }
+
+    // Fim das rodadas: resolve recompensas
+    gatherGame.over = true;
+    cancelAnimationFrame(gatherGame.raf);
     const picks = {};
-    for (let i = 0; i < 2; i++) {
-        let roll = Math.random() * totalWeight;
-        for (const [mid, weight] of loc.drops) {
-            roll -= weight;
-            if (roll <= 0) { picks[mid] = (picks[mid] || 0) + (1 + (Math.random() < 0.35 ? 1 : 0)); break; }
+    for (const r of gatherGame.results) {
+        const rolls = r === 'perfect' ? 2 : r === 'hit' ? 1 : 0;
+        for (let i = 0; i < rolls; i++) {
+            const mid = gatherWeightRoll(loc);
+            picks[mid] = (picks[mid] || 0) + 1;
         }
     }
     const inv = { ...economyState.inv };
     const summary = Object.entries(picks).map(([mid, qty]) => {
         inv[mid] = (inv[mid] || 0) + qty;
         const m = ECO.MATERIAL_BY_ID[mid];
-        return `${m?.emoji || ''}${qty}`;
-    }).join(' ');
-    const gatherCd = { ...economyState.gatherCd, [id]: Date.now() + GATHER_CD_MS };
-    await saveEconomy({ inv, gatherCd });
-    vibrate(8);
-    showToast(`🌿 ${loc.name}: ${summary}`, 'success', 3000);
+        return `${m?.emoji || ''}${qty} ${m?.name || mid}`;
+    }).join('  ');
+    const staminaNow = regenStamina();
+    const gatherCd = { ...economyState.gatherCd, [loc.id]: Date.now() + (loc.cdSeconds || 120) * 1000 };
+    await saveEconomy({ inv, gatherCd, stamina: Math.max(0, staminaNow - GATHER_STAMINA_COST), staminaAt: Date.now() });
+    $('#gather-game-sub').textContent = summary ? `Você coletou: ${summary}` : 'Dessa vez não veio nada. Da próxima sai! 😤';
+    if (feedback) { feedback.textContent = summary ? 'Coleta concluída! 🎒' : 'Mãos vazias… 🍃'; feedback.className = `gather-feedback ${summary ? 'good' : 'miss'}`; }
+    $('#gather-hit-btn').hidden = true;
+    $('#gather-done-btn').hidden = false;
+}
+
+function closeGatherGame(cancelled) {
+    cancelAnimationFrame(gatherGame.raf);
+    if (cancelled && gatherGame.loc && !gatherGame.over) showToast('Coleta cancelada — energia intacta ⚡', 'info');
+    gatherGame.loc = null;
+    gatherGame.over = false;
+    closeModal('gather-game-modal');
+    renderWork();
 }
 
 /* ---------- PRESENTES 🎁 ---------- */
@@ -2426,7 +2678,7 @@ document.addEventListener('click', async (e) => {
     if (shopTab) {
         document.querySelectorAll('[data-shop-tab]').forEach((b) => b.classList.toggle('active', b === shopTab));
         const target = shopTab.dataset.shopTab;
-        ['cosmeticos', 'comprar', 'mercado'].forEach((name) => { const pane = document.getElementById(`shop-pane-${name}`); if (pane) pane.hidden = name !== target; });
+        ['cosmeticos', 'itens'].forEach((name) => { const pane = document.getElementById(`shop-pane-${name}`); if (pane) pane.hidden = name !== target; });
         return;
     }
     const workTab = t.closest?.('[data-work-tab]');
@@ -2453,16 +2705,12 @@ document.addEventListener('click', async (e) => {
     if (buyCosmeticBtn) { await buyCosmetic(buyCosmeticBtn.dataset.buyCosmetic); return; }
     const equipBtn = t.closest?.('[data-equip-cosmetic]');
     if (equipBtn) { await equipCosmetic(equipBtn.dataset.equipCosmetic); return; }
-    const buyMat = t.closest?.('[data-buy-mat]');
-    if (buyMat) { await buyMaterial(buyMat.dataset.buyMat, Number(buyMat.dataset.qty || 1)); return; }
-    const craft = t.closest?.('[data-craft]');
-    if (craft) { await craftRecipe(craft.dataset.craft); return; }
     const build = t.closest?.('[data-build]');
     if (build) { await buildStructure(build.dataset.build); return; }
     const job = t.closest?.('[data-job]');
     if (job) { await doJob(job.dataset.job); return; }
     const gather = t.closest?.('[data-gather]');
-    if (gather) { await gatherHere(gather.dataset.gather); return; }
+    if (gather) { startGatherGame(gather.dataset.gather); return; }
 });
 
 $('#shop-load-more')?.addEventListener('click', () => { shopPage += 1; renderCosmeticShop(); });
@@ -2988,6 +3236,7 @@ function updateMarketTotal() {
 }
 
 function renderMarket() {
+    renderShopItems();
     const gold = $('#market-gold');
     if (gold) gold.textContent = fmtGold(economyState?.gold || 0);
     const sel = $('#market-item-select');
@@ -3152,6 +3401,8 @@ async function cancelMarketListing(id) {
 /* ---------- wiring ---------- */
 document.addEventListener('click', async (e) => {
     const t = e.target;
+    const openUser = t.closest?.('[data-open-user]');
+    if (openUser) { e.preventDefault(); void openUserProfile(openUser.dataset.openUser); return; }
     const marketBuy = t.closest?.('[data-market-buy]');
     if (marketBuy) { await buyMarketListing(marketBuy.dataset.marketBuy); return; }
     const marketCancel = t.closest?.('[data-market-cancel]');
@@ -3291,7 +3542,7 @@ setInterval(tickClock, 1000);
 })();
 
 /* ================= ATUALIZAÇÃO DO APP (NOVA VERSÃO) ================= */
-const APP_VERSION = '4.2.0';
+const APP_VERSION = '4.3.0';
 const appVersionEl = $('#app-version');
 if (appVersionEl) appVersionEl.textContent = `Good Vibes 🌊 · O Refúgio · v${APP_VERSION}`;
 let swRegistration = null;
@@ -3390,3 +3641,116 @@ if ('serviceWorker' in navigator) {
     checkVersionFile();
     setInterval(checkVersionFile, 5 * 60 * 1000);
 }
+
+/* ============ VITRINE DE ITENS NA LOJA 🎒 (mercado dos jogadores) ============ */
+function renderShopItems() {
+    const list = $('#shop-items-list');
+    if (!list) return;
+    const others = marketListings.filter((l) => l.seller !== currentUser?.uid);
+    list.innerHTML = others.length
+        ? others.map(marketCardHTML).join('')
+        : '<p class="inv-empty">Ninguém vendendo nada agora… Seja a primeira pessoa a anunciar no Mercado 🛒</p>';
+}
+$('#shop-items-refresh')?.addEventListener('click', async () => {
+    await fetchMarket();
+    renderShopItems();
+    showToast('Vitrine atualizada 🔄', 'info');
+});
+
+/* ============ PERFIL DE OUTRO USUÁRIO 👤 (posts dele, estilo TikTok) ============ */
+const upmState = { uid: null, name: '', posts: [], shown: 10, pageSize: 10 };
+
+async function openUserProfile(uid) {
+    if (!uid) return;
+    if (uid === currentUser?.uid) { openApp('profile'); return; }
+    upmState.uid = uid;
+    upmState.name = 'Usuário';
+    upmState.posts = [];
+    upmState.shown = upmState.pageSize;
+
+    const cover = $('#user-profile-cover');
+    if (cover) cover.setAttribute('style', 'background:linear-gradient(135deg,#f43f5e,#8b5cf6,#06b6d4)');
+    const nameEl = $('#user-profile-name'); if (nameEl) nameEl.textContent = 'Carregando…';
+    const flair = $('#user-profile-flair'); if (flair) flair.innerHTML = '';
+    const stats = $('#user-profile-stats'); if (stats) stats.textContent = '';
+    const avatarEl = $('#user-profile-avatar'); if (avatarEl) avatarEl.innerHTML = '<span class="avatar-initials">…</span>';
+    const ofEl = $('#user-profile-posts-of'); if (ofEl) ofEl.textContent = '…';
+    const box = $('#user-profile-posts'); if (box) box.innerHTML = '<p class="muted">Carregando posts…</p>';
+    const more = $('#user-profile-load-more'); if (more) more.hidden = true;
+    openModal('user-profile-modal');
+
+    let u = {};
+    let postDocs = [];
+    try {
+        const [userSnap, postsSnap] = await Promise.allSettled([
+            getDoc(doc(db, 'users', uid)),
+            getDocs(query(collection(db, 'posts'), where('userId', '==', uid)))
+        ]);
+        if (userSnap.status === 'fulfilled' && userSnap.value?.exists()) u = userSnap.value.data();
+        if (postsSnap.status === 'fulfilled') {
+            postDocs = postsSnap.value.docs
+                .slice()
+                .sort((a, b) => (b.data().timestamp?.toMillis?.() || 0) - (a.data().timestamp?.toMillis?.() || 0));
+        }
+    } catch (err) {
+        console.warn('Não consegui carregar o perfil:', err?.message);
+    }
+    upmState.posts = postDocs;
+
+    const latest = postDocs[0];
+    const latestData = latest?.data() || {};
+    const cosMap = latest ? cosmicMapOf(latestData) : {};
+    const name = (typeof u.name === 'string' && u.name.trim()) ? u.name.trim() : (latestData.authorName || 'Usuário');
+    upmState.name = name;
+
+    if (cover) {
+        if (cosMap.fundo) cover.setAttribute('style', `background:linear-gradient(135deg, ${cosMap.fundo.c1}, ${cosMap.fundo.c2})`);
+    }
+    const initials = escapeHtml(name.trim().substring(0, 2).toUpperCase() || 'GV');
+    const avatarUrl = sanitizeUrl(u.avatarUrl || latestData.authorAvatar || '');
+    const raw = `<span class="avatar-initials" aria-hidden="true">${initials}</span>`
+        + (avatarUrl ? `<img src="${escapeHtml(avatarUrl)}" alt="" onerror="this.remove()">` : '');
+    const cosFramed = !!(cosMap.moldura || cosMap.aura);
+    if (avatarEl) avatarEl.innerHTML = cosFramed ? cosAvatarHTML(cosMap.moldura, cosMap.aura, raw) : raw;
+    if (nameEl) nameEl.innerHTML = nameHtmlFor(name, cosMap.nome);
+    if (flair) flair.innerHTML = [renderAuthorFlair(cosMap.emblema), renderAuthorFlair(cosMap.titulo)].filter(Boolean).join(' ');
+    if (stats) stats.textContent = `${postDocs.length} post${postDocs.length === 1 ? '' : 's'} no Refúgio`;
+    if (ofEl) ofEl.textContent = name.split(' ')[0];
+    renderUserProfilePosts();
+}
+
+function renderUserProfilePosts() {
+    const box = $('#user-profile-posts');
+    if (!box) return;
+    const { posts } = upmState;
+    const more = $('#user-profile-load-more');
+    if (!posts.length) {
+        box.innerHTML = '<p class="muted">Ainda não publicou nada por aqui 🌊</p>';
+        if (more) more.hidden = true;
+        return;
+    }
+    const visible = posts.slice(0, upmState.shown);
+    box.innerHTML = visible.map(postCardHTML).join('');
+    if (more) more.hidden = visible.length >= posts.length;
+}
+
+$('#user-profile-load-more')?.addEventListener('click', () => {
+    upmState.shown += upmState.pageSize;
+    renderUserProfilePosts();
+});
+$('#user-profile-dm-btn')?.addEventListener('click', () => {
+    if (!upmState.uid) return;
+    const { uid, name } = upmState;
+    closeModal('user-profile-modal');
+    openApp('chat');
+    window.startPrivateChat(uid, name || 'Usuário');
+});
+
+/* ============ WIRING: CRAFT 🛠️ + COLETA ⛏️ ============ */
+$('#craft-tray')?.addEventListener('pointerdown', craftPointerDown);
+$('#craft-grid')?.addEventListener('click', craftCellClick);
+$('#craft-do-btn')?.addEventListener('click', () => { void craftNow(); });
+$('#craft-clear-btn')?.addEventListener('click', clearCraftGrid);
+$('#gather-hit-btn')?.addEventListener('click', () => { void hitGatherGame(); });
+$('#gather-done-btn')?.addEventListener('click', () => closeGatherGame(false));
+$('#gather-quit-btn')?.addEventListener('click', () => closeGatherGame(true));

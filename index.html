@@ -568,8 +568,7 @@
                     </div>
                     <div class="eco-tabs" role="tablist" aria-label="Seções da loja">
                         <button class="eco-tab active" data-shop-tab="cosmeticos" role="tab">✨ Cosméticos</button>
-                        <button class="eco-tab" data-shop-tab="comprar" role="tab">🧺 Comprar</button>
-                        <button class="eco-tab" data-shop-tab="mercado" role="tab">🛒 Mercado</button>
+                        <button class="eco-tab" data-shop-tab="itens" role="tab">🎒 Itens</button>
                     </div>
 
                     <div class="eco-pane" id="shop-pane-cosmeticos" role="tabpanel">
@@ -586,14 +585,11 @@
                         <button class="secondary-btn wide" id="shop-load-more">Carregar mais</button>
                     </div>
 
-                    <div class="eco-pane" id="shop-pane-comprar" role="tabpanel" hidden>
-                        <p class="card-sub">Matérias-primas da ilha, entrega na hora. Quer vender algo seu? O <strong>Mercado</strong> é onde a galera compra e vende entre si — o sistema não compra.</p>
-                        <div class="material-list" id="buy-material-list"></div>
-                    </div>
-
-                    <div class="eco-pane" id="shop-pane-mercado" role="tabpanel" hidden>
-                        <p class="card-sub">O sistema <strong>não compra</strong> os seus itens — agora quem compra é a <strong>galera do Refúgio</strong>. Anuncie no Mercado e cobre o preço que quiser.</p>
-                        <button class="primary-btn wide" data-open-app="market"><span class="btn-label">Ir para o Mercado 🛒</span></button>
+                    <div class="eco-pane" id="shop-pane-itens" role="tabpanel" hidden>
+                        <p class="card-sub">O sistema <strong>não vende e não compra</strong> materiais — os itens abaixo são de <strong>outros jogadores do Refúgio</strong>. Negocie de igual pra igual, direto com quem anunciou.</p>
+                        <button class="secondary-btn wide" id="shop-items-refresh" style="margin-bottom:10px">Atualizar vitrine 🔄</button>
+                        <div class="market-list" id="shop-items-list"><p class="muted">Carregando vitrine…</p></div>
+                        <button class="primary-btn wide" data-open-app="market" style="margin-top:10px"><span class="btn-label">Abrir o Mercado para anunciar 🛒</span></button>
                     </div>
                 </div>
             </section>
@@ -622,18 +618,31 @@
             </section>
 
             <!-- ============ APP: REFINARIA ============ -->
-            <section class="app-window" id="app-refinery" data-app="refinery" aria-label="Refinaria">
+            <section class="app-window" id="app-refinery" data-app="refinery" aria-label="Mesa de Trabalho">
                 <header class="app-header">
                     <button class="app-back" data-close-app aria-label="Voltar para a tela inicial">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
                         <span>Início</span>
                     </button>
-                    <h2 class="app-title">⚒️ Refinaria</h2>
+                    <h2 class="app-title">🛠️ Mesa de Trabalho</h2>
                     <span class="app-header-spacer"></span>
                 </header>
                 <div class="app-body">
-                    <div class="eco-balance card"><div><span class="eco-balance-label">💰 Seu saldo</span><strong class="eco-balance-value" id="refinery-gold">0 gold</strong></div><span class="eco-rate">Transforma matéria-prima em riqueza</span></div>
-                    <div class="recipe-list" id="refinery-list"></div>
+                    <p class="card-sub">Bancada estilo Minecraft: <strong>arraste os materiais</strong> do seu baú para a grade 3x3 (ou toque no material e depois na célula). Cada receita tem um formato — descubra-o! O quadrado de resultado solta o item quando a receita fecha.</p>
+                    <div class="craft-top">
+                        <div class="craft-grid" id="craft-grid" role="group" aria-label="Grade de craft 3 por 3"></div>
+                        <div class="craft-arrow" aria-hidden="true">➜</div>
+                        <div class="craft-result-wrap">
+                            <div class="craft-result" id="craft-result" aria-live="polite"><span class="craft-result-empty">?</span></div>
+                            <span class="craft-result-name" id="craft-result-name">sem receita</span>
+                        </div>
+                    </div>
+                    <div class="craft-actions">
+                        <button class="secondary-btn" id="craft-clear-btn">Limpar grade 🧹</button>
+                        <button class="primary-btn" id="craft-do-btn" disabled><span class="btn-label">Craftar ⚒️</span></button>
+                    </div>
+                    <h3 class="eco-h3">🎒 Seus materiais <span class="eco-h3-count">toque ou arraste</span></h3>
+                    <div class="craft-tray" id="craft-tray" aria-label="Materiais disponíveis"></div>
                 </div>
             </section>
 
@@ -727,7 +736,14 @@
                         <div class="job-list" id="job-list"></div>
                     </div>
                     <div class="eco-pane" id="work-pane-gather" role="tabpanel" hidden>
-                        <p class="card-sub">Cada local rende de 1 a 2 materiais. Recarrega em 25 segundos.</p>
+                        <p class="card-sub">Coleta de verdade agora dá trabalho 💪 Cada visita custa <strong>⚡ 20 de energia</strong> e exige reflexo no minigame — acerte o marcador na <strong>zona verde</strong>. Energia recarrega com o tempo. Cada local tem seu próprio tempo de descanso.</p>
+                        <div class="stamina-card card">
+                            <span class="stamina-emoji">⚡</span>
+                            <div class="stamina-info">
+                                <span class="stamina-label">Energia <strong id="stamina-count">100</strong>/100</span>
+                                <div class="stamina-track" aria-hidden="true"><div class="stamina-fill" id="stamina-fill" style="width:100%"></div></div>
+                            </div>
+                        </div>
                         <div class="gather-list" id="gather-list"></div>
                     </div>
                 </div>
@@ -780,6 +796,45 @@
                 </div>
             </div>
             
+
+            <!-- ============ MODAL: MINIGAME DE COLETA ⛏️ ============ -->
+            <div id="gather-game-modal" class="modal" role="dialog" aria-modal="true" aria-label="Minigame de coleta">
+                <div class="modal-content card gather-game-content">
+                    <button class="close-modal" id="gather-quit-btn" aria-label="Desistir da coleta">&times;</button>
+                    <div class="gather-game-hero" id="gather-game-emoji">🌲</div>
+                    <h2 class="modal-title center" id="gather-game-title">Floresta</h2>
+                    <p class="modal-sub center" id="gather-game-sub">Rodada 1 de 3 — pare o marcador dentro da zona verde!</p>
+                    <div class="gather-rounds" id="gather-rounds" aria-hidden="true"></div>
+                    <div class="gather-track" id="gather-track" aria-hidden="true">
+                        <div class="gather-spot" id="gather-spot"></div>
+                        <div class="gather-spot-perfect" id="gather-spot-perfect"></div>
+                        <div class="gather-marker" id="gather-marker"></div>
+                    </div>
+                    <div class="gather-feedback" id="gather-feedback" aria-live="assertive">&nbsp;</div>
+                    <button class="primary-btn wide gather-hit-btn" id="gather-hit-btn"><span class="btn-label">⛏️ Golpear!</span></button>
+                    <button class="primary-btn wide" id="gather-done-btn" hidden><span class="btn-label">Guardar no baú 🎒</span></button>
+                </div>
+            </div>
+
+            <!-- ============ MODAL: PERFIL DE OUTRO USUÁRIO 👤 ============ -->
+            <div id="user-profile-modal" class="modal" role="dialog" aria-modal="true" aria-label="Perfil de usuário">
+                <div class="modal-content card user-profile-content">
+                    <button class="close-modal" data-close-modal="user-profile-modal" aria-label="Fechar">&times;</button>
+                    <div class="user-profile-cover" id="user-profile-cover"></div>
+                    <div class="user-profile-head">
+                        <span class="user-profile-avatar" id="user-profile-avatar"></span>
+                        <div class="user-profile-id">
+                            <h2 class="user-profile-name" id="user-profile-name">Usuário</h2>
+                            <span class="user-profile-flair" id="user-profile-flair"></span>
+                            <span class="user-profile-stats" id="user-profile-stats">0 posts</span>
+                        </div>
+                    </div>
+                    <button class="secondary-btn wide" id="user-profile-dm-btn">Enviar mensagem 💬</button>
+                    <h3 class="eco-h3 user-profile-posts-title">Posts de <span id="user-profile-posts-of">alguém</span></h3>
+                    <div class="user-profile-posts" id="user-profile-posts"><p class="muted">Carregando posts…</p></div>
+                    <button class="secondary-btn wide" id="user-profile-load-more" hidden>Carregar mais posts ⬇️</button>
+                </div>
+            </div>
 
             <!-- ============ MODAL: SUPER LIKE / PIX ============ -->
             <div id="pix-modal" class="modal" role="dialog" aria-modal="true" aria-label="Super Like via PIX">
