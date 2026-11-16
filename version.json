@@ -1,4 +1,4 @@
 {
-  "version": "4.6.0",
-  "notes": "ARENA 2.0 ⚔️ árvore de poder redesenhada, tela de vitória corrigida e Forja de cartas com pips, dica de efeito e preview ao vivo"
+  "version": "4.6.1",
+  "notes": "Correção: o aviso de atualização não fica preso — versão do app sincronizada, dispensa persistente por versão e botão Atualizar com recarga garantida"
 }

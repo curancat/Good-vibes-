@@ -4991,45 +4991,71 @@ setInterval(tickClock, 1000);
 })();
 
 /* ================= ATUALIZAÇÃO DO APP (NOVA VERSÃO) ================= */
-const APP_VERSION = '4.5.0';
+// ATENÇÃO: subir junto com version.json/sw.js em CADA release — se ficar pra
+// trás, o app acha que há atualização pra sempre e o aviso não some.
+const APP_VERSION = '4.6.1';
 const appVersionEl = $('#app-version');
 if (appVersionEl) appVersionEl.textContent = `Good Vibes 🌊 · O Refúgio · v${APP_VERSION}`;
 let swRegistration = null;
 let userRequestedUpdate = false;
+/* Versão remota vista por último nesta sessão (preenchida por checkVersionFile) —
+   assim o aviso do SW e o do version.json são tratados como o MESMO aviso. */
+let pendingRemoteVersion = null;
+
+const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* ignora */ } };
+
+/* O usuário já dispensou o aviso desta versão? (persiste entre sessões) */
+const isUpdateDismissed = (version) => {
+    if (!version) return false;
+    return lsGet('gv_update_dismissed_for') === version;
+};
 
 /* Exibe a "barrinha" de nova versão */
-function showUpdateBanner(notes) {
+let lastNotifiedVersion = null;
+function showUpdateBanner(notes, version) {
     const banner = $('#update-banner');
     if (!banner) return;
+    lastNotifiedVersion = version ?? pendingRemoteVersion ?? null;
     $('#update-banner-notes').textContent = notes || 'Melhorias e correções esperando por você.';
+    const alreadyVisible = !banner.hidden;
     banner.hidden = false;
-    vibrate([10, 40, 10]);
+    if (!alreadyVisible) vibrate([10, 40, 10]);
 }
 function hideUpdateBanner() {
     const banner = $('#update-banner');
     if (banner) banner.hidden = true;
-    try { sessionStorage.setItem('gv_update_dismissed', '1'); } catch { /* ignora */ }
+    // Dispensa SÓ esta versão — um deploy novo volta a avisar (e uma versão
+    // que o usuário já viu/dispensou não fica martelando pra sempre)
+    const v = lastNotifiedVersion ?? pendingRemoteVersion;
+    if (v) lsSet('gv_update_dismissed_for', v);
 }
-const updateDismissed = () => { try { return sessionStorage.getItem('gv_update_dismissed') === '1'; } catch { return false; } };
 
 /* Aplica a atualização quando o usuário toca em "Atualizar" */
 async function applyUpdate() {
     const btn = $('#update-banner-btn');
     if (btn) { btn.textContent = '⏳ Atualizando…'; btn.disabled = true; }
     userRequestedUpdate = true;
+    try { localStorage.removeItem('gv_update_dismissed_for'); } catch { /* ignora */ }
     try { sessionStorage.removeItem('gv_update_dismissed'); } catch { /* ignora */ }
+
+    // Garante que o botão nunca fica preso em "Atualizando…":
+    // se nada mudar em 4s, recarrega mesmo assim (a navegação é network-first)
+    const safety = setTimeout(() => window.location.reload(), 4000);
 
     // Caminho ideal: existe um Service Worker novo esperando → ativa e recarrega
     if (swRegistration?.waiting) {
         swRegistration.waiting.postMessage('SKIP_WAITING');
         return; // o handler de controllerchange recarrega a página
     }
-    // Fallback: não há SW esperando (ex.: versão nova ainda não baixada) →
-    // apaga o cache do app shell e recarrega pegando tudo da rede
+    // Sem SW esperando: pede pro browser baixar a versão nova e,
+    // em paralelo, limpa o cache do app shell e recarrega da rede
+    try { await swRegistration?.update(); } catch { /* ignora */ }
     try {
         const keys = await caches.keys();
         await Promise.all(keys.filter((k) => k.includes('good-vibes')).map((k) => caches.delete(k)));
     } catch { /* sem cache API */ }
+    clearTimeout(safety);
     window.location.reload();
 }
 
@@ -5040,9 +5066,20 @@ async function checkVersionFile() {
         const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
         if (!res.ok) return;
         const data = await res.json();
-        if (data?.version && data.version !== APP_VERSION && !updateDismissed()) {
-            showUpdateBanner(data?.notes);
+        const remote = data?.version;
+        if (!remote) return;
+        if (remote === APP_VERSION) {
+            // App atualizado: limpa a dispensa antiga pra um deploy futuro avisar normalmente
+            if (lsGet('gv_update_dismissed_for')) lsSet('gv_update_dismissed_for', '');
+            pendingRemoteVersion = null;
+            lastNotifiedVersion = null;
+            const banner = $('#update-banner');
+            if (banner) banner.hidden = true; // aviso antigo perdeu o sentido: você já está na versão nova
+            return;
         }
+        pendingRemoteVersion = remote;
+        if (isUpdateDismissed(remote)) return;
+        showUpdateBanner(data?.notes, remote);
     } catch { /* offline: sem avisos */ }
 }
 
@@ -5060,31 +5097,37 @@ if ('serviceWorker' in navigator) {
         try {
             swRegistration = await navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' });
 
-            // Já existe versão nova baixando/esperando?
-            if (swRegistration.waiting && navigator.serviceWorker.controller && !updateDismissed()) showUpdateBanner();
+            // Confirma a versão remota primeiro — ela alimenta o aviso do SW
+            await checkVersionFile();
+
+            // Já existe versão nova baixando/esperando? (mesmo aviso, mesma dispensa)
+            if (swRegistration.waiting && navigator.serviceWorker.controller && !isUpdateDismissed(pendingRemoteVersion)) {
+                showUpdateBanner('Versão baixada! Toque em Atualizar para aplicar.', pendingRemoteVersion);
+            }
             swRegistration.addEventListener('updatefound', () => {
                 const newWorker = swRegistration.installing;
                 if (!newWorker) return;
                 newWorker.addEventListener('statechange', () => {
-                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller && !updateDismissed()) {
-                        showUpdateBanner('Versão baixada! Toque em Atualizar para aplicar.');
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller && !isUpdateDismissed(pendingRemoteVersion)) {
+                        showUpdateBanner('Versão baixada! Toque em Atualizar para aplicar.', pendingRemoteVersion);
                     }
                 });
             });
 
-            // Verifica se há deploy novo a cada 1 minuto…
-            setInterval(() => swRegistration.update().catch(() => {}), 60 * 1000);
+            // Verifica se há deploy novo a cada 2 minutos…
+            setInterval(() => swRegistration.update().catch(() => {}), 2 * 60 * 1000);
             // …e sempre que o usuário volta para o app
             document.addEventListener('visibilitychange', () => {
-                if (!document.hidden) swRegistration.update().catch(() => {});
+                if (!document.hidden) {
+                    swRegistration.update().catch(() => {});
+                    void checkVersionFile();
+                }
             });
         } catch (err) {
             console.warn('SW não registrado:', err);
+            checkVersionFile(); // garante o aviso mesmo sem o SW
         }
-        // Checagem independente do SW (garante o aviso mesmo sem ele)
-        checkVersionFile();
         setInterval(checkVersionFile, 5 * 60 * 1000);
-        document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVersionFile(); });
     });
 } else {
     checkVersionFile();

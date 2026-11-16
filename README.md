@@ -2,7 +2,9 @@
 
 Uma rede social privada entre amigos, agora com cara de **tela inicial de telefone**: cada menu é um aplicativo. Feita em HTML/CSS/JS puro (sem build), com Firebase (Auth + Firestore), instalável como **PWA** no celular.
 
-## ⚔️ Arena — crie suas cartas e batalhe ao vivo (v4.6.0)
+## ⚔️ Arena — crie suas cartas e batalhe ao vivo (v4.6.1)
+
+> **v4.6.1** — correção no fluxo de atualização: o aviso de "nova versão" não fica mais preso (versão do app sincronizada com o `version.json`, dispensa persistente por versão e botão **Atualizar** com recarga garantida em 4s).
 
 O 16º aplicativo (ícone ⚔️ no grid): uma arena de cartas **criadas por quem joga**, com deck de 30 pontos, árvore de poder e **batalha PvP ao vivo** (turnos em tempo real, direto no Firestore).
 
@@ -276,7 +278,7 @@ O app avisa os usuários quando existe versão nova por **dois canais**:
 3. `sw.js` → mude `CACHE_VERSION` para `'good-vibes-vX.Y.Z'`
 4. Commit + push no branch de deploy → pronto. Na próxima vez que os usuários abrirem o app (no máx. 1–5 min após o deploy, ou ao voltar para o app), todos verão **“Nova versão disponível!” → Atualizar 🔄**
 
-O botão **✕** adia o aviso só naquela sessão (`sessionStorage`) — na próxima visita ele aparece de novo.
+O botão **✕** dispensa o aviso **daquela versão específica** (`localStorage`) — um deploy novo (versão diferente) volta a avisar. Se o app já está na versão do `version.json`, o aviso não aparece e a dispensa antiga é limpa automaticamente. O botão **Atualizar** recarrega em no máximo 4s mesmo se o Service Worker travar, e o ✕ nunca se aplica a versões futuras.
 
 ## 🔐 Firestore: corrigindo "Missing or insufficient permissions"
 
