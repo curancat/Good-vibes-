@@ -303,7 +303,7 @@ service cloud.firestore {
           && request.resource.data.stakeA.gold == resource.data.stakeA.gold
           && request.resource.data.stakeB.gold is number
           && request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['status', 'playerB', 'playerBName', 'playerBAvatar', 'stakeB', 'potGold', 'turn', 'turnNumber', 'deckB', 'handB', 'treeB', 'catCountB', 'acceptedAt', 'log']);
+               .hasOnly(['status', 'playerB', 'playerBName', 'playerBAvatar', 'stakeB', 'potGold', 'turn', 'turnNumber', 'deckB', 'handB', 'treeB', 'catCountB', 'upgB', 'relicsB', 'acceptedAt', 'log']);
       }
       // Jogar um turno (active→active) ou encerrar ('finished')
       function playIsValid() {

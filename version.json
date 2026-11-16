@@ -1,4 +1,4 @@
 {
-  "version": "4.7.0",
-  "notes": "Arena: convites diretos por nick (aceitar cria a sala) + correção das regras da arena e do aviso de erro no host da sala"
+  "version": "4.8.0",
+  "notes": "Arena Estratégica: árvore de habilidades por carta, relíquias equipáveis, campo com Frente/Retaguarda e efeitos reescritos"
 }

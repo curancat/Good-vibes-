@@ -2,9 +2,36 @@
 
 Uma rede social privada entre amigos, agora com cara de **tela inicial de telefone**: cada menu é um aplicativo. Feita em HTML/CSS/JS puro (sem build), com Firebase (Auth + Firestore), instalável como **PWA** no celular.
 
-## ⚔️ Arena — crie suas cartas e batalhe ao vivo (v4.7.0)
+## ⚔️ Arena — crie suas cartas e batalhe ao vivo (v4.8.0)
 
-> **v4.7.0** — **convites diretos por nick**: digite o nick do seu amigo, aposte gold/cosméticos e ele recebe um convite privado (só ele vê); ao aceitar, a sala é criada na hora e os dois são levados pra mesa. Inclui correções nas regras da Arena e no fluxo dos desafios (o aviso "Missing or insufficient permissions" no host da sala tinha causa raiz — veja abaixo).
+> **v4.8.0** — **Arena Estratégica**: cada carta agora tem a **própria árvore de habilidades** (Força/Sintonia/Eco, 3 ramos × 3 pontos — compradas com gold e viajam com a carta), **relíquias equipáveis por carta** (Orbe de Poder, Sifão de Sangue, Eco Arcano, Escama de Aço), um **campo de batalha de verdade** (Frente de 3 criaturas, Retaguarda de 2 estruturas) e **efeitos reescritos e bem mais distintos** (Sangramento, Queimadura, Erosão, Rajada penetrante com atordoamento, Sobrecura, Espinhos refletivos, Barreira mágica…). Seu deck, sua árvore do Refúgio e a árvore de cada carta se multiplicam — jogue de forma focada.
+
+O que mudou no campo:
+
+- **Frente — criaturas (máx. 3)** e **Retaguarda — estruturas (máx. 2)**: as zonas têm teto e são exibidas com contador; as cartas que não cabem na zona ficam desabilitadas na mão
+- **Sangramento / Queimadura** (Dano Físico · Fogo): passam pelo escudo como se não existisse, no início do turno de quem sofreu
+- **Erosão** (Água): rói o escudo **mágico** do rival antes do golpe
+- **Rajada** (Ar): atravessa o escudo e vai **direto na vida** + o rival **não compra** no próximo turno
+- **Abalo** (Terra): atinge e fortalece você (+escudo físico junto)
+- **Sobrecura** (Cura): vida acima do máximo **vira escudo mágico**
+- **Bastião** (Defesa): além do escudo, **Espinhos** devolvem dano físico a quem ataca
+- **Véu** (Defesa Mágica): além do escudo, **Barreira** reduz 25–55% do dano mágico que entrar (2 cargas)
+- **Eco** (ramo da árvore da carta): o efeito secundário cresce com ele — Sangramento/Queimadura/Erosão/Muralha/Espinhos/Barreira/Sobr cura/Invocar/Estrutura ficam mais fortes
+
+### ✦ Árvore da carta (NOVA — independente por carta)
+
+- Cada carta tem **3 ramos próprios, 3 pontos cada** (9 no máximo), pra sempre e pra todo lugar:
+  - **Força** — +12% no efeito principal da carta por ponto (efeito em escala de tudo que ela faz)
+  - **Sintonia** — +10% por ponto no ramo elementar desta carta (soma à **Árvore do Refúgio**, só desta carta)
+  - **Eco** — +1 de intensidade por ponto no efeito secundário (Sangramento/Queimadura/Erosão/etc.)
+- Custo por ponto: **400 🪙 / 900 🪙 / 1.600 🪙** — compre pela carta na aba **Cartas** (botão ✦ ao lado de "+ Deck")
+- Aprimoramentos viajam **no documento da partida** — o cálculo dos efeitos roda no cliente de quem joga, e as regras do Firestore já liberam o campo `upgB` no aceite
+
+### 💠 Relíquias (equipam por carta, efeito sempre ligado)
+
+- **Orbe de Poder** (900 🪙): +20% no efeito principal · **Sifão de Sangue** (1.200 🪙): ao jogar, cura você 25% do efeito · **Eco Arcano** (1.500 🪙): o efeito dispara de novo com 40% de potência · **Escama de Aço** (600 🪙): +4 escudo físico ao jogar
+- Compra na **Loja → Molduras de carta** (seção Relíquias) — compre uma vez, equipe quantas quiser… uma por carta
+- Equipe/desequipe no mesmo botão ✦ de cada carta (painel "Relíquia — 1 por carta")
 
 ### 📨 Convite pelo nick (novo)
 
@@ -68,7 +95,7 @@ O 16º aplicativo (ícone ⚔️ no grid): uma arena de cartas **criadas por que
 - **Não existe informação escondida de verdade**: o documento da partida é legível pelos dois jogadores — dá pra ver a mão do rival pelo Console se você quiser se dar esse trabalho
 - Um rival com o cliente alterado pode forçar resultado — a arena vale como **aposta entre amigos**, não como cassino
 - A liquidação do pote é feita pelo vencedor no cliente (custódia garante: quem perde já viu o cosmético sair do baú dele ao aceitar)
-- **As regras do Firestore precisam ser republicadas** (`cards` + `arena_matches` novas na v4.5.0) — sem publicar, criar cartas e batalhas não funciona e o app avisa na tela
+- **As regras do Firestore precisam ser republicadas** (v4.8.0 inclui `upgB`/`relicsB` no aceite do desafio) — sem publicar, convites e aprimoramentos não funcionam e o app avisa na tela
 - Se o rival sumir no meio da partida, a partida fica "aberta" pra sempre (sem WO automático por enquanto) — Combine com o rival ou use Desistir
 
 ## 🧿 Artefatos + Coleta reformulada (v4.4.0)

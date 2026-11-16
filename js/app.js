@@ -1811,7 +1811,10 @@ function normalizeEconomy(d = {}) {
         artifacts: d.artifacts && typeof d.artifacts === 'object' ? { ...d.artifacts } : {},
         arenaTree: d.arenaTree && typeof d.arenaTree === 'object' ? { ...d.arenaTree } : {},
         cardFrame: typeof d.cardFrame === 'string' ? d.cardFrame : '',
-        arenaDeck: Array.isArray(d.arenaDeck) ? d.arenaDeck.filter((x) => typeof x === 'string') : []
+        arenaDeck: Array.isArray(d.arenaDeck) ? d.arenaDeck.filter((x) => typeof x === 'string') : [],
+        arenaUpgrades: d.arenaUpgrades && typeof d.arenaUpgrades === 'object' ? { ...d.arenaUpgrades } : {},
+        arenaRelics: Array.isArray(d.arenaRelics) ? d.arenaRelics.filter((x) => typeof x === 'string') : [],
+        arenaRelicEquips: d.arenaRelicEquips && typeof d.arenaRelicEquips === 'object' ? { ...d.arenaRelicEquips } : {}
     };
 }
 
@@ -3555,6 +3558,20 @@ const ARENA_SHIELD_MAX = 40;
 const ARENA_TOKEN_TURNS = 3;
 const ARENA_CARD_LIMIT = 30;            // teto de cartas criadas por jogador
 const ARENA_ART_MAX = 500;              // teto de URL de arte
+const ARENA_UPG_MAX = 3;                // pontos por ramo da árvore da carta
+const ARENA_UPG_COSTS = [400, 900, 1600]; // custo do 1º/2º/3º ponto de cada ramo
+const ARENA_FRONT_MAX = 3;              // criaturas na frente
+const ARENA_BACK_MAX = 2;               // estruturas na retaguarda
+/* Árvores por carta (3 ramos, 3 pontos cada) */
+const ARENA_UPG_BRANCHES = [
+    { key: 'forca', word: 'Força', desc: '+12% no efeito principal da carta por ponto.' },
+    { key: 'sintonia', word: 'Sintonia', desc: '+10% por ponto no ramo elementar desta carta (soma à Árvore do Refúgio).' },
+    { key: 'eco', word: 'Eco', desc: '+1 de intensidade por ponto no efeito secundário da carta.' }
+];
+const arenaUpgradesOf = (cardId) => ({ f: 0, s: 0, e: 0, ...(economyState?.arenaUpgrades?.[cardId] || {}) });
+const arenaUpgradePoints = (cardId) => { const u = arenaUpgradesOf(cardId); return ['f', 's', 'e'].reduce((a, k) => a + (Number(u[k]) || 0), 0); };
+const arenaRelicOwned = (relicId) => (economyState?.arenaRelics || []).includes(relicId);
+const arenaRelicEquippedOn = (cardId) => economyState?.arenaRelicEquips?.[cardId] || '';
 
 /* Glifo vetorial (SVG) por categoria — sem emojis na Arena */
 const ARENA_CATEGORY_GLYPHS = { dano: 'arena-sword', dano_fogo: 'arena-flame', dano_agua: 'arena-droplet', dano_ar: 'arena-wind', dano_terra: 'arena-mountain', cura: 'arena-heart', defesa: 'arena-shield', defesa_magica: 'arena-shield-mag', invocacao: 'arena-moon', estrutura: 'arena-tower' };
@@ -3669,13 +3686,14 @@ function renderArenaCardsGrid() {
     if (countEl) countEl.textContent = `${arenaCards.length}/${ARENA_CARD_LIMIT}`;
     const deckSet = new Set(arenaDeckIds());
     grid.innerHTML = arenaCards.length
-        ? arenaCards.map((c) => `<div class="card-in-grid">
+        ? arenaCards.map((c) => { const upgPts = arenaUpgradePoints(c.id); return `<div class="card-in-grid">
             ${cardFaceHTML(c, { mini: true })}
             <div class="card-in-grid-actions">
                 <button class="card-deck-toggle${deckSet.has(c.id) ? ' indk' : ''}" data-arena-deck-toggle="${escapeHtml(c.id)}">${deckSet.has(c.id) ? '✓ No deck' : '+ Deck'}</button>
+                <button class="card-upgrade" data-arena-card-upgrade="${escapeHtml(c.id)}" title="Árvore da carta: +Força, +Sintonia, +Eco e relíquia">✦${upgPts > 0 ? `<span class="up-count">${upgPts}</span>` : ''}</button>
                 <button class="card-delete" data-arena-card-delete="${escapeHtml(c.id)}" aria-label="Apagar carta" title="Apagar carta"><svg viewBox="0 0 24 24"><use href="#arena-trash"></use></svg></button>
             </div>
-        </div>`).join('')
+        </div>`; }).join('')
         : `<div class="arena-empty">
             <svg viewBox="0 0 24 24"><use href="#arena-cards"></use></svg>
             <b>Nenhuma carta ainda</b>
@@ -3866,6 +3884,7 @@ function renderCardCosmeticShop() {
             ${btn}
         </div>`;
     }).join('');
+    renderArenaRelicShop();
 }
 async function buyCardFrame(id) {
     const c = ECO?.CARD_COSMETIC_BY_ID?.[id];
@@ -3886,6 +3905,116 @@ async function equipCardFrame(id) {
     showToast(next ? `🃏 Moldura “${c.name}” aplicada em todas as suas cartas!` : 'Moldura guardada de volta.', 'info');
 }
 
+/* ---------- Loja: relíquias da Arena (equipam por carta) ---------- */
+function renderArenaRelicShop() {
+    const grid = $('#arena-relic-grid');
+    if (!grid) return;
+    if (!ECO?.ARENA_RELICS) { grid.innerHTML = ''; return; }
+    const owned = new Set(economyState?.arenaRelics || []);
+    grid.innerHTML = ECO.ARENA_RELICS.map((r) => {
+        const has = owned.has(r.id);
+        return `<div class="cosmetic-card" title="${escapeHtml(r.name)} — ${escapeHtml(r.desc)}">
+            <span class="cosmetic-emoji relic-emoji" style="background:radial-gradient(circle at 42% 38%, ${escapeHtml(r.tint)}66, transparent 72%),linear-gradient(160deg,#1e1b4b,#0f172a);border:1px solid ${escapeHtml(r.tint)}55;border-radius:14px;display:flex;align-items:center;justify-content:center;width:64px;height:64px;font-size:32px">${r.emoji}</span>
+            <span class="cosmetic-name">${escapeHtml(r.name)}</span>
+            <span class="cosmetic-effect">${escapeHtml(r.desc)}</span>
+            ${has ? '<span class="cosmetic-price" style="color:#6ee7b7">✓ Sua</span>' : `<span class="cosmetic-price">🪙 ${r.price.toLocaleString('pt-BR')}</span>`}
+            ${has
+                ? '<button class="cosmetic-buy equipped" disabled>Equipe na Árvore da carta ✦</button>'
+                : `<button class="cosmetic-buy" data-buy-arena-relic="${escapeHtml(r.id)}">Comprar 🪙 ${r.price.toLocaleString('pt-BR')}</button>`}
+        </div>`;
+    }).join('');
+}
+async function buyArenaRelic(id) {
+    const r = ECO?.ARENA_RELIC_BY_ID?.[id];
+    if (!r || !economyState) return;
+    if (economyState.arenaRelics.includes(id)) { showToast('Você já tem essa relíquia', 'info'); return; }
+    if (economyState.gold < r.price) { showToast(`Falta gold! São ${fmtGold(r.price)} 🪙`, 'warn'); return; }
+    addLedger('compra', `Relíquia da Arena: ${r.name}`, -r.price);
+    await saveEconomy({ gold: economyState.gold - r.price, arenaRelics: [...economyState.arenaRelics, id] });
+    vibrate([12, 40, 12]);
+    showToast(`${r.emoji} ${r.name} é sua! Equipe na Árvore da carta.`, 'success', 3500);
+    renderArenaRelicShop();
+    if (arenaCardTreeOpenId) renderCardTreeModal(); // atualiza o gold do modal aberto
+}
+
+/* ---------- Árvore da carta (3 ramos independentes por carta) ---------- */
+let arenaCardTreeOpenId = null;
+const arenaUpgBranchKey = (branch) => ({ forca: 'f', sintonia: 's', eco: 'e' }[branch] || branch);
+const arenaUpgTotalPoints = (u) => (Number(u?.f) || 0) + (Number(u?.s) || 0) + (Number(u?.e) || 0);
+function openCardTreeModal(cardId) {
+    arenaCardTreeOpenId = cardId;
+    renderCardTreeModal();
+    openModal('arena-card-tree-modal');
+}
+function renderCardTreeModal() {
+    const cardId = arenaCardTreeOpenId;
+    if (!cardId || !economyState) return;
+    const card = (arenaCards || []).find((c) => c.id === cardId);
+    if (!card) return;
+    const u = arenaUpgradesOf(cardId);
+    const relicId = arenaRelicEquippedOn(cardId);
+    const setHtml = (sel, html) => { const el = $(sel); if (el) el.innerHTML = html; };
+    setHtml('#ctm-face', cardFaceHTML(card, { mini: true }));
+    const goldEl = $('#ctm-gold'); if (goldEl) goldEl.textContent = Math.floor(Number(economyState.gold) || 0).toLocaleString('pt-BR');
+    const powPct = Math.round(((1 + u.f * 0.12) * (1 + (relicId === 'relic_orbe' ? 0.20 : 0)) - 1) * 100);
+    const synPct = Math.round(u.s * 10);
+    const relicBit = relicId && ECO?.ARENA_RELIC_BY_ID?.[relicId] ? ` · ${ECO.ARENA_RELIC_BY_ID[relicId].emoji} ${escapeHtml(ECO.ARENA_RELIC_BY_ID[relicId].name)}` : '';
+    setHtml('#ctm-summary', `Efeito <b>+${powPct}%</b> · Afinidade <b>+${synPct}%</b> · Secundário <b>Nv ${u.e}</b> · Pontos <b>${arenaUpgTotalPoints(u)}/${ARENA_UPG_MAX * 3}</b>${relicBit}`);
+    setHtml('#ctm-branches', ARENA_UPG_BRANCHES.map((b) => {
+        const key = arenaUpgBranchKey(b.key);
+        const pts = Number(u[key]) || 0;
+        const maxed = pts >= ARENA_UPG_MAX;
+        const cost = maxed ? 0 : ARENA_UPG_COSTS[pts];
+        const canAfford = !maxed && Number(economyState.gold) >= cost;
+        const pips = [0, 1, 2].map((i) => `<span class="ctm-pip${i < pts ? ' on' : ''}"></span>`).join('');
+        const iconId = b.key === 'forca' ? 'arena-sword' : b.key === 'sintonia' ? 'arena-tree' : 'arena-sparkles';
+        return `<div class="ctm-branch">
+            <div class="ctm-branch-head">
+                <span class="ctm-branch-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#${iconId}"></use></svg></span>
+                <span class="ctm-branch-title"><b>${escapeHtml(b.word)} <small style="opacity:.6">${pts}/${ARENA_UPG_MAX}</small></b><span>${escapeHtml(b.desc)}</span></span>
+                <span class="ctm-pips">${pips}</span>
+            </div>
+            <button class="ctm-buy${maxed ? ' maxed' : ''}" data-arena-upg="${escapeHtml(b.key)}" data-card-id="${escapeHtml(cardId)}" ${maxed || !canAfford ? 'disabled' : ''}>${maxed ? 'Ramo no máximo ✓' : `Investir 1 ponto — 🪙 ${cost.toLocaleString('pt-BR')}`}</button>
+        </div>`;
+    }).join(''));
+    const relics = ECO?.ARENA_RELICS || [];
+    setHtml('#ctm-relics', relics.map((r) => {
+        const owned = (economyState.arenaRelics || []).includes(r.id);
+        const equipped = arenaRelicEquippedOn(cardId) === r.id;
+        const cls = equipped ? 'ctm-relic equipped' : owned ? 'ctm-relic owned' : 'ctm-relic';
+        const action = equipped ? 'EQUIPADA ✓' : owned ? 'EQUIPAR' : `🔒 🪙 ${r.price.toLocaleString('pt-BR')}`;
+        return `<button class="${cls}" data-equip-arena-relic="${escapeHtml(r.id)}" data-card-id="${escapeHtml(cardId)}" aria-pressed="${equipped ? 'true' : 'false'}" title="${escapeHtml(r.desc)}">
+            <span class="ctm-relic-emoji">${r.emoji}</span>
+            <span class="ctm-relic-name">${escapeHtml(r.name)}</span>
+            <span class="ctm-relic-desc">${escapeHtml(r.desc)}</span>
+            <span class="ctm-relic-action">${action}</span>
+        </button>`;
+    }).join(''));
+}
+async function buyArenaUpgradePoint(cardId, branch) {
+    const key = arenaUpgBranchKey(branch);
+    const u = arenaUpgradesOf(cardId);
+    const pts = Number(u[key]) || 0;
+    if (pts >= ARENA_UPG_MAX) { showToast('Esse ramo já está no máximo.', 'info'); return; }
+    const cost = ARENA_UPG_COSTS[pts];
+    if (!economyState || Number(economyState.gold) < cost) { showToast(`Falta gold — precisa de ${fmtGold(cost)} 🪙`, 'warn'); return; }
+    const nextForCard = { f: u.f, s: u.s, e: u.e, [key]: pts + 1 };
+    await saveEconomy({ gold: economyState.gold - cost, arenaUpgrades: { ...(economyState.arenaUpgrades || {}), [cardId]: nextForCard } });
+    vibrate([12, 25, 12]);
+    showToast('Ponto investido! 🔧', 'success', 1600);
+    renderCardTreeModal();
+    renderArenaCardsGrid();
+}
+async function toggleArenaRelicEquip(cardId, relicId) {
+    if (!(economyState?.arenaRelics || []).includes(relicId)) { showToast('Compre a relíquia primeiro na Loja 🪙', 'warn'); return; }
+    const equips = { ...(economyState.arenaRelicEquips || {}) };
+    if (equips[cardId] === relicId) delete equips[cardId]; else equips[cardId] = relicId;
+    await saveEconomy({ arenaRelicEquips: equips });
+    const r = ECO?.ARENA_RELIC_BY_ID?.[relicId];
+    showToast(equips[cardId] ? `${r?.emoji || '✦'} ${r?.name || 'Relíquia'} equipada nesta carta!` : 'Relíquia guardada.', 'success', 2200);
+    renderCardTreeModal();
+}
+
 /* ---------- Criação de carta: preview ao vivo ---------- */
 function arenaEffectHintText(category, power) {
     const eff = Math.max(1, Number(power) || 1);
@@ -3895,13 +4024,18 @@ function arenaEffectHintText(category, power) {
     const structureDmg = Math.max(1, Math.round(eff * 2) + 1);
     const structureTick = Math.max(1, Math.round(eff));
     switch (kind) {
-        case 'physical': return `Causa ${base} de dano físico — o escudo físico do rival absorve primeiro.`;
-        case 'magic': return `Causa ${base} de dano mágico — o escudo mágico do rival absorve primeiro.`;
-        case 'heal': return `Restaura ${base} de vida (até o máximo de ${ARENA_HP}).`;
-        case 'shield': return `Concede ${base} de escudo físico (até o teto de ${ARENA_SHIELD_MAX}).`;
-        case 'shieldmagic': return `Concede ${base} de escudo mágico (até o teto de ${ARENA_SHIELD_MAX}).`;
-        case 'summon': return `Invoca uma criatura de poder ${eff} na sua mesa, atacando por ${ARENA_TOKEN_TURNS} turnos.`;
-        case 'structure': return `Causa ${structureDmg} imediato e ${structureTick} de dano no início de cada turno.`;
+        case 'physical': return `Causa ${base} de dano físico (escudo físico absorve) + Sangramento 2/turno por 2 turnos (ignora escudos).`;
+        case 'magic':
+            if (category === 'dano_fogo') return `Causa ${base} de dano de fogo (escudo mágico absorve) + Queimadura 2/turno por 2 turnos (ignora escudos).`;
+            if (category === 'dano_agua') return `Corroi ${3} de escudo mágico e causa ${base} de dano de água.`;
+            if (category === 'dano_ar') return `Causa ${base} direto na vida (ignora escudos) + atordoa: o rival não compra no próximo turno.`;
+            if (category === 'dano_terra') return `Causa ${base} de dano de terra + você ganha 2 de escudo físico.`;
+            return `Causa ${base} de dano mágico — o escudo mágico do rival absorve primeiro.`;
+        case 'heal': return `Restaura ${base} de vida (máximo ${ARENA_HP}); o excedente vira 50% escudo mágico.`;
+        case 'shield': return `Concede ${base} de escudo físico (até o teto de ${ARENA_SHIELD_MAX}) + Espinhos: devolve 4 de dano físico por 2 turnos.`;
+        case 'shieldmagic': return `Concede ${base} de escudo mágico (até ${ARENA_SHIELD_MAX}) + Barreira: reduz 25% do dano mágico por 2 cargas.`;
+        case 'summon': return `Invoca uma criatura na frente, golpeando ${Math.max(1, Math.round(eff * 2))}/turno no início dos seus próximos ${ARENA_TOKEN_TURNS} turnos (máx. ${ARENA_FRONT_MAX} na frente).`;
+        case 'structure': return `Causa ${structureDmg} imediato + ${structureTick}/turno e cura você +1 por turno (máx. ${ARENA_BACK_MAX} na retaguarda).`;
         default: return '';
     }
 }
@@ -3972,6 +4106,35 @@ function arenaCatCounts(cards) {
     for (const c of cards) counts[c.category] = (counts[c.category] || 0) + 1;
     return counts;
 }
+/* Congele a árvore de cada carta + relíquias equipadas DENTRO do doc da partida
+   (o cálculo dos efeitos roda no cliente de quem joga a jogada). */
+function arenaUpgradeSnapshot(cards) {
+    const out = {};
+    for (const c of cards) {
+        const u = arenaUpgradesOf(c.id);
+        out[c.id] = { f: Number(u.f) || 0, s: Number(u.s) || 0, e: Number(u.e) || 0 };
+    }
+    return out;
+}
+function arenaRelicSnapshot(cards) {
+    const out = {};
+    for (const c of cards) { const r = arenaRelicEquippedOn(c.id); if (r) out[c.id] = r; }
+    return out;
+}
+/* Leitura no documento da partida — quem age calcula com o que está aqui */
+const arenaUpgInMatch = (m, side, cardId) => (m?.[`upg${side}`] || {})[cardId] || { f: 0, s: 0, e: 0 };
+const arenaRelicInMatch = (m, side, cardId) => (m?.[`relics${side}`] || {})[cardId] || '';
+/* Multiplicadores finais de uma jogada: Refúgio (+6%/ponto) · Afinidade (+2%/carta do ramo)
+   · Sintonia desta carta (+10%) · Força (+12%/ponto) · Orbe de Poder (+20%) */
+function arenaCombatMult(m, side, card) {
+    const upg = arenaUpgInMatch(m, side, card.id);
+    const ref = (Number(m?.[`tree${side}`]?.[card.category]) || 0) * 0.06;
+    const aff = (Number(m?.[`catCount${side}`]?.[card.category]) || 0) * 0.02;
+    const syn = (Number(upg.s) || 0) * 0.10;
+    const relic = arenaRelicInMatch(m, side, card.id);
+    const pow = (1 + (Number(upg.f) || 0) * 0.12) * (1 + (relic === 'relic_orbe' ? 0.20 : 0));
+    return { mult: 1 + ref + aff + syn, pow, eco: Number(upg.e) || 0, relic };
+}
 function arenaMultOf(match, side, catId) {
     const tree = match?.[`tree${side}`] || {};
     const counts = match?.[`catCount${side}`] || {};
@@ -3992,29 +4155,56 @@ function arenaLogPush(m, entries) {
 }
 
 /* Aplica os efeitos de início de turno do lado `side` sobre o match (cópia rasa já feita pelo chamador).
-   Retorna novas arrays de field/hand/deck + hp do oponente + logs. */
+   Retorna novas arrays de field/hand/deck + hp dos DOIS lados + logs. */
 function arenaStartOfTurnPatch(m, side) {
     const foe = arenaOtherSide(side);
     const hpFoeKey = arenaSideField(foe, 'hp');
+    const hpMeKey = arenaSideField(side, 'hp');
     const fieldKey = arenaSideField(side, 'field');
     const handKey = arenaSideField(side, 'hand');
     const deckKey = arenaSideField(side, 'deck');
     const shieldFoeKey = arenaSideField(foe, 'shield');
     const log = [];
     let hpFoe = Number(m[hpFoeKey]) || ARENA_HP;
+    let hpMe = Number(m[hpMeKey]) || ARENA_HP;
     const shieldFoe = { ...(m[shieldFoeKey] || { phys: 0, mag: 0 }) };
     const meName = arenaMatchCardName(m, side);
+
+    // 1) Dano ao longo do tempo (sangramento/queimadura) — ignora escudo
+    const dotKey = arenaSideField(side, 'dot');
+    const dot = m[dotKey];
+    if (dot && (Number(dot.turns) || 0) > 0) {
+        hpMe -= Math.max(0, Number(dot.dmg) || 0);
+        const left = (Number(dot.turns) || 0) - 1;
+        log.push(`🩸 ${meName} sofreu ${dot.dmg} de ${dot.type === 'burn' ? 'queimadura' : 'sangramento'} (${left} turno${left === 1 ? '' : 's'} restante)`);
+        if (left <= 0) m = { ...m, [dotKey]: null };
+        else m = { ...m, [dotKey]: { ...dot, turns: left } };
+    }
+
+    // 2) Espinhos do lado `side` envelhecem no início do turno do DONO.
+    // Eles ferem quem ataca por último este turno (resolvido nos ataques + ações do oponente).
+    const thornsKey = arenaSideField(side, 'thorns');
+    const thorns = m[thornsKey];
+    let thornsNext = thorns && (Number(thorns.turns) || 0) > 0 ? { ...thorns, turns: (Number(thorns.turns) || 0) - 1 } : null;
+    if (thorns && thornsNext && thornsNext.turns === 0) { thornsNext = null; log.push(`🛡️ Os espinhos de ${meName} se apagaram`); }
 
     const field = [];
     for (const unit of m[fieldKey] || []) {
         const u = { ...unit };
         if (u.kind === 'summon') {
             const mult = arenaMultOf(m, side, 'invocacao');
-            const dmg = Math.max(1, Math.round((Number(u.power) || 1) * 2 * mult));
+            const dmg = Math.max(1, Math.round((Number(u.power) || 1) * 2 * mult) + (Number(u.eco) || 0));
+            const foeThorns = m[arenaSideField(foe, 'thorns')];
             const { shieldLeft, rest } = arenaAbsorb(shieldFoe.phys, dmg);
             shieldFoe.phys = shieldLeft;
             hpFoe -= rest;
             log.push(`${u.emoji || '🗿'} ${meName}: ${u.name} golpeou por ${dmg} (${rest} na vida)`);
+            if (foeThorns && (Number(foeThorns.turns) || 0) > 0 && dmg > 0) {
+                const back = Math.max(1, Number(foeThorns.amount) || 0);
+                hpMe -= back;
+                const foeNameHere = arenaMatchCardName(m, foe);
+                log.push(`🛡️ Os Espinhos de ${foeNameHere} devolvem ${back} em ${meName}`);
+            }
             u.turnsLeft = (Number(u.turnsLeft) || ARENA_TOKEN_TURNS) - 1;
             if (u.turnsLeft > 0) field.push(u);
             else log.push(`⏳ ${u.name} se desfez`);
@@ -4024,28 +4214,41 @@ function arenaStartOfTurnPatch(m, side) {
             shieldFoe.mag = shieldLeft;
             hpFoe -= rest;
             log.push(`🏗️ ${meName}: ${u.name} causou ${dmg} de dano`);
+            const heal = Math.max(0, Number(u.heal) || 0);
+            if (heal > 0) hpMe = Math.min(ARENA_HP, hpMe + heal);
             field.push(u);
         } else {
             field.push(u);
         }
     }
 
-    // Compra: repõe a mão até 5 (máx 7)
-    let hand = [...(m[handKey] || [])];
+    // 3) Compra — o Ar (Rajada) atrapalha: não compra este turno
+    const skipKey = arenaSideField(side, 'skipDraw');
+    let skipNext = Number(m[skipKey]) ? true : false;
+    const hand = [...(m[handKey] || [])];
     let deck = [...(m[deckKey] || [])];
-    while (hand.length < 5 && deck.length) {
-        hand.push(deck[0]);
-        deck = deck.slice(1);
+    if (skipNext) {
+        log.push(`🌪️ ${meName} foi atordoado e não comprou carta`);
+        skipNext = false;
+    } else {
+        while (hand.length < 5 && deck.length) {
+            hand.push(deck[0]);
+            deck = deck.slice(1);
+        }
     }
 
     const patch = {
+        [hpMeKey]: hpMe,
         [fieldKey]: field,
         [handKey]: hand,
         [deckKey]: deck,
         [shieldFoeKey]: shieldFoe,
-        [hpFoeKey]: hpFoe
+        [hpFoeKey]: hpFoe,
+        [dotKey]: (m[dotKey] && (Number(m[dotKey].turns) || 0) > 0) ? m[dotKey] : null,
+        [thornsKey]: thornsNext,
+        [skipKey]: skipNext
     };
-    return { patch, log, hpFoe, foe };
+    return { patch, log, hpFoe, hpMe, foe };
 }
 
 function arenaFinishPatch(m, winnerUid, logEntries) {
@@ -4078,8 +4281,8 @@ async function playArenaCard(cardId) {
             const card = hand[idx];
             const cat = ECO?.CARD_CATEGORY_BY_ID?.[card.category];
             if (!cat) throw new Error('Categoria desconhecida.');
-            const mult = arenaMultOf(m, side, card.category);
-            const eff = Number(card.power) * mult;
+            const { mult, pow, eco, relic } = arenaCombatMult(m, side, card);
+            const eff = Number(card.power) * mult * pow;
             const meName = arenaMatchCardName(m, side);
             const foeName = arenaMatchCardName(m, foe);
 
@@ -4088,68 +4291,157 @@ async function playArenaCard(cardId) {
             let hpMe = Number(m[arenaSideField(side, 'hp')]) || ARENA_HP;
             let hpFoe = Number(m[arenaSideField(foe, 'hp')]) || ARENA_HP;
             const shieldMe = { ...(m[arenaSideField(side, 'shield')] || { phys: 0, mag: 0 }) };
-            const shieldFoe = { ...m[arenaSideField(foe, 'shield')] || { phys: 0, mag: 0 } };
+            const shieldFoe = { ...(m[arenaSideField(foe, 'shield')] || { phys: 0, mag: 0 }) };
+            const wardFoe = { ...(m[arenaSideField(foe, 'ward')] || { pct: 0, charges: 0 }) };
+            const dotFoe = { ...(m[arenaSideField(foe, 'dot')] || null) } || null;
+            let dotFoeNext = dotFoe && Number(dotFoe.turns) > 0 ? dotFoe : null;
             const fieldKey = arenaSideField(side, 'field');
             const field = [...(m[fieldKey] || [])];
+            const summons = field.filter((u) => u.kind === 'summon').length;
+            const structures = field.filter((u) => u.kind === 'structure').length;
 
+            /* Escudos/condições de ambos os lados */
             const dealPhys = (dmg) => {
                 const { shieldLeft, rest } = arenaAbsorb(shieldFoe.phys, dmg);
                 shieldFoe.phys = shieldLeft; hpFoe -= rest;
+                // Espinhos: quem tem o thorns e tomou pancada devolve pro atacante (na vida)
+                const foeThorns = m[arenaSideField(foe, 'thorns')];
+                if (foeThorns && (Number(foeThorns.turns) || 0) > 0 && dmg > 0) {
+                    const back = Math.max(1, Number(foeThorns.amount) || 0);
+                    hpMe -= back;
+                    log.push(`🛡️ Os Espinhos de ${foeName} devolvem ${back} em ${meName}`);
+                }
                 return rest;
             };
             const dealMag = (dmg) => {
-                const { shieldLeft, rest } = arenaAbsorb(shieldFoe.mag, dmg);
+                let amount = dmg;
+                // Ward: barreira mágica de quem apanha reduz o dano e consome uma carga
+                if (wardFoe.charges > 0) {
+                    amount = Math.max(1, Math.round(dmg * (1 - (Number(wardFoe.pct) || 0))));
+                    wardFoe.charges = Math.max(0, (Number(wardFoe.charges) || 0) - 1);
+                    log.push(`🔮 Barreira de ${foeName} absorveu parte do dano mágico (${dmg} → ${amount})`);
+                }
+                const { shieldLeft, rest } = arenaAbsorb(shieldFoe.mag, amount);
                 shieldFoe.mag = shieldLeft; hpFoe -= rest;
                 return rest;
             };
+            const addDotFoe = (dmg, type) => {
+                const turns = 2;
+                if (!dotFoeNext || (Number(dotFoeNext.dmg) || 0) < dmg) dotFoeNext = { dmg, turns, type };
+                else dotFoeNext = { ...dotFoeNext, turns, type };
+            };
+            const addThornsMe = (amount) => { const cur = m[arenaSideField(side, 'thorns')]; const better = !cur || (Number(cur.amount) || 0) < amount || (Number(cur.turns) || 0) <= 0; if (better) patch[arenaSideField(side, 'thorns')] = { amount, turns: 2 }; };
+            const addWardMe = (pct) => { patch[arenaSideField(side, 'ward')] = { pct, charges: 2 }; };
+            const mainAmountOf = () => Math.max(1, Math.round(eff * 3) + 2);
+            const healSelf = (n) => { hpMe = Math.min(ARENA_HP, hpMe + n); return n; };
+            const relicNote = () => { if (relic === 'relic_escama') { shieldMe.phys = Math.min(ARENA_SHIELD_MAX, shieldMe.phys + 4); log.push(`🛡️ Escama de Aço: +4 de escudo físico para ${meName}`); } if (relic === 'relic_sifao') { const h = healSelf(Math.max(1, Math.round(mainAmountOf() * 0.25))); log.push(`🩸 Sifão de Sangue: ${meName} se cura ${h}`); } };
+            const relicEcho = (primaryFn, primary) => { if (relic === 'relic_eco') { const echo = Math.max(1, Math.round(primary * 0.4)); primaryFn(echo); log.push(`🐚 Eco Arcano: efeito disparou de novo (${echo})`); } };
 
             switch (cat.kind) {
                 case 'physical': {
                     const dmg = Math.max(1, Math.round(eff * 3) + 2);
                     const rest = dealPhys(dmg);
-                    log.push(`🗡️ ${meName} usou ${card.name}: ${dmg} de dano (${rest} na vida de ${foeName})`);
+                    addDotFoe(2 + eco, 'bleed');
+                    log.push(`🗡️ ${meName} usou ${card.name}: ${dmg} de dano físico (${rest} na vida de ${foeName}) + Sangramento ${2 + eco}/turno`);
+                    relicEcho(dealPhys, dmg);
                     break;
                 }
                 case 'magic': {
-                    const dmg = Math.max(1, Math.round(eff * 3) + 2);
-                    const rest = dealMag(dmg);
-                    log.push(`${cat.emoji} ${meName} usou ${card.name}: ${dmg} de dano mágico (${rest} na vida)`);
+                    const base = Math.max(1, Math.round(eff * 3) + 2);
+                    if (card.category === 'dano_fogo') {
+                        const rest = dealMag(base);
+                        addDotFoe(2 + eco, 'burn');
+                        log.push(`🔥 ${meName} usou ${card.name}: ${base} de dano de fogo (${rest} na vida) + Queimadura ${2 + eco}/turno`);
+                        relicEcho(dealMag, base);
+                    } else if (card.category === 'dano_agua') {
+                        const erode = 3 + eco * 2;
+                        const before = shieldFoe.mag;
+                        shieldFoe.mag = Math.max(0, before - erode);
+                        const rest = dealMag(base);
+                        log.push(`💧 ${meName} usou ${card.name}: Erosão ${Math.min(before, erode)} do escudo mágico + ${base} de dano (${rest} na vida)`);
+                        relicEcho(dealMag, base);
+                    } else if (card.category === 'dano_ar') {
+                        const amount = base + eco;
+                        hpFoe -= amount;
+                        patch[arenaSideField(foe, 'skipDraw')] = true;
+                        log.push(`🌪️ ${meName} usou ${card.name}: ${amount} direto na vida (ignora escudos) + atordoou`);
+                        relicEcho((n) => { hpFoe -= n; }, base);
+                    } else if (card.category === 'dano_terra') {
+                        const rest = dealMag(base);
+                        const wall = 2 + eco;
+                        shieldMe.phys = Math.min(ARENA_SHIELD_MAX, shieldMe.phys + wall);
+                        log.push(`🪨 ${meName} usou ${card.name}: ${base} de dano de terra (${rest} na vida) + ${wall} de escudo físico pra você`);
+                        relicEcho(dealMag, base);
+                    } else {
+                        const rest = dealMag(base);
+                        log.push(`${cat.emoji} ${meName} usou ${card.name}: ${base} de dano mágico (${rest} na vida)`);
+                        relicEcho(dealMag, base);
+                    }
                     break;
                 }
                 case 'heal': {
                     const heal = Math.max(1, Math.round(eff * 3) + 2);
+                    const before = hpMe;
                     hpMe = Math.min(ARENA_HP, hpMe + heal);
+                    const overflow = Math.max(0, before + heal - ARENA_HP);
+                    if (overflow > 0) {
+                        const rate = Math.min(1, 0.5 + eco * 0.25);
+                        const toShield = Math.round(overflow * rate);
+                        shieldMe.mag = Math.min(ARENA_SHIELD_MAX, shieldMe.mag + toShield);
+                        if (toShield > 0) log.push(`🔮 Sobrecura: ${toShield} virou escudo mágico`);
+                    }
                     log.push(`💚 ${meName} usou ${card.name}: +${heal} de vida`);
+                    relicEcho((n) => { hpMe = Math.min(ARENA_HP, hpMe + n); }, heal);
                     break;
                 }
                 case 'shield': {
                     const add = Math.max(1, Math.round(eff * 3) + 2);
                     shieldMe.phys = Math.min(ARENA_SHIELD_MAX, shieldMe.phys + add);
-                    log.push(`🛡️ ${meName} ergueu ${card.name}: +${add} de escudo físico`);
+                    addThornsMe(4 + eco * 2);
+                    log.push(`🛡️ ${meName} ergueu ${card.name}: +${add} de escudo físico + Espinhos ${4 + eco * 2}`);
+                    relicEcho((n) => { shieldMe.phys = Math.min(ARENA_SHIELD_MAX, shieldMe.phys + n); }, add);
                     break;
                 }
                 case 'shieldmagic': {
                     const add = Math.max(1, Math.round(eff * 3) + 2);
                     shieldMe.mag = Math.min(ARENA_SHIELD_MAX, shieldMe.mag + add);
-                    log.push(`🔮 ${meName} ergueu ${card.name}: +${add} de escudo mágico`);
+                    const pct = Math.min(0.55, 0.25 + eco * 0.10);
+                    addWardMe(pct);
+                    log.push(`🔮 ${meName} ergueu ${card.name}: +${add} de escudo mágico + Barreira ${Math.round(pct * 100)}%`);
+                    relicEcho((n) => { shieldMe.mag = Math.min(ARENA_SHIELD_MAX, shieldMe.mag + n); }, add);
                     break;
                 }
                 case 'summon': {
-                    field.push({ kind: 'summon', uid: `tk_${Date.now()}_${Math.floor(Math.random() * 1e6)}`, name: card.name, emoji: card.emoji || '🗿', category: card.category, power: Number(card.power) || 1, turnsLeft: ARENA_TOKEN_TURNS });
-                    log.push(`🗿 ${meName} invocou ${card.name}! (ataca nos próximos ${ARENA_TOKEN_TURNS} turnos)`);
+                    if (summons >= ARENA_FRONT_MAX) throw new Error(`Frente cheia (máx. ${ARENA_FRONT_MAX} criaturas).`);
+                    const power = Math.max(1, Number(card.power) || 1);
+                    field.push({ kind: 'summon', uid: `tk_${Date.now()}_${Math.floor(Math.random() * 1e6)}`, name: card.name, emoji: card.emoji || '🗿', category: card.category, power, eco, turnsLeft: ARENA_TOKEN_TURNS });
+                    log.push(`🗿 ${meName} invocou ${card.name}! Golpe +${eco} por Eco (${ARENA_TOKEN_TURNS} turnos)`);
+                    relicEcho(() => { const u2 = field[field.length - 1]; if (u2 && u2.kind === 'summon') u2.turnsLeft += 1; }, 1);
                     break;
                 }
                 case 'structure': {
+                    if (structures >= ARENA_BACK_MAX) throw new Error(`Retaguarda cheia (máx. ${ARENA_BACK_MAX} estruturas).`);
                     const dmg = Math.max(1, Math.round(eff * 2) + 1);
                     const tick = Math.max(1, Math.round(eff));
+                    const heal = 1 + eco;
                     const rest = dealMag(dmg);
-                    field.push({ kind: 'structure', uid: `st_${Date.now()}_${Math.floor(Math.random() * 1e6)}`, name: card.name, emoji: '🏗️', category: card.category, tick });
-                    log.push(`🏗️ ${meName} ergueu ${card.name}: ${dmg} de dano imediato e ${tick}/turno`);
+                    field.push({ kind: 'structure', uid: `st_${Date.now()}_${Math.floor(Math.random() * 1e6)}`, name: card.name, emoji: '🏗️', category: card.category, tick, heal });
+                    log.push(`🏗️ ${meName} ergueu ${card.name}: ${dmg} imediato + ${tick}/turno e cura ${heal}/turno`);
+                    relicEcho(dealMag, dmg);
                     break;
                 }
                 default:
                     throw new Error('Efeito desconhecido.');
             }
+            relicNote();
+
+            // Statuses: merge do documento original + alterações desta jogada
+            patch[arenaSideField(foe, 'dot')] = dotFoeNext;
+            if (patch[arenaSideField(side, 'ward')] === undefined) {
+                const oldWard = m[arenaSideField(side, 'ward')];
+                patch[arenaSideField(side, 'ward')] = oldWard && (Number(oldWard.charges) || 0) > 0 ? oldWard : null;
+            }
+            patch[arenaSideField(foe, 'ward')] = (Number(wardFoe.charges) || 0) > 0 ? wardFoe : null;
 
             // Remove da mão e passa a vez; o turno do adversário começa com os gatilhos dele
             hand.splice(idx, 1);
@@ -4160,8 +4452,11 @@ async function playArenaCard(cardId) {
             patch[fieldKey] = field;
             patch[handKey] = hand;
 
+            const winner = side === 'A' ? m.playerA : m.playerB;
             if (hpFoe <= 0) {
-                Object.assign(patch, arenaFinishPatch(m, side === 'A' ? m.playerA : m.playerB, [...log, `🏆 ${foeName} caiu! ${meName} venceu!`]));
+                Object.assign(patch, arenaFinishPatch(m, winner, [...log, `🏆 ${foeName} caiu! ${meName} venceu!`]));
+            } else if (hpMe <= 0) {
+                Object.assign(patch, arenaFinishPatch(m, foe === 'A' ? m.playerA : m.playerB, [...log, `🏆 Os espinhos de ${foeName} derrubaram ${meName}!`]));
             } else {
                 // Passa a vez e aplica o início do turno do adversário:
                 // as criaturas/estruturas DELE batem em VOCÊ, e ele compra.
@@ -4174,8 +4469,12 @@ async function playArenaCard(cardId) {
                 log.push(...start.log);
                 patch.turn = foe;
                 patch.turnNumber = (Number(m.turnNumber) || 1) + 1;
-                if (start.hpFoe <= 0) {
+                const meDead = (start.hpFoe ?? patch[arenaSideField(side, 'hp')]) <= 0;   // quem recebeu a vez derrubou VOCÊ
+                const selfDead = (start.hpMe ?? patch[arenaSideField(foe, 'hp')]) <= 0;   // quem recebeu a vez morreu no próprio começo (DoT)
+                if (meDead) {
                     Object.assign(patch, arenaFinishPatch(m, foe === 'A' ? m.playerA : m.playerB, [...log, `🏆 Os gatilhos de ${foeName} derrubaram ${meName}!`]));
+                } else if (selfDead) {
+                    Object.assign(patch, arenaFinishPatch(m, winner, [...log, `🏆 ${foeName} sucumbiu aos próprios gatilhos!`]));
                 } else {
                     patch.status = 'active';
                     patch.log = arenaLogPush(m, log);
@@ -4215,8 +4514,12 @@ async function passArenaTurn() {
             log.push(...start.log);
             patch.turn = foe;
             patch.turnNumber = (Number(m.turnNumber) || 1) + 1;
-            if (start.hpFoe <= 0) {
+            const meDead = (start.hpFoe ?? patch[arenaSideField(side, 'hp')]) <= 0;
+            const selfDead = (start.hpMe ?? patch[arenaSideField(foe, 'hp')]) <= 0;
+            if (meDead) {
                 Object.assign(patch, arenaFinishPatch(m, foe === 'A' ? m.playerA : m.playerB, [...log, `🏆 Os gatilhos de ${foeName} derrubaram ${meName}!`]));
+            } else if (selfDead) {
+                Object.assign(patch, arenaFinishPatch(m, side === 'A' ? m.playerA : m.playerB, [...log, `🏆 ${foeName} sucumbiu aos próprios gatilhos!`]));
             } else {
                 patch.status = 'active';
                 patch.log = arenaLogPush(m, log);
@@ -4403,6 +4706,8 @@ async function createArenaChallengeFromBet(stakeGold, stakeCos) {
                 stakeB: { gold: 0, cosmetics: [] },
                 potGold: stakeGold,
                 winner: '',
+                upgA: arenaUpgradeSnapshot(shuffled), relicsA: arenaRelicSnapshot(shuffled),
+                upgB: {}, relicsB: {},
                 log: [`⚔️ ${myName} abriu um desafio — pote: ${arenaStakeText({ gold: stakeGold, cosmetics: stakeCos })}`],
                 createdAt: serverTimestamp()
             });
@@ -4459,6 +4764,8 @@ async function createArenaInviteFromBet(stakeGold, stakeCos, target) {
                 stakeB: { gold: 0, cosmetics: [] },
                 potGold: stakeGold,
                 winner: '',
+                upgA: arenaUpgradeSnapshot(shuffled), relicsA: arenaRelicSnapshot(shuffled),
+                upgB: {}, relicsB: {},
                 log: [`⚔️ ${myName} convidou ${target.name || 'um jogador'} pra um duelo — pote: ${arenaStakeText({ gold: stakeGold, cosmetics: stakeCos })}`],
                 createdAt: serverTimestamp()
             });
@@ -4511,6 +4818,7 @@ async function acceptArenaChallengeFromBet(matchId, stakeGold, stakeCos) {
                 turn: 'A', turnNumber: 1,
                 deckB: restB, handB,
                 treeB, catCountB,
+                upgB: arenaUpgradeSnapshot(shuffled), relicsB: arenaRelicSnapshot(shuffled),
                 acceptedAt: serverTimestamp(),
                 log: [...(m.log || []), `🤝 ${myName} aceitou! ${arenaMatchCardName(m, 'A')} começa. Boa batalha!`].slice(-8)
             });
@@ -4786,14 +5094,32 @@ function leaveArenaMatch() {
     const finish = $('#arena-finish'); if (finish) finish.hidden = true;
     refreshArenaUI();
 }
-function arenaTokenHTML(u) {
+function arenaTokenHTML(u, m, side) {
     if (u.kind === 'structure') {
-        return `<span class="am-struct" title="${escapeHtml(u.name || 'Estrutura')}"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-tower"></use></svg>${escapeHtml(u.name || 'Estrutura')} · ${Number(u.tick) || 1}/turno</span>`;
+        const healBit = Number(u.heal) > 0 ? ` · <small>cura ${Number(u.heal)}</small>` : '';
+        return `<span class="am-struct" title="${escapeHtml(u.name || 'Estrutura')} — tick de dano mágico e cura do dono"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-tower"></use></svg>${escapeHtml(u.name || 'Estrutura')} · ${Number(u.tick) || 1}/turno${healBit}</span>`;
     }
     const shortName = String(u.name || 'Criatura').slice(0, 14);
-    const legacy = u.emoji ? `<span class="am-token-emoji">${escapeHtml(u.emoji)}</span>` : '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-mountain"></use></svg>';
-    return `<span class="am-token" title="${escapeHtml(u.name || 'Criatura')}">${legacy}<small>${escapeHtml(shortName)}</small><b>${Number(u.power) || 1} poder · ${Number(u.turnsLeft) || 0} turnos</b></span>`;
+    const legacy = u.emoji ? `<span class="am-token-emoji">${escapeHtml(u.emoji)}</span>` : '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-moon"></use></svg>';
+    const golpe = m && side ? Math.max(1, Math.round((Number(u.power) || 1) * 2 * arenaMultOf(m, side, 'invocacao')) + (Number(u.eco) || 0)) : Math.max(1, (Number(u.power) || 1) * 2);
+    return `<span class="am-token" title="${escapeHtml(u.name || 'Criatura')} — gole ${golpe}/turno físico${Number(u.eco) ? ` (+${Number(u.eco)} de Eco)` : ''}">${legacy}<small>${escapeHtml(shortName)}</small><b>golpe ${golpe} · ${Number(u.turnsLeft) || 0} turnos</b></span>`;
 }
+/* Linha de efeitos ativos de um lado (sangramento, espinhos, barreira, atordoado) */
+function arenaStatusChipsHTML(m, side) {
+    const chips = [];
+    const dot = m[`dot${side}`];
+    if (dot && (Number(dot.turns) || 0) > 0) {
+        const isBurn = dot.type === 'burn';
+        chips.push(`<span class="am-status-chip ${isBurn ? 'am-status-burn' : 'am-status-bleed'}">${isBurn ? '🔥 Queimadura' : '🩸 Sangramento'} ${Number(dot.dmg) || 0}×${Number(dot.turns)}</span>`);
+    }
+    const th = m[`thorns${side}`];
+    if (th && (Number(th.turns) || 0) > 0) chips.push(`<span class="am-status-chip am-status-thorns">🛡️ Espinhos ${Number(th.amount) || 0}×${Number(th.turns)}</span>`);
+    const w = m[`ward${side}`];
+    if (w && (Number(w.charges) || 0) > 0) chips.push(`<span class="am-status-chip am-status-ward">🔮 Barreira ${Math.round((Number(w.pct) || 0) * 100)}%×${Number(w.charges)}</span>`);
+    if (Number(m[`skipDraw${side}`])) chips.push(`<span class="am-status-chip am-status-stun">🌪️ Atordoado (não compra)</span>`);
+    return chips.join('');
+}
+
 function renderArenaMatch(m) {
     const me = arenaMySideIn(m) || 'A';
     const foe = arenaOtherSide(me);
@@ -4824,6 +5150,18 @@ function renderArenaMatch(m) {
     setText('#am-me-shield-phys', String(myShield.phys || 0));
     setText('#am-me-shield-mag', String(myShield.mag || 0));
     setText('#am-me-turn', String(Number(m.turnNumber) || 1));
+    const statusOpp = $('#am-status-opponent'); if (statusOpp) statusOpp.innerHTML = arenaStatusChipsHTML(m, foe);
+    const statusMe = $('#am-status-me'); if (statusMe) statusMe.innerHTML = arenaStatusChipsHTML(m, me);
+    const oppFieldUnits = m[`field${foe}`] || [];
+    const myFieldUnits = m[`field${me}`] || [];
+    const oppSummons = oppFieldUnits.filter((u) => u.kind === 'summon').length;
+    const mySummons = myFieldUnits.filter((u) => u.kind === 'summon').length;
+    const oppStructures = oppFieldUnits.filter((u) => u.kind === 'structure').length;
+    const myStructures = myFieldUnits.filter((u) => u.kind === 'structure').length;
+    setText('#am-front-count-opponent', `${oppSummons}/${ARENA_FRONT_MAX}`);
+    setText('#am-front-count-me', `${mySummons}/${ARENA_FRONT_MAX}`);
+    setText('#am-back-count-opponent', `${oppStructures}/${ARENA_BACK_MAX}`);
+    setText('#am-back-count-me', `${myStructures}/${ARENA_BACK_MAX}`);
 
     // Turno
     const active = m.status === 'active';
@@ -4837,13 +5175,13 @@ function renderArenaMatch(m) {
 
     // Campos (criaturas) e estruturas
     const oppFieldEl = $('#am-board-opponent');
-    if (oppFieldEl) oppFieldEl.innerHTML = (m[`field${foe}`] || []).filter(u => u.kind === 'summon').map(arenaTokenHTML).join('');
+    if (oppFieldEl) oppFieldEl.innerHTML = oppFieldUnits.filter(u => u.kind === 'summon').map((u) => arenaTokenHTML(u, m, foe)).join('');
     const myFieldEl = $('#am-board-me');
-    if (myFieldEl) myFieldEl.innerHTML = (m[`field${me}`] || []).filter(u => u.kind === 'summon').map(arenaTokenHTML).join('');
+    if (myFieldEl) myFieldEl.innerHTML = myFieldUnits.filter(u => u.kind === 'summon').map((u) => arenaTokenHTML(u, m, me)).join('');
     const oppStructEl = $('#am-structures-opponent');
-    if (oppStructEl) oppStructEl.innerHTML = (m[`field${foe}`] || []).filter(u => u.kind === 'structure').map(arenaTokenHTML).join('');
+    if (oppStructEl) oppStructEl.innerHTML = oppFieldUnits.filter(u => u.kind === 'structure').map((u) => arenaTokenHTML(u, m, foe)).join('');
     const myStructEl = $('#am-structures-me');
-    if (myStructEl) myStructEl.innerHTML = (m[`field${me}`] || []).filter(u => u.kind === 'structure').map(arenaTokenHTML).join('');
+    if (myStructEl) myStructEl.innerHTML = myFieldUnits.filter(u => u.kind === 'structure').map((u) => arenaTokenHTML(u, m, me)).join('');
 
     // Log
     const logEl = $('#arena-log');
@@ -4853,9 +5191,13 @@ function renderArenaMatch(m) {
     const handEl = $('#arena-hand');
     if (handEl) {
         handEl.innerHTML = (m[`hand${me}`] || []).map((c) => {
-            const playable = m.status === 'active' && m.turn === me;
+            let playable = m.status === 'active' && m.turn === me;
+            let why = '';
+            if (playable && c.category === 'invocacao' && mySummons >= ARENA_FRONT_MAX) { playable = false; why = 'Frente cheia (máx. 3 criaturas)'; }
+            if (playable && c.category === 'estrutura' && myStructures >= ARENA_BACK_MAX) { playable = false; why = 'Retaguarda cheia (máx. 2 estruturas)'; }
             const selected = arenaSelectedHand === c.id;
-            return cardFaceHTML(c, { extraClass: `${playable ? '' : 'disabled'}${selected ? ' selected' : ''}`, attrs: `data-arena-hand-card="${escapeHtml(c.id)}" role="button" tabindex="0"` });
+            const title = why ? ` title="${escapeHtml(why)}"` : '';
+            return cardFaceHTML(c, { extraClass: `${playable ? '' : 'disabled'}${selected ? ' selected' : ''}`, attrs: `data-arena-hand-card="${escapeHtml(c.id)}" role="button" tabindex="0"${title}` });
         }).join('') || '<p class="muted" style="padding:14px">Mão vazia — passe o turno e compre mais 🂠</p>';
     }
 
@@ -5095,6 +5437,18 @@ document.addEventListener('click', async (e) => {
 
     const claimPots = t.closest?.('#arena-claim-pots-btn');
     if (claimPots) { await claimArenaSettlements(); refreshArenaBattlePane(); return; }
+
+    const cardUpgrade = t.closest?.('[data-arena-card-upgrade]');
+    if (cardUpgrade) { openCardTreeModal(cardUpgrade.dataset.arenaCardUpgrade); return; }
+
+    const upgBtn = t.closest?.('[data-arena-upg]');
+    if (upgBtn) { await buyArenaUpgradePoint(upgBtn.dataset.cardId, upgBtn.dataset.arenaUpg); return; }
+
+    const buyRelic = t.closest?.('[data-buy-arena-relic]');
+    if (buyRelic) { await buyArenaRelic(buyRelic.dataset.buyArenaRelic); return; }
+
+    const equipRelic = t.closest?.('[data-equip-arena-relic]');
+    if (equipRelic) { await toggleArenaRelicEquip(equipRelic.dataset.cardId, equipRelic.dataset.equipArenaRelic); return; }
 });
 
 /* Criar carta: preview ao vivo + upload de arte */
@@ -5240,7 +5594,7 @@ setInterval(tickClock, 1000);
 /* ================= ATUALIZAÇÃO DO APP (NOVA VERSÃO) ================= */
 // ATENÇÃO: subir junto com version.json/sw.js em CADA release — se ficar pra
 // trás, o app acha que há atualização pra sempre e o aviso não some.
-const APP_VERSION = '4.7.0';
+const APP_VERSION = '4.8.0';
 const appVersionEl = $('#app-version');
 if (appVersionEl) appVersionEl.textContent = `Good Vibes 🌊 · O Refúgio · v${APP_VERSION}`;
 let swRegistration = null;

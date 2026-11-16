@@ -589,6 +589,13 @@
                     <div class="eco-pane" id="shop-pane-cartas" role="tabpanel" hidden>
                         <p class="card-sub">Molduras exclusivas pra <strong>todas as suas cartas</strong> na Arena ⚔️ — descubra a sua! Compre com gold e equipe a de dedo.</p>
                         <div class="cosmetic-grid" id="card-cosmetic-grid"></div>
+                        <div class="arena-section-head shop-relic-head">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-hex"></use></svg>
+                            <h4>Relíquias da Arena</h4>
+                            <span class="arena-section-count">equipa em 1 carta</span>
+                        </div>
+                        <p class="card-sub">Compre uma vez, <strong>equipe em qualquer carta sua</strong> pela Árvore da Carta. Uma relíquia por carta — o poder fica com ela pra sempre.</p>
+                        <div class="cosmetic-grid" id="arena-relic-grid"></div>
                     </div>
 
                     <div class="eco-pane" id="shop-pane-itens" role="tabpanel" hidden>
@@ -926,11 +933,14 @@
                                     <span class="am-chip" title="Cartas na mão"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-cards"></use></svg><b id="am-opponent-hand">0</b></span>
                                     <span class="am-chip" title="Cartas no deck"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-layers"></use></svg><b id="am-opponent-deck">0</b></span>
                                 </div>
+                                <div class="am-status-row" id="am-status-opponent" aria-label="Efeitos no rival"></div>
                             </div>
                             <div class="am-hp-num" id="am-opponent-hpnum">60</div>
                         </div>
 
+                        <div class="am-zone-label"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-moon"></use></svg>Frente — criaturas do rival<span class="am-zone-count" id="am-front-count-opponent">0/3</span></div>
                         <div class="am-board" id="am-board-opponent" aria-label="Criaturas do oponente"></div>
+                        <div class="am-zone-label am-zone-back"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-tower"></use></svg>Retaguarda — estruturas<span class="am-zone-count" id="am-back-count-opponent">0/2</span></div>
                         <div class="am-structures" id="am-structures-opponent"></div>
 
                         <div class="am-table" id="arena-table" role="button" aria-label="Mesa — solte a carta aqui para jogar">
@@ -938,7 +948,9 @@
                             <span class="am-table-hint" id="am-table-hint">solte a carta aqui pra jogar</span>
                         </div>
 
+                        <div class="am-zone-label"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-moon"></use></svg>Frente — suas criaturas<span class="am-zone-count" id="am-front-count-me">0/3</span></div>
                         <div class="am-board" id="am-board-me" aria-label="Suas criaturas"></div>
+                        <div class="am-zone-label am-zone-back"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-tower"></use></svg>Retaguarda — suas estruturas<span class="am-zone-count" id="am-back-count-me">0/2</span></div>
                         <div class="am-structures" id="am-structures-me"></div>
 
                         <div class="am-log" id="arena-log" aria-live="polite"></div>
@@ -952,6 +964,7 @@
                                     <span class="am-chip am-chip-mag" title="Escudo mágico"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-shield-mag"></use></svg><b id="am-me-shield-mag">0</b></span>
                                     <span class="am-chip" title="Turno atual"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-history"></use></svg><b id="am-me-turn">1</b></span>
                                 </div>
+                                <div class="am-status-row" id="am-status-me" aria-label="Seus efeitos"></div>
                             </div>
                             <div class="am-hp-num" id="am-me-hpnum">60</div>
                         </div>
@@ -1124,6 +1137,24 @@
                     <div class="arena-bet-cosm-title">Cosméticos na aposta (seu baú) — opcional</div>
                     <div class="arena-bet-cosmetics" id="arena-bet-cosmetics"></div>
                     <button class="primary-btn wide" id="arena-bet-confirm"><span class="btn-label">Confirmar aposta ⚔️</span></button>
+                </div>
+            </div>
+
+            <div id="arena-card-tree-modal" class="modal" role="dialog" aria-modal="true" aria-label="Árvore da carta">
+                <div class="modal-content card card-tree-content">
+                    <button class="close-modal" data-close-modal="arena-card-tree-modal" aria-label="Fechar">&times;</button>
+                    <h2 class="modal-title"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;stroke:#fbbf24;fill:none;stroke-width:2;vertical-align:-3px"><use href="#arena-sparkles"></use></svg> Árvore da carta</h2>
+                    <p class="modal-sub">Aprimoramentos independentes desta carta — comprados uma vez com gold, valem pra sempre (e viajam com a carta pra qualquer partida).</p>
+                    <div class="card-tree-wrap">
+                        <div class="card-tree-face" id="ctm-face"></div>
+                        <div class="card-tree-side">
+                            <div class="card-tree-gold"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-coin"></use></svg><b id="ctm-gold">0</b> gold</div>
+                            <div class="card-tree-summary" id="ctm-summary"></div>
+                        </div>
+                    </div>
+                    <div class="card-tree-branches" id="ctm-branches"></div>
+                    <h3 class="card-tree-relic-title"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-hex"></use></svg>Relíquia — 1 por carta</h3>
+                    <div class="card-tree-relics" id="ctm-relics"></div>
                 </div>
             </div>
 

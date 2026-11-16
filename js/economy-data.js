@@ -353,6 +353,14 @@ const CARD_COSMETICS = COSMETIC_THEMES.map((theme, i) => {
 });
 const CARD_COSMETIC_BY_ID = Object.fromEntries(CARD_COSMETICS.map((c) => [c.id, c]));
 
+const ARENA_RELICS = [
+    { id: 'relic_orbe', name: 'Orbe de Poder', emoji: '🔮', price: 900, desc: '+20% no efeito principal da carta', tint: '#a78bfa' },
+    { id: 'relic_sifao', name: 'Sifão de Sangue', emoji: '🩸', price: 1200, desc: 'Ao jogar, você se cura 25% do efeito principal', tint: '#f87171' },
+    { id: 'relic_eco', name: 'Eco Arcano', emoji: '🐚', price: 1500, desc: 'O efeito principal dispara de novo com 40% de potência', tint: '#38bdf8' },
+    { id: 'relic_escama', name: 'Escama de Aço', emoji: '🛡️', price: 600, desc: 'Ao jogar, concede +4 de escudo físico', tint: '#cbd5e1' }
+];
+const ARENA_RELIC_BY_ID = Object.fromEntries(ARENA_RELICS.map((r) => [r.id, r]));
+
 const COSMETICS = buildCosmeticsCatalog();
 
 const SELL_RATE = 0.6; // venda = 60% do preço
@@ -372,6 +380,8 @@ window.GV_ECO = {
     CARD_CATEGORY_BY_ID,
     CARD_COSMETICS,
     CARD_COSMETIC_BY_ID,
+    ARENA_RELICS,
+    ARENA_RELIC_BY_ID,
     BUILDINGS,
     JOBS,
     GATHER_LOCATIONS,
