@@ -1,4 +1,4 @@
 {
-  "version": "4.6.1",
-  "notes": "Correção: o aviso de atualização não fica preso — versão do app sincronizada, dispensa persistente por versão e botão Atualizar com recarga garantida"
+  "version": "4.7.0",
+  "notes": "Arena: convites diretos por nick (aceitar cria a sala) + correção das regras da arena e do aviso de erro no host da sala"
 }

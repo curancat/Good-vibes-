@@ -11,6 +11,9 @@ rules_version = '2';
 // ⚠️  Sem publicar estas regras, contas que NÃO são a do dono do
 // projeto veem "Missing or insufficient permissions" em TUDO
 // (perfil, feed, chat e inbox) — exatamente o erro relatado.
+//
+// 🔥 ATUALIZADO (Arena: convites diretos + correção da query de
+//    'winner'): publique de novo no Console depois de substituir.
 // ============================================================
 
 service cloud.firestore {
@@ -244,18 +247,30 @@ service cloud.firestore {
     }
 
     // ---------- ARENA ⚔️ (partidas ao vivo + apostas em escrow) ----------
-    // Fluxo: challenger cria ('waiting', aposta dele já debitada) → outro
-    // jogador aceita ('active', aposta dele debitada) → jogo por turnos →
-    // 'finished' (vencedor) → vencedor resgata o pote ('settled').
+    // Fluxo: challenger cria ('waiting' público no mural, OU 'invited'
+    // endereçado a um nick específico) com a aposta dele já debitada →
+    // outro jogador aceita ('active', aposta dele debitada) → jogo por
+    // turnos → 'finished' (vencedor) → vencedor resgata o pote ('settled').
+    //
+    // ⚠️ NUNCA faça query por 'winner' == uid: estas regras não conseguem
+    //    provar que o vencedor é playerA ou playerB dentro de uma query de
+    //    lista, e o Firestore RECUSA A QUERY INTEIRA com
+    //    "Missing or insufficient permissions" — esse era o erro do host.
+    //    O cliente busca por playerA/playerB (que a regra prova) e filtra
+    //    no aparelho.
+    //
+    // Convites diretos: status 'invited' + invitedTo = uid do convidado.
+    // Só o convidado e o criador leem; o convite NÃO aparece no mural
+    // (o mural só lista 'waiting').
     match /arena_matches/{matchId} {
       allow read: if signedIn()
         && (resource.data.status == 'waiting'
             || resource.data.playerA == request.auth.uid
-            || resource.data.playerB == request.auth.uid);
+            || resource.data.playerB == request.auth.uid
+            || (resource.data.keys().hasAny(['invitedTo']) && resource.data.invitedTo == request.auth.uid));
       allow create: if signedIn()
         && request.resource.data.playerA == request.auth.uid
         && request.resource.data.playerAName is string
-        && request.resource.data.status == 'waiting'
         && request.resource.data.playerB == ''
         && request.resource.data.turn == 'A'
         && request.resource.data.stakeA is map
@@ -263,16 +278,24 @@ service cloud.firestore {
         && request.resource.data.stakeA.gold >= 0
         && request.resource.data.stakeA.cosmetics is list
         && request.resource.data.stakeB is map
-        && request.resource.data.hpA == 60 && request.resource.data.hpB == 60;
+        && request.resource.data.hpA == 60 && request.resource.data.hpB == 60
+        && (
+             (request.resource.data.status == 'waiting')
+             || (request.resource.data.status == 'invited'
+                 && request.resource.data.invitedTo is string
+                 && request.resource.data.invitedTo != request.auth.uid)
+           );
       function playersOf() {
         return [resource.data.playerA, resource.data.playerB];
       }
       function isPlayer() {
         return signedIn() && request.auth.uid in playersOf();
       }
-      // Aceitar (waiting→active): aceitante vira playerB
+      // Aceitar (waiting/invited→active): aceitante vira playerB.
+      // Convite ('invited') só pode ser aceito pelo convidado endereçado.
       function acceptIsValid() {
-        return resource.data.status == 'waiting'
+        return (resource.data.status == 'waiting'
+                || (resource.data.status == 'invited' && resource.data.invitedTo == request.auth.uid))
           && request.resource.data.status == 'active'
           && request.resource.data.playerB == request.auth.uid
           && request.resource.data.playerA == resource.data.playerA
@@ -303,15 +326,36 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly(['status', 'settledAt']);
       }
-      // Cancelar partida aguardando (só o challenger)
+      // Cancelar partida aguardando/convite pendente (só o criador)
       function cancelWaitingIsValid() {
-        return resource.data.status == 'waiting'
+        return (resource.data.status == 'waiting' || resource.data.status == 'invited')
           && resource.data.playerA == request.auth.uid
           && request.resource.data.status == 'cancelled'
           && request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly(['status', 'cancelledAt']);
       }
-      allow update: if signedIn() && (acceptIsValid() || playIsValid() || settleIsValid() || cancelWaitingIsValid());
+      // Convidado RECUSA o convite (invited→cancelled). A aposta do
+      // challenger fica retida e é ele quem a resgata — veja markRefundedIsValid.
+      function declineIsValid() {
+        return resource.data.status == 'invited'
+          && resource.data.invitedTo == request.auth.uid
+          && resource.data.playerB == ''
+          && request.resource.data.status == 'cancelled'
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'declinedAt', 'declinedBy']);
+      }
+      // Challenger marca a PRÓPRIA aposta retida como devolvida (uma vez só)
+      function markRefundedIsValid() {
+        return resource.data.status == 'cancelled'
+          && resource.data.playerA == request.auth.uid
+          && resource.data.stakeA.refunded != true
+          && request.resource.data.stakeA.refunded == true
+          && request.resource.data.stakeA.gold == resource.data.stakeA.gold
+          && request.resource.data.stakeA.cosmetics == resource.data.stakeA.cosmetics
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['stakeA']);
+      }
+      allow update: if signedIn() && (acceptIsValid() || playIsValid() || settleIsValid() || cancelWaitingIsValid() || declineIsValid() || markRefundedIsValid());
       allow delete: if false;
     }
 

@@ -879,6 +879,26 @@
                                 <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-swords"></use></svg>
                                 <span class="arena-challenge-btn-text"><b>Criar desafio</b><small>com ou sem aposta — quem vencer leva o pote</small></span>
                             </button>
+                            <button class="arena-btn arena-btn-ghost arena-btn-wide arena-resume-btn" id="arena-resume-match-btn" type="button" hidden>
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-swords"></use></svg>
+                                <span class="arena-challenge-btn-text"><b>Voltar para a partida em andamento</b><small>sua batalha ainda está rolando</small></span>
+                            </button>
+                            <div class="arena-invite-box">
+                                <label class="arena-invite-label" for="arena-invite-nick">Convidar um amigo pelo nick</label>
+                                <div class="arena-invite-row">
+                                    <input type="text" id="arena-invite-nick" class="arena-invite-input" placeholder="ex.: @nome-do-amigo" autocomplete="off" maxlength="40">
+                                    <button class="arena-btn arena-btn-primary arena-invite-btn" id="arena-invite-btn" type="button">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-swords"></use></svg>
+                                        Convidar
+                                    </button>
+                                </div>
+                                <p class="arena-invite-hint">Só o convidado vê o desafio. Se aceitar, a sala é criada na hora e vocês dois entram.</p>
+                            </div>
+                            <div class="arena-section-head" id="arena-invites-head" hidden>
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-broadcast"></use></svg>
+                                <h4>Convites recebidos</h4>
+                            </div>
+                            <div class="arena-invite-list" id="arena-invite-list"></div>
                             <div class="arena-section-head">
                                 <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-broadcast"></use></svg>
                                 <h4>Desafios abertos</h4>

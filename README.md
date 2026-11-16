@@ -2,9 +2,27 @@
 
 Uma rede social privada entre amigos, agora com cara de **tela inicial de telefone**: cada menu é um aplicativo. Feita em HTML/CSS/JS puro (sem build), com Firebase (Auth + Firestore), instalável como **PWA** no celular.
 
-## ⚔️ Arena — crie suas cartas e batalhe ao vivo (v4.6.1)
+## ⚔️ Arena — crie suas cartas e batalhe ao vivo (v4.7.0)
 
-> **v4.6.1** — correção no fluxo de atualização: o aviso de "nova versão" não fica mais preso (versão do app sincronizada com o `version.json`, dispensa persistente por versão e botão **Atualizar** com recarga garantida em 4s).
+> **v4.7.0** — **convites diretos por nick**: digite o nick do seu amigo, aposte gold/cosméticos e ele recebe um convite privado (só ele vê); ao aceitar, a sala é criada na hora e os dois são levados pra mesa. Inclui correções nas regras da Arena e no fluxo dos desafios (o aviso "Missing or insufficient permissions" no host da sala tinha causa raiz — veja abaixo).
+
+### 📨 Convite pelo nick (novo)
+
+- No **Duelo**, abaixo do botão "Criar desafio": digite o **nick** do outro jogador e toque em **Convidar**
+- Defina a aposta do convite (mesma telas de aposta) — a aposta fica em custódia do anfitrião enquanto o convite não é aceito
+- O convidado vê **"Dona Ana te convidou"** na seção *Convites recebidos* com os valores do pote — **não aparece no mural público**
+- **Aceitar** → a partida vira `active` e os dois são levados pra sala; **Recusar** → o convite é cancelado e o anfitrião **recebe a aposta dele de volta automaticamente** (na próxima vez que abrir o app, uma única vez)
+- Se o anfitrião cancelar o convite, a aposta volta na hora, como no desafio público
+
+### 🔥 Regras do Firestore: o erro do host da sala (correção + republicar!)
+
+O erro tinha **duas causas no código do cliente** e uma na regra:
+
+1. **Query proibida por `winner`**: o cliente buscava "pote pra mim" com `where('winner', '==', uid)` — as regras não conseguem provar que `winner == uid` implica que você é playerA/playerB dentro de uma query de lista, então o Firestore **recusa a query inteira** com "Missing or insufficient permissions". O cliente agora busca por `playerA`/`playerB` (que a regra prova) e filtra por `winner` **no aparelho**
+2. **`renderArenaBattlePane()` inexistente**: todo caminho de sucesso da Arena chamava essa função (nome de outro dia) — o erro caía num `catch` e virava toast de erro **mesmo depois do sucesso**. Corrigido para a função certa (`refreshArenaBattlePane()`)
+3. As regras novas cobrem: leitura de convites pelo convidado, criação de convite (`status: invited`), cancelamento pelo criador, recusa pelo convidado (`declineIsValid`) e devolução da aposta ao anfitrião (`markRefundedIsValid`)
+
+> ⚠️ **Depois de subir esta versão, publique as regras de novo** (Firebase Console → Firestore Database → Regras → cole `firestore.rules` → **Publicar**). Sem republicar, os convites não funcionam.
 
 O 16º aplicativo (ícone ⚔️ no grid): uma arena de cartas **criadas por quem joga**, com deck de 30 pontos, árvore de poder e **batalha PvP ao vivo** (turnos em tempo real, direto no Firestore).
 

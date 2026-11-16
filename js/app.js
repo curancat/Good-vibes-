@@ -3539,6 +3539,13 @@ let arenaSaveBusy = false;
 let arenaHandDrag = null;
 let arenaSelectedHand = null;
 let arenaPollTimer = null;
+/* Partidas ativas que já vimos nesta sessão — o auto-abrir só puxa
+   TRANSIÇÕES (desafio aceito agora), nunca puxa de volta quem saiu */
+const arenaKnownActive = new Set();
+let arenaKnownActiveInit = false;
+/* Convites que já avisamos nesta sessão (não notificar 2x) */
+let arenaInvitesSeenInit = false;
+const arenaInviteSeen = new Set();
 
 const ARENA_DECK_MIN = 5;               // mínimo de cartas pra formar deck
 const ARENA_DECK_MAX_POINTS = 30;       // 30 pontos por deck
@@ -4255,6 +4262,53 @@ async function reloadEconomyFromServer() {
     } catch (err) { console.warn('reload econ:', err?.message); }
 }
 
+/* Busca as minhas partidas (como A ou como B). O Firestore exige que a query
+   implique a regra de leitura — por isso NUNCA consultamos por 'winner':
+   as regras não conseguem provar que winner == eu implica que eu seja A ou B,
+   e a query inteira é recusada (Missing or insufficient permissions). */
+async function fetchMyArenaMatchDocs(limitA = 25, limitB = 25) {
+    if (!currentUser) return [];
+    const [a, b] = await Promise.all([
+        getDocs(query(collection(db, 'arena_matches'), where('playerA', '==', currentUser.uid), limit(limitA))),
+        getDocs(query(collection(db, 'arena_matches'), where('playerB', '==', currentUser.uid), limit(limitB)))
+    ]);
+    return [...a.docs, ...b.docs].map((d) => ({ id: d.id, ...d.data() }));
+}
+
+/* Convite RECUSADO pelo convidado: a aposta do anfitrião ficou em escrow e
+   quem pode devolvê-la é o próprio anfitrião — feito aqui, uma única vez. */
+async function claimDeclinedArenaRefunds(mine = null, { silent = true } = {}) {
+    if (!currentUser) return 0;
+    const docs = mine ?? await fetchMyArenaMatchDocs(25, 25).catch(() => []);
+    const declined = docs.filter((m) => m.status === 'cancelled' && m.declinedBy && !(m.stakeA && m.stakeA.refunded));
+    let refunded = 0;
+    for (const m of declined) {
+        const matchRef = doc(db, 'arena_matches', m.id);
+        try {
+            await runTransaction(db, async (tx) => {
+                const snap = await tx.get(matchRef);
+                const data = snap.data();
+                if (!data || data.status !== 'cancelled' || !data.declinedBy) return;
+                if (data.stakeA?.refunded) return;
+                const stakeGold = Number(data.stakeA?.gold) || 0;
+                const stakeCos = Array.isArray(data.stakeA?.cosmetics) ? data.stakeA.cosmetics : [];
+                const uRef = ecoUserRef();
+                const u = (await tx.get(uRef)).data() || {};
+                const cos = Array.isArray(u.cosmetics) ? u.cosmetics : [];
+                tx.set(uRef, { gold: (typeof u.gold === 'number' ? u.gold : 0) + stakeGold, cosmetics: [...cos, ...stakeCos] }, { merge: true });
+                tx.update(matchRef, { stakeA: { ...(data.stakeA || { gold: stakeGold, cosmetics: stakeCos }), refunded: true } });
+            });
+            refunded++;
+            addLedger('arena', 'Aposta de convite devolvida', Number(m.stakeA?.gold) || 0);
+        } catch (err) { console.warn('devolver aposta do convite:', err?.message); }
+    }
+    if (refunded > 0) {
+        await reloadEconomyFromServer();
+        if (!silent) showToast('Aposta do convite recusado devolvida!', 'success');
+    }
+    return refunded;
+}
+
 /* Liquida UMA partida encerrada em favor do vencedor. Idempotente. */
 async function settleArenaMatchDoc(matchRef, m) {
     if (!m || m.status !== 'finished' || m.winner !== currentUser?.uid) return { gold: 0, cos: 0 };
@@ -4285,14 +4339,18 @@ async function claimArenaSettlements({ silent = false } = {}) {
     if (!currentUser) return 0;
     let totalGold = 0, totalCos = 0, count = 0;
     try {
-        const snap = await getDocs(query(collection(db, 'arena_matches'), where('winner', '==', currentUser.uid), limit(25)));
-        for (const d of snap.docs) {
-            const m = d.data();
-            if (m.status !== 'finished') continue;
-            const got = await settleArenaMatchDoc(d.ref, m);
+        const mine = await fetchMyArenaMatchDocs(25, 25);
+        for (const m of mine) {
+            if (m.status !== 'finished' || m.winner !== currentUser.uid) continue;
+            const got = await settleArenaMatchDoc(doc(db, 'arena_matches', m.id), m);
             if (got.gold || got.cos) { totalGold += got.gold; totalCos += got.cos; count++; }
         }
-    } catch (err) { console.warn('Resgate de potes indisponível:', err?.message); }
+        // Devolve a aposta de convites recusados (o convidado não pode tocar no seu doc)
+        await claimDeclinedArenaRefunds(mine, { silent: true });
+    } catch (err) {
+        console.warn('Resgate de potes indisponível:', err?.message);
+        if (!silent) showToast(firestorePermissionMsg(err), 'error', 6000);
+    }
     if (count > 0) {
         addLedger('arena', 'Pote de batalha na Arena', totalGold);
         await reloadEconomyFromServer();
@@ -4353,7 +4411,7 @@ async function createArenaChallengeFromBet(stakeGold, stakeCos) {
         vibrate([12, 40, 12]);
         showToast('Desafio criado! Agora é só esperar alguém aceitar ⚔️', 'success', 4000);
         await reloadEconomyFromServer();
-        renderArenaBattlePane();
+        refreshArenaBattlePane();
         return true;
     } catch (err) {
         console.warn('createChallenge:', err);
@@ -4362,6 +4420,63 @@ async function createArenaChallengeFromBet(stakeGold, stakeCos) {
     }
 }
 
+/* Convite direto: desafiador escolhe o nick; só o convidado vê (fica 'invited',
+   fora do mural). A aposta do anfitrião fica em escrow até a resposta —
+   se for aceito, vira partida; se for recusado, devolvemos via claim. */
+async function createArenaInviteFromBet(stakeGold, stakeCos, target) {
+    const check = validateArenaDeck();
+    if (!check.ok) { showToast(`Monte seu deck primeiro — ${check.reason}`, 'warn', 4500); return false; }
+    if (!target || !target.uid) { showToast('Não achei esse jogador.', 'warn'); return false; }
+    const uid = currentUser.uid;
+    const myName = currentUserProfile.name || 'Usuário';
+    const myAvatar = currentUserProfile.avatarUrl || '';
+    const shuffled = arenaShuffle(arenaDeckSnapshot());
+    const handA = shuffled.slice(0, 5);
+    const restA = shuffled.slice(5);
+    const stats = arenaDeckStats();
+    try {
+        await runTransaction(db, async (tx) => {
+            const uRef = ecoUserRef();
+            const u = (await tx.get(uRef)).data() || {};
+            const gold = typeof u.gold === 'number' ? u.gold : 0;
+            if (gold < stakeGold) throw new Error('OURO_INSUFICIENTE');
+            const cos = Array.isArray(u.cosmetics) ? u.cosmetics : [];
+            for (const id of stakeCos) if (!cos.includes(id)) throw new Error('COSMETICO_AUSENTE');
+            tx.set(uRef, { gold: gold - stakeGold, cosmetics: cos.filter((c) => !stakeCos.includes(c)) }, { merge: true });
+            const matchRef = doc(collection(db, 'arena_matches'));
+            tx.set(matchRef, {
+                playerA: uid, playerAName: myName, playerAAvatar: myAvatar,
+                playerB: '', playerBName: '', playerBAvatar: '',
+                invitedTo: target.uid, invitedToName: target.name || 'Jogador', invitedToAvatar: target.avatarUrl || '',
+                starter: 'A', status: 'invited', turn: 'A', turnNumber: 1,
+                hpA: ARENA_HP, hpB: ARENA_HP,
+                shieldA: { phys: 0, mag: 0 }, shieldB: { phys: 0, mag: 0 },
+                deckA: restA, handA, deckB: [], handB: [],
+                fieldA: [], fieldB: [],
+                treeA: { ...(economyState?.arenaTree || {}) }, catCountA: arenaCatCounts(arenaDeckSnapshot()),
+                treeB: {}, catCountB: {},
+                stakeA: { gold: stakeGold, cosmetics: stakeCos },
+                stakeB: { gold: 0, cosmetics: [] },
+                potGold: stakeGold,
+                winner: '',
+                log: [`⚔️ ${myName} convidou ${target.name || 'um jogador'} pra um duelo — pote: ${arenaStakeText({ gold: stakeGold, cosmetics: stakeCos })}`],
+                createdAt: serverTimestamp()
+            });
+        });
+        addLedger('arena', 'Aposta em convite da Arena', -stakeGold);
+        vibrate([12, 40, 12]);
+        showToast(`Convite enviado para ${target.name || 'o jogador'}! ⚔️`, 'success', 4000);
+        await reloadEconomyFromServer();
+        refreshArenaBattlePane();
+        return true;
+    } catch (err) {
+        console.warn('createInvite:', err);
+        showToast(err?.message === 'OURO_INSUFICIENTE' ? 'Gold insuficiente pra essa aposta 🪙' : err?.message === 'COSMETICO_AUSENTE' ? 'Esse cosmético não está mais no seu baú.' : 'Não consegui enviar o convite. Rules publicadas?', 'error', 4500);
+        return false;
+    }
+}
+
+/* Aceitar convite/desafio: mesma transação, mas exige ser o convidado (ou qualquer um, se for desafio público) */
 async function acceptArenaChallengeFromBet(matchId, stakeGold, stakeCos) {
     const check = validateArenaDeck();
     if (!check.ok) { showToast(`Monte seu deck primeiro — ${check.reason}`, 'warn', 4500); return false; }
@@ -4378,7 +4493,8 @@ async function acceptArenaChallengeFromBet(matchId, stakeGold, stakeCos) {
             const mRef = doc(db, 'arena_matches', matchId);
             const mSnap = await tx.get(mRef);
             const m = mSnap.data();
-            if (!m || m.status !== 'waiting') throw new Error('JOGO_ACABOU');
+            const isInvite = m?.status === 'invited';
+            if (!m || (m.status !== 'waiting' && !(isInvite && m.invitedTo === uid))) throw new Error('JOGO_ACABOU');
             if (m.playerA === uid) throw new Error('PROPRIO');
             const uRef = ecoUserRef();
             const u = (await tx.get(uRef)).data() || {};
@@ -4412,9 +4528,60 @@ async function acceptArenaChallengeFromBet(matchId, stakeGold, stakeCos) {
             : err?.message === 'COSMETICO_AUSENTE' ? 'Esse cosmético não está mais no seu baú.'
             : 'Não consegui aceitar. Rules publicadas?';
         showToast(msg, 'warn', 4500);
-        renderArenaBattlePane();
+        refreshArenaBattlePane();
         return false;
     }
+}
+
+/* Convidado RECUSA: não mexe na aposta do anfitrião (quem devolve é o cliente dele) */
+async function declineArenaInvite(matchId) {
+    if (!currentUser) return;
+    const ok = await gvConfirm({ emoji: '🚫', title: 'Recusar o convite?', message: 'O desafiante recebe a aposta dele de volta.', okLabel: 'Recusar' });
+    if (!ok) return;
+    try {
+        await runTransaction(db, async (tx) => {
+            const mRef = doc(db, 'arena_matches', matchId);
+            const mSnap = await tx.get(mRef);
+            const m = mSnap.data();
+            if (!m || m.status !== 'invited' || m.invitedTo !== currentUser.uid) throw new Error('INVALIDA');
+            tx.update(mRef, { status: 'cancelled', declinedAt: serverTimestamp(), declinedBy: currentUser.uid });
+        });
+        showToast('Convite recusado.', 'info');
+        refreshArenaBattlePane();
+    } catch (err) {
+        console.warn('declineInvite:', err);
+        showToast('Não consegui recusar esse convite.', 'warn');
+    }
+}
+
+/* Busca usuário pelo nick (exato, case-insensitive) — mesmo padrão das buscas do app */
+async function findUserByNick(nick) {
+    const q = String(nick || '').trim().toLowerCase();
+    if (!q) return null;
+    const snap = await getDocs(collection(db, 'users'));
+    let found = null;
+    snap.forEach((d) => {
+        if (found) return;
+        const data = d.data() || {};
+        const name = String(data.name || '');
+        if (name.trim().toLowerCase() === q) found = { uid: d.id, name, avatarUrl: data.avatarUrl || '' };
+    });
+    return found;
+}
+
+/* Linha de convite recebido (avatar + aposta + aceitar/recusar) */
+function arenaInviteRowHTML(m) {
+    const avatar = sanitizeUrl(m.playerAAvatar || '');
+    const avatarHtml = avatar
+        ? `<img src="${escapeHtml(avatar)}" alt="" loading="lazy" onerror="this.remove()">`
+        : '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-swords"></use></svg>';
+    return `<div class="arena-challenge is-invite">
+        <span class="arena-challenge-avatar">${avatarHtml}</span>
+        <span class="arena-challenge-info"><strong>${escapeHtml(m.playerAName || 'Alguém')} te convidou</strong>
+            <span class="arena-pot"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-coin"></use></svg>Pote: ${escapeHtml(arenaStakeText(m.stakeA))}</span></span>
+        <button class="arena-btn arena-btn-ghost arena-btn-sm" data-arena-decline="${escapeHtml(m.id)}">Recusar</button>
+        <button class="arena-btn arena-btn-primary arena-btn-sm" data-arena-accept="${escapeHtml(m.id)}"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-swords"></use></svg>Aceitar</button>
+    </div>`;
 }
 
 async function cancelArenaChallenge(matchId) {
@@ -4424,7 +4591,7 @@ async function cancelArenaChallenge(matchId) {
             const mRef = doc(db, 'arena_matches', matchId);
             const mSnap = await tx.get(mRef);
             const m = mSnap.data();
-            if (!m || m.status !== 'waiting' || m.playerA !== currentUser.uid) throw new Error('INVALIDA');
+            if (!m || (m.status !== 'waiting' && m.status !== 'invited') || m.playerA !== currentUser.uid) throw new Error('INVALIDA');
             const uRef = ecoUserRef();
             const u = (await tx.get(uRef)).data() || {};
             const cos = Array.isArray(u.cosmetics) ? u.cosmetics : [];
@@ -4437,7 +4604,7 @@ async function cancelArenaChallenge(matchId) {
         });
         showToast('Desafio cancelado — aposta devolvida ↩️', 'info');
         await reloadEconomyFromServer();
-        renderArenaBattlePane();
+        refreshArenaBattlePane();
     } catch (err) {
         showToast('Não consegui cancelar esse desafio.', 'warn');
     }
@@ -4464,14 +4631,16 @@ function updateArenaDeckCheck() {
 }
 
 function arenaChallengeRowHTML(m, isMine) {
-    const avatar = sanitizeUrl(m.playerAAvatar || '');
+    const invited = m.status === 'invited';
+    const avatar = sanitizeUrl(invited ? (m.invitedToAvatar || '') : (m.playerAAvatar || ''));
     const avatarHtml = avatar
         ? `<img src="${escapeHtml(avatar)}" alt="" loading="lazy" onerror="this.remove()">`
         : '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-swords"></use></svg>';
-    return `<div class="arena-challenge">
+    const title = invited ? `Convite para ${m.invitedToName || 'jogador'}` : (m.playerAName || 'Alguém');
+    return `<div class="arena-challenge${invited ? ' is-invite' : ''}">
         <span class="arena-challenge-avatar">${avatarHtml}</span>
-        <span class="arena-challenge-info"><strong>${escapeHtml(m.playerAName || 'Alguém')}</strong>
-            <span class="arena-pot"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-coin"></use></svg>Pote: ${escapeHtml(arenaStakeText(m.stakeA))}</span></span>
+        <span class="arena-challenge-info"><strong>${escapeHtml(title)}${invited ? '<small class="arena-invite-tag">convite direto</small>' : ''}</strong>
+            <span class="arena-pot"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-coin"></use></svg>${invited ? 'Aguardando resposta…' : `Pote: ${escapeHtml(arenaStakeText(m.stakeA))}`}</span></span>
         ${isMine
             ? `<button class="arena-btn arena-btn-ghost arena-btn-sm" data-arena-cancel="${escapeHtml(m.id)}">Cancelar</button>`
             : `<button class="arena-btn arena-btn-primary arena-btn-sm arena-accept-btn" data-arena-accept="${escapeHtml(m.id)}"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-swords"></use></svg>Aceitar</button>`}
@@ -4495,30 +4664,81 @@ function arenaHistoryRowHTML(m) {
 async function refreshArenaBattlePane() {
     if (!currentUser) return;
     updateArenaDeckCheck();
-    // Potes pendentes de resgate
+    // Minhas partidas (uma busca só — usada pelo banner, pelo histórico e pelo auto-abrir)
+    let mine = [];
     try {
-        const snap = await getDocs(query(collection(db, 'arena_matches'), where('winner', '==', currentUser.uid), limit(15)));
-        const pending = snap.docs.filter((d) => d.data().status === 'finished');
-        const banner = $('#arena-settle-banner');
-        if (banner) {
-            banner.innerHTML = pending.length
-                ? `<div class="arena-settle"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-coin"></use></svg><span class="arena-settle-text">Você tem <strong>${pending.length}</strong> pote${pending.length > 1 ? 's' : ''} de batalha pra resgatar!</span><button class="arena-btn arena-btn-primary arena-btn-sm" id="arena-claim-pots-btn">Resgatar</button></div>`
-                : '';
+        mine = await fetchMyArenaMatchDocs(25, 25);
+    } catch (err) { console.warn('minhas partidas:', err?.message); }
+
+    // Auto-abrir: meu desafio/convite acabou de ser aceito → entra na sala sozinho
+    const activeMine = mine.filter((m) => m.status === 'active');
+    if (!arenaKnownActiveInit) {
+        // Na primeira carga da sessão, partidas já ativas não puxam ninguém pra dentro
+        activeMine.forEach((m) => arenaKnownActive.add(m.id));
+        arenaKnownActiveInit = true;
+    }
+    const freshActive = activeMine.find((m) => !arenaKnownActive.has(m.id));
+    activeMine.forEach((m) => arenaKnownActive.add(m.id));
+    const arenaVisible = document.getElementById('app-arena')?.classList.contains('active');
+    if (freshActive && !arenaOpenMatchId && arenaVisible) {
+        showToast('⚔️ Seu desafio foi aceito! Entrando na sala…', 'success', 3000);
+        openArenaMatch(freshActive.id);
+        return;
+    }
+
+    // Convites recusados com aposta retida → devolve automaticamente (uma vez)
+    void claimDeclinedArenaRefunds(mine, { silent: true });
+
+    // Potes pendentes de resgate
+    const pending = mine.filter((m) => m.status === 'finished' && m.winner === currentUser.uid);
+    const banner = $('#arena-settle-banner');
+    if (banner) {
+        banner.innerHTML = pending.length
+            ? `<div class="arena-settle"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-coin"></use></svg><span class="arena-settle-text">Você tem <strong>${pending.length}</strong> pote${pending.length > 1 ? 's' : ''} de batalha pra resgatar!</span><button class="arena-btn arena-btn-primary arena-btn-sm" id="arena-claim-pots-btn">Resgatar</button></div>`
+            : '';
+    }
+    // Botão "partida em andamento" — voltar pra sala quando quiser
+    const resumeBtn = $('#arena-resume-match-btn');
+    const resumable = mine.find((m) => m.status === 'active');
+    if (resumeBtn) {
+        resumeBtn.hidden = !resumable;
+        if (resumable) resumeBtn.dataset.matchId = resumable.id;
+    }
+
+    // Convites diretos recebidos (discreto, acima do mural)
+    try {
+        const iSnap = await getDocs(query(collection(db, 'arena_matches'), where('invitedTo', '==', currentUser.uid), limit(10)));
+        const invites = iSnap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.status === 'invited');
+        const head = $('#arena-invites-head');
+        const list = $('#arena-invite-list');
+        if (head) head.hidden = invites.length === 0;
+        if (list) {
+            if (arenaInvitesSeenInit) {
+                for (const m of invites) {
+                    if (!arenaInviteSeen.has(m.id)) showToast(`⚔️ ${m.playerAName || 'Alguém'} te convidou para um duelo!`, 'info', 4500);
+                }
+            }
+            arenaInvitesSeenInit = true;
+            arenaInviteSeen.clear();
+            invites.forEach((m) => arenaInviteSeen.add(m.id));
+            list.innerHTML = invites.map(arenaInviteRowHTML).join('');
         }
-    } catch (err) { console.warn('banner de potes:', err?.message); }
+    } catch (err) { console.warn('convites:', err?.message); }
+
     // Desafios abertos + meus desafios esperando
     try {
         const snap = await getDocs(query(collection(db, 'arena_matches'), where('status', '==', 'waiting'), limit(20)));
-        const mine = currentUser.uid;
+        const uid = currentUser.uid;
         const waiting = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        const myWaiting = waiting.filter((m) => m.playerA === mine);
-        const open = waiting.filter((m) => m.playerA !== mine)
+        const open = waiting.filter((m) => m.playerA !== uid)
+            .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+        const myPending = mine.filter((m) => (m.status === 'waiting' || m.status === 'invited') && m.playerA === uid)
             .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
         const countEl = $('#arena-open-count');
         if (countEl) countEl.textContent = open.length ? `${open.length} aberto${open.length > 1 ? 's' : ''}` : '';
         const list = $('#arena-challenge-list');
         if (list) {
-            const html = myWaiting.map((m) => arenaChallengeRowHTML(m, true)).join('')
+            const html = myPending.map((m) => arenaChallengeRowHTML(m, true)).join('')
                 + open.map((m) => arenaChallengeRowHTML(m, false)).join('');
             list.innerHTML = html || '<p class="muted">Nenhum desafio aberto agora. Crie o primeiro! ⚔️</p>';
         }
@@ -4527,13 +4747,9 @@ async function refreshArenaBattlePane() {
         const list = $('#arena-challenge-list');
         if (list) list.innerHTML = '<p class="muted">Não consegui carregar os desafios (rules da Arena publicadas?).</p>';
     }
-    // Histórico recente (duas queries simples, mescladas no cliente)
+    // Histórico recente (a partir da busca compartilhada)
     try {
-        const [a, b] = await Promise.all([
-            getDocs(query(collection(db, 'arena_matches'), where('playerA', '==', currentUser.uid), limit(10))),
-            getDocs(query(collection(db, 'arena_matches'), where('playerB', '==', currentUser.uid), limit(10)))
-        ]);
-        const hist = [...a.docs, ...b.docs].map((d) => ({ id: d.id, ...d.data() }))
+        const hist = mine
             .filter((m) => m.status === 'finished' || m.status === 'settled')
             .sort((x, y) => (y.finishedAt?.toMillis?.() || y.createdAt?.toMillis?.() || 0) - (x.finishedAt?.toMillis?.() || x.createdAt?.toMillis?.() || 0))
             .slice(0, 10);
@@ -4560,6 +4776,7 @@ function openArenaMatch(matchId) {
     });
 }
 function leaveArenaMatch() {
+    if (arenaOpenMatchId) arenaKnownActive.add(arenaOpenMatchId); // não puxa de volta quem saiu
     arenaOpenMatchId = null;
     arenaOpenMatchCache = null;
     arenaSelectedHand = null;
@@ -4794,10 +5011,12 @@ function openArenaBetModal(mode) {
     arenaBetSelected = new Set();
     const title = $('#arena-bet-title');
     const sub = $('#arena-bet-sub');
-    if (title) title.textContent = mode?.type === 'accept' ? '⚔️ Aceitar desafio' : '⚔️ Criar desafio';
+    if (title) title.textContent = mode?.type === 'accept' ? '⚔️ Aceitar desafio' : mode?.type === 'invite' ? `⚔️ Convite para ${mode?.inviteeName || 'jogador'}` : '⚔️ Criar desafio';
     if (sub) sub.textContent = mode?.type === 'accept'
         ? 'Empate o pote ou supere: coloque sua parte e leve tudo se vencer.'
-        : 'Defina sua aposta. Quem vencer leva o pote inteiro.';
+        : mode?.type === 'invite'
+            ? 'Defina a aposta do convite. Só ' + (mode?.inviteeName || 'o convidado') + ' vê — se aceitar, o pote vira dele ao vencer.'
+            : 'Defina sua aposta. Quem vencer leva o pote inteiro.';
     const input = $('#arena-bet-gold');
     if (input) input.value = '';
     renderArenaBetCosmetics();
@@ -4828,6 +5047,7 @@ async function confirmArenaBet() {
     if (btn) btn.disabled = true;
     let ok = false;
     if (arenaBetMode?.type === 'accept') ok = await acceptArenaChallengeFromBet(arenaBetMode.matchId, stakeGold, stakeCos);
+    else if (arenaBetMode?.type === 'invite') ok = await createArenaInviteFromBet(stakeGold, stakeCos, { uid: arenaBetMode.inviteeId, name: arenaBetMode.inviteeName, avatarUrl: arenaBetMode.inviteeAvatar || '' });
     else ok = await createArenaChallengeFromBet(stakeGold, stakeCos);
     if (btn) btn.disabled = false;
     if (ok) closeModal('arena-bet-modal');
@@ -4861,6 +5081,9 @@ document.addEventListener('click', async (e) => {
     const acceptBtn = t.closest?.('[data-arena-accept]');
     if (acceptBtn) { openArenaBetModal({ type: 'accept', matchId: acceptBtn.dataset.arenaAccept }); return; }
 
+    const declineBtn = t.closest?.('[data-arena-decline]');
+    if (declineBtn) { await declineArenaInvite(declineBtn.dataset.arenaDecline); return; }
+
     const cancelBtn = t.closest?.('[data-arena-cancel]');
     if (cancelBtn) { await cancelArenaChallenge(cancelBtn.dataset.arenaCancel); return; }
 
@@ -4871,7 +5094,7 @@ document.addEventListener('click', async (e) => {
     if (equipFrame) { await equipCardFrame(equipFrame.dataset.equipCardFrame); renderCardCosmeticShop(); return; }
 
     const claimPots = t.closest?.('#arena-claim-pots-btn');
-    if (claimPots) { await claimArenaSettlements(); renderArenaBattlePane(); return; }
+    if (claimPots) { await claimArenaSettlements(); refreshArenaBattlePane(); return; }
 });
 
 /* Criar carta: preview ao vivo + upload de arte */
@@ -4909,6 +5132,30 @@ $('#arena-create-challenge-btn')?.addEventListener('click', () => {
     const v = validateArenaDeck();
     if (!v.ok) { showToast(`Monte seu deck primeiro — ${v.reason}`, 'warn', 4500); return; }
     openArenaBetModal({ type: 'create' });
+});
+$('#arena-invite-btn')?.addEventListener('click', async () => {
+    const input = $('#arena-invite-nick');
+    const nick = (input?.value || '').trim();
+    if (!nick) { showToast('Digite o nick de quem você quer desafiar.', 'warn'); return; }
+    const v = validateArenaDeck();
+    if (!v.ok) { showToast(`Monte seu deck primeiro — ${v.reason}`, 'warn', 4500); return; }
+    const btn = $('#arena-invite-btn');
+    if (btn) btn.disabled = true;
+    try {
+        const target = await findUserByNick(nick);
+        if (!target) { showToast(`Ninguém com o nick “${nick}” 🙈`, 'warn'); return; }
+        if (target.uid === currentUser.uid) { showToast('Você não pode convidar a si mesmo.', 'warn'); return; }
+        openArenaBetModal({ type: 'invite', inviteeId: target.uid, inviteeName: target.name, inviteeAvatar: target.avatarUrl || '' });
+        if (input) input.value = '';
+    } catch (err) {
+        showToast(firestorePermissionMsg(err), 'error', 5000);
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+});
+$('#arena-resume-match-btn')?.addEventListener('click', (e) => {
+    const id = e.currentTarget.dataset.matchId;
+    if (id) openArenaMatch(id);
 });
 $('#arena-bet-confirm')?.addEventListener('click', confirmArenaBet);
 $('#arena-bet-cosmetics')?.addEventListener('change', (e) => {
@@ -4993,7 +5240,7 @@ setInterval(tickClock, 1000);
 /* ================= ATUALIZAÇÃO DO APP (NOVA VERSÃO) ================= */
 // ATENÇÃO: subir junto com version.json/sw.js em CADA release — se ficar pra
 // trás, o app acha que há atualização pra sempre e o aviso não some.
-const APP_VERSION = '4.6.1';
+const APP_VERSION = '4.7.0';
 const appVersionEl = $('#app-version');
 if (appVersionEl) appVersionEl.textContent = `Good Vibes 🌊 · O Refúgio · v${APP_VERSION}`;
 let swRegistration = null;
