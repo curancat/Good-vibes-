@@ -33,7 +33,7 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&family=Cinzel:wght@500;700;800;900&family=Alegreya:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -835,6 +835,10 @@
                                         <span class="arena-field-label">Categoria</span>
                                         <select id="ac-category"></select>
                                     </label>
+                                    <div class="arena-field" role="radiogroup" aria-label="Traço de efeito">
+                                        <span class="arena-field-label">Traço de efeito<small>10 sabores por categoria — cada um joga de um jeito</small></span>
+                                        <div class="effect-grid" id="ac-effect-grid"></div>
+                                    </div>
                                     <div class="arena-field-pair">
                                         <div class="arena-field" role="radiogroup" aria-label="Custo no deck">
                                             <span class="arena-field-label">Custo no deck<small>cabe no limite de 30 pts</small></span>
@@ -943,9 +947,19 @@
                         <div class="am-zone-label am-zone-back"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-tower"></use></svg>Retaguarda — estruturas e residências<span class="am-zone-count" id="am-back-count-opponent">0/4</span></div>
                         <div class="am-structures" id="am-structures-opponent"></div>
 
-                        <div class="am-table" id="arena-table" role="button" aria-label="Mesa — solte a carta aqui para jogar">
-                            <svg class="am-table-watermark" viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-swords"></use></svg>
-                            <span class="am-table-hint" id="am-table-hint">solte a carta aqui pra jogar</span>
+                        <div class="am-tablewrap">
+                            <div class="am-piles am-piles--foe" aria-label="Pilhas do rival">
+                                <div class="am-pile" title="Monte de compra do rival"><div class="am-cardback"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-hex"></use></svg></div><div class="am-pile-meta"><b id="am-pile-deck-foe">0</b><span>monte</span></div></div>
+                                <div class="am-pile am-pile--drop" title="Descarte do rival"><div class="am-cardback am-cardback--drop"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-trash"></use></svg></div><div class="am-pile-meta"><b id="am-pile-discard-foe">0</b><span id="am-pile-discard-foe-top">descarte</span></div></div>
+                            </div>
+                            <div class="am-table" id="arena-table" role="button" aria-label="Mesa — solte a carta aqui para jogar">
+                                <svg class="am-table-watermark" viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-swords"></use></svg>
+                                <span class="am-table-hint" id="am-table-hint">solte a carta aqui pra jogar</span>
+                            </div>
+                            <div class="am-piles am-piles--me" aria-label="Suas pilhas">
+                                <div class="am-pile" title="Seu monte de compra"><div class="am-cardback"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-hex"></use></svg></div><div class="am-pile-meta"><b id="am-pile-deck-me">0</b><span>monte</span></div></div>
+                                <div class="am-pile am-pile--drop" title="Seu descarte"><div class="am-cardback am-cardback--drop"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-trash"></use></svg></div><div class="am-pile-meta"><b id="am-pile-discard-me">0</b><span id="am-pile-discard-me-top">descarte</span></div></div>
+                            </div>
                         </div>
 
                         <div class="am-zone-label"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-moon"></use></svg>Frente — suas criaturas<span class="am-zone-count" id="am-front-count-me">0/3</span></div>

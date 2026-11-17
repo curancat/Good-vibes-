@@ -1,4 +1,4 @@
 {
-  "version": "4.9.0",
-  "notes": "Arena 2.0: Evolução por traço — cada carta evolui pelo próprio efeito em 2 patamares que mudam a mecânica; cartas jogadas ficam no campo (Resquícios 2 turnos · Residências e Estruturas permanentes pros dois lados)"
+  "version": "5.0.0",
+  "notes": "Arena 3.0: Mesa de Guerra — cartas com 10 traços de efeito por categoria (100 efeitos), tabuleiro League of Runeterra com monte e descarte visíveis, criaturas atacam criaturas antes do rosto, mão com swipe e rebaralhar automático"
 }

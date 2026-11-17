@@ -2,9 +2,11 @@
 
 Uma rede social privada entre amigos, agora com cara de **tela inicial de telefone**: cada menu é um aplicativo. Feita em HTML/CSS/JS puro (sem build), com Firebase (Auth + Firestore), instalável como **PWA** no celular.
 
-## ⚔️ Arena — crie suas cartas e batalhe ao vivo (v4.9.0)
+## ⚔️ Arena — crie suas cartas e batalhe ao vivo (v5.0.0)
 
-> **v4.9.0** — **Arena 2.0: Evolução por traço**. A árvore genérica acabou: **cada carta evolui pelo PRÓPRIO traço** — Dano
+> **v5.0.0** — **Arena 3.0: Mesa de Guerra** (vibe League of Runeterra). **Cada carta agora escolhe o próprio TRAÇO de efeito ao ser forjada — 10 traços por categoria, 100 efeitos no total** — e cada traço muda a mecânica de verdade. **A mesa virou um tabuleiro**: monte de compra e descarte visíveis pros dois lados (o monte acabou → o descarte reembaralha), **criaturas se atacam antes de bater no rosto**, e a **mão desliza** com o dedo/roda do mouse. Tudo com moldura de obsidiana, ouro envelhecido e tipografia Cinzel/Alegreya.
+>
+> **v4.9.0** — Arena 2.0: Evolução por traço. Cada carta evolui pelo PRÓPRIO traço — Dano
 > evolui pra **Lâmina**, Fogo pra **Ignição**, Água pra **Maré**, Ar pra **Tempestade**, Terra pra **Terremoto**, Cura pra **Bênção**,
 > Defesa pra **Bastião**, Defesa Mágica pro **Véu**, Invocação e Estrutura têm árvores próprias. **Cada caminho tem 2 patamares
 > que MUDAM a mecânica**, não apenas o número: ex. **Amputar** faz a ferida sangrar mais e depois detona em dobro; **Estocada**
@@ -12,7 +14,28 @@ Uma rede social privada entre amigos, agora com cara de **tela inicial de telefo
 > **Cartas jogadas agora APARECEM no campo dos dois lados**: rajadas ficam como **Resquícios** (2 turnos); **Residências**
 > (Terra/Cura/Defesa/Véu) e **Estruturas** **ficam no campo dando bônus toda rodada** — visíveis pros dois jogadores.
 
-### ✦ Evolução da carta (NOVA — substitui a árvore antiga)
+### 🎭 Traços de efeito (NOVO — 10 por categoria, 100 no total)
+
+- Ao forjar uma carta, escolha o **Traço de efeito** dela na grade: cada categoria tem **10 sabores** com mecânicas próprias
+- A descrição exibida é sempre derivada da mecânica — o que a carta promete é o que o motor executa
+- **Físico**: golpe único com sangramento → dança de 2 golpes, perfuração, execução contra alvo ferido, roubo de vida, furia de invocações…
+- **Fogo**: queimadura → combustão sem escudos, brasa eterna com torre em campo, marca que cresce a cada turno, chama que alcança todas as criaturas…
+- **Água**: corrói escudos → absorção, encharcar atordoante, ressaca contra atordoados, fissura perfurante, transbordar com escudos zerados…
+- **Ar**: direto na vida → ímpeto contra atordoado, fiação por carta na mão rival, desarmar, esquiva total (Faseamento), Relampeio sem atordoar, Vendaval Ascendente (compra 2)…
+- **Terra**: residência → núcleo de granito, raízes profundas, terremoto, aura sísmica, montanha inabalável…
+- **Cura/Defesa/Véu**: sobrecura repartida ou como Barreira, milagre de baixo HP, santuário anti-atordoamento, muralha astral (3 cargas), véu espelho…
+- **Invocação**: enxame, persistência, pacto de sombra (troca vida por golpe dobrado), invocação tática (+2 de poder), carga imediata…
+- **Estrutura**: bombardeio, mina perfurante, baluarte vivo, fortaleza da montanha (14 de vida), torre vampírica…
+- O traço **viaja com a carta** no deck, no snapshot da partida e fica visível como faixa dourada na carta
+
+### 🏛️ O tabuleiro (v5.0.0 — mesa de guerra)
+
+- **Monte de compra e descarte dos dois lados** ficam ao lado da mesa (quantidade + nome da última carta descartada)
+- Carta jogada vai pro **descarte** — quando o monte acaba, ele **reembaralha automaticamente** com o descarte
+- **Criaturas atacam criaturas primeiro** (dano mútuo com revide) e só batem no rosto se a frente inimiga estiver vazia
+- **A mão desliza** com o dedo (swipe horizontal) ou com a roda do mouse na horizontal; arrastar pra cima joga a carta na mesa
+
+### ✦ Evolução da carta (substitui a árvore antiga)
 
 - Abra qualquer carta em **Minhas cartas → ✦**: cada carta tem **3 caminhos de evolução** próprios da categoria dela
 - **Traçar um caminho é permanente** pra aquela carta — escolha com cabeça (Amputar ou Estocada ou Execução?)

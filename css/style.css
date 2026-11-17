@@ -1934,7 +1934,7 @@ button.chat-bubble-name:hover { color: #7dd3fc; text-decoration: underline; }
 .am-log div:last-child { color: var(--text-color); font-weight: 600; }
 
 .am-hand { display: flex; gap: 7px; overflow-x: auto; padding: 5px 2px 9px; scroll-snap-type: x proximity; align-items: flex-end; scrollbar-width: thin; }
-.am-hand .card-face { flex: 0 0 104px; scroll-snap-align: start; cursor: pointer; transition: transform .15s, box-shadow .15s; touch-action: none; }
+.am-hand .card-face { flex: 0 0 104px; scroll-snap-align: start; cursor: pointer; transition: transform .15s, box-shadow .15s; touch-action: pan-x; }
 .am-hand .card-face:hover { transform: translateY(-7px); }
 .am-hand .card-face.disabled { opacity: .42; filter: grayscale(.6); cursor: not-allowed; }
 .am-hand .card-face.disabled:hover { transform: none; }
@@ -1946,7 +1946,7 @@ button.chat-bubble-name:hover { color: #7dd3fc; text-decoration: underline; }
 .arena-ghost svg { width: 24px; height: 24px; stroke: #e9d5ff; fill: none; stroke-width: 2; }
 
 /* ---------- Fim de jogo ---------- */
-.am-finish { position: absolute; inset: -7px; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 16px; border-radius: 18px; background: rgba(2,6,23,.78); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); animation: amFinishIn .38s var(--spring); }
+.am-finish { position: absolute; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 16px; border-radius: 18px; background: rgba(2,6,23,.78); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); animation: amFinishIn .38s var(--spring); }
 @keyframes amFinishIn { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: scale(1); } }
 .am-finish-panel { width: 100%; max-width: 330px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 20px 18px 16px; border-radius: 20px; border: 1px solid var(--border-color); background: var(--card-solid); box-shadow: 0 30px 60px -20px rgba(0,0,0,.7); }
 .am-finish-ring { width: 82px; height: 82px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
@@ -2033,3 +2033,160 @@ button.chat-bubble-name:hover { color: #7dd3fc; text-decoration: underline; }
 .am-token small { font-size: 6.5px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .am-token b, .am-token small { position: relative; z-index: 1; }
 .am-token { gap: 1px; }
+
+/* ============================================================
+   ARENA 3.0 — Mesa de Guerra (vibe League of Runeterra · v5.0.0)
+   Obsidian board + ouro envelhecido + esmeralda arcana.
+   Tudo CSS/SVG, sem assets externos.
+   ============================================================ */
+#arena-match {
+    background:
+        radial-gradient(120% 90% at 50% -8%, rgba(251,191,36,.16), transparent 55%),
+        radial-gradient(140% 110% at 50% 112%, rgba(16,185,129,.18), transparent 55%),
+        radial-gradient(closest-side at 50% 50%, rgba(139,92,246,.08), transparent),
+        linear-gradient(178deg, #131a2e 0%, #0b1020 46%, #090d1c 100%);
+    border: 1px solid rgba(251,191,36,.28);
+    border-radius: 22px;
+    padding: 12px 10px 14px;
+    box-shadow: inset 0 0 60px rgba(2,6,23,.85), inset 0 0 4px rgba(251,191,36,.22), 0 24px 50px -22px rgba(0,0,0,.8);
+}
+/* Molduras de canto do tabuleiro */
+#arena-match::before, #arena-match::after {
+    content: ''; position: absolute; width: 74px; height: 74px; pointer-events: none; z-index: 5;
+    background:
+        linear-gradient(#fbbf24, #fbbf24) left top / 26px 2px,
+        linear-gradient(#fbbf24, #fbbf24) left top / 2px 26px,
+        radial-gradient(circle at 2px 2px, #fde68a 2.5px, transparent 3px) left top;
+    background-repeat: no-repeat; opacity: .8;
+}
+#arena-match::before { top: 7px; left: 7px; border-top-left-radius: 14px; }
+#arena-match::after { bottom: 7px; right: 7px; transform: rotate(180deg); }
+
+/* Painéis dos comandantes — moldura metálica */
+.am-panel {
+    background: linear-gradient(168deg, rgba(30,41,59,.92), rgba(9,13,28,.96)) padding-box,
+                linear-gradient(160deg, rgba(251,191,36,.55), rgba(120,87,14,.15) 40%, rgba(251,191,36,.35)) border-box;
+    border: 1.5px solid transparent; border-left: 3px solid;
+    box-shadow: 0 10px 26px -12px rgba(0,0,0,.75), inset 0 1px 0 rgba(253,230,138,.14), inset 0 -8px 18px rgba(2,6,23,.5);
+}
+.am-panel-opponent { border-left-color: #f87171; }
+.am-panel-me { border-left-color: #34d399; }
+.am-avatar { border: 1.5px solid rgba(251,191,36,.45); box-shadow: 0 0 14px -4px rgba(251,191,36,.45); border-radius: 12px; }
+.am-name-row strong { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: .04em; color: #fde68a; text-shadow: 0 2px 6px rgba(0,0,0,.6); }
+.am-turn-tag { font-family: 'Cinzel', serif; letter-spacing: .18em; }
+.am-hp-track { height: 13px; border-color: rgba(251,191,36,.3); background: rgba(2,6,23,.7); box-shadow: inset 0 2px 4px rgba(0,0,0,.7); }
+.am-hp-num { font-family: 'Cinzel', serif; font-weight: 800; color: #fef3c7; text-shadow: 0 0 18px rgba(251,191,36,.35), 0 2px 2px #000; }
+.am-chip { border-color: rgba(251,191,36,.16); background: rgba(2,6,23,.55); }
+
+/* Rótulos de zona — placas gravadas */
+.am-zone-label { font-family: 'Cinzel', serif; font-size: 7px; color: #cbd5e1; letter-spacing: .22em; padding: 3px 8px; margin: 3px 2px 2px; border-top: 1px solid rgba(251,191,36,.18); border-bottom: 1px solid rgba(251,191,36,.18); background: linear-gradient(90deg, transparent, rgba(251,191,36,.09), transparent); }
+.am-zone-label svg { stroke: #fbbf24; }
+.am-zone-back { color: #c4b5fd; }
+.am-zone-back svg { stroke: #a78bfa; }
+
+/* Frentes — criaturas em slots gravados */
+.am-board {
+    min-height: 78px; border-radius: 14px; padding: 6px;
+    border: 1px solid rgba(148,163,184,.14);
+    background: linear-gradient(180deg, rgba(2,6,23,.5), rgba(2,6,23,.28));
+    box-shadow: inset 0 3px 10px rgba(0,0,0,.6);
+    background-image:
+        linear-gradient(180deg, rgba(2,6,23,.5), rgba(2,6,23,.28)),
+        repeating-linear-gradient(90deg, transparent 0 22.8%, rgba(251,191,36,.09) 22.8% 23%, transparent 23% 24.7%);
+}
+/* Tokens — peças de tabuleiro */
+.am-token {
+    border-color: rgba(251,191,36,.5);
+    background: radial-gradient(circle at 50% 32%, rgba(251,191,36,.22), rgba(2,6,23,.75) 75%);
+    box-shadow: 0 6px 14px -6px rgba(0,0,0,.7), inset 0 0 12px rgba(251,191,36,.12);
+    border-width: 1.5px;
+}
+.am-token-turns { background: linear-gradient(90deg, rgba(120,53,15,.9), rgba(69,26,3,.9)); color: #fde68a; font-family: 'Cinzel', serif; }
+
+/* Retaguarda */
+.am-structures { border-radius: 12px; padding: 4px 6px; background: rgba(139,92,246,.05); border: 1px dashed rgba(167,139,250,.18); }
+.am-struct { border-color: rgba(167,139,250,.35); background: linear-gradient(160deg, rgba(139,92,246,.16), rgba(2,6,23,.35)); color: #ddd6fe; }
+
+/* ---------- A MESA central (a "toalha de batalha") ---------- */
+.am-tablewrap { display: flex; align-items: stretch; gap: 8px; }
+.am-piles { display: flex; flex-direction: column; justify-content: center; gap: 6px; flex: 0 0 auto; }
+.am-pile { display: flex; align-items: center; gap: 6px; }
+.am-cardback {
+    width: 34px; height: 48px; border-radius: 6px; flex: 0 0 auto;
+    border: 1.5px solid rgba(251,191,36,.55);
+    background:
+        radial-gradient(circle at 50% 42%, rgba(251,191,36,.28) 0 18%, transparent 19%),
+        repeating-linear-gradient(45deg, rgba(251,191,36,.16) 0 3px, transparent 3px 7px),
+        linear-gradient(165deg, #3b2f0b, #1c1608 55%, #2b2106);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 10px -3px rgba(0,0,0,.7), inset 0 0 8px rgba(251,191,36,.25);
+}
+.am-cardback svg { width: 16px; height: 16px; stroke: #fde68a; fill: none; stroke-width: 1.8; opacity: .9; }
+.am-cardback--drop { border-color: rgba(148,163,184,.4); background: repeating-linear-gradient(45deg, rgba(148,163,184,.09) 0 3px, transparent 3px 7px), linear-gradient(165deg, #1e293b, #0b1020); box-shadow: 0 4px 10px -3px rgba(0,0,0,.6); }
+.am-cardback--drop svg { stroke: #94a3b8; }
+.am-pile-meta { display: flex; flex-direction: column; line-height: 1.15; max-width: 54px; }
+.am-pile-meta b { font-family: 'Cinzel', serif; font-size: 13px; font-weight: 800; color: #fde68a; font-variant-numeric: tabular-nums; }
+.am-pile-meta span { font-size: 6px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.am-table {
+    flex: 1; min-width: 0; min-height: 96px; border-radius: 16px; cursor: pointer;
+    border: 2px solid rgba(251,191,36,.4);
+    background:
+        radial-gradient(ellipse 90% 70% at 50% 50%, rgba(251,191,36,.14), transparent 70%),
+        radial-gradient(ellipse 60% 46% at 50% 50%, rgba(16,185,129,.16), transparent 75%),
+        radial-gradient(circle at 50% 50%, rgba(2,6,23,.25) 0 34%, rgba(251,191,36,.12) 35%, transparent 37%),
+        radial-gradient(circle at 50% 50%, transparent 0 48%, rgba(251,191,36,.18) 49% 51%, transparent 52%),
+        linear-gradient(180deg, #16213a, #0d1330);
+    box-shadow: inset 0 0 34px rgba(2,6,23,.8), inset 0 0 6px rgba(251,191,36,.3), 0 10px 30px -14px rgba(0,0,0,.8);
+    transition: border-color .18s, box-shadow .18s, transform .18s;
+}
+.am-table::before {
+    content: ''; position: absolute; inset: 8px; border-radius: 11px; pointer-events: none;
+    border: 1px solid rgba(251,191,36,.22);
+}
+.am-table.drop-target { border-color: #fde047; transform: scale(1.025); box-shadow: 0 0 34px -6px rgba(253,224,71,.5), inset 0 0 34px rgba(2,6,23,.8); }
+.am-table-watermark { width: 44px; height: 44px; stroke: rgba(253,230,138,.5); filter: drop-shadow(0 0 10px rgba(251,191,36,.4)); }
+.am-table-hint { font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: #fde68a; opacity: .85; }
+
+/* ---------- Log — pergaminho de batalha ---------- */
+.am-log { border-radius: 12px; padding: 5px 10px; background: linear-gradient(180deg, rgba(2,6,23,.45), rgba(2,6,23,.3)); border: 1px solid rgba(251,191,36,.12); }
+.am-log div { font-size: 8.5px; color: #a8b3c9; font-family: 'Alegreya', serif; font-size: 9.5px; }
+.am-log div:last-child { color: #fde68a; }
+
+/* ---------- Mão — leque de cartas ---------- */
+.am-hand { gap: 8px; padding: 8px 4px 12px; scrollbar-color: rgba(251,191,36,.4) transparent; }
+.am-hand::-webkit-scrollbar { height: 6px; }
+.am-hand::-webkit-scrollbar-thumb { background: linear-gradient(90deg, #b45309, #fbbf24); border-radius: 999px; }
+.am-hand .card-face { flex-basis: 108px; }
+.am-hand .card-face:hover { transform: translateY(-12px) scale(1.04); box-shadow: 0 22px 40px -12px rgba(0,0,0,.8), 0 0 26px -6px rgba(251,191,36,.35); z-index: 6; }
+.card-face.selected { outline: 2.5px solid #fde047; outline-offset: 3px; box-shadow: 0 0 34px -4px rgba(253,224,71,.6), 0 18px 38px -12px rgba(0,0,0,.8) !important; }
+
+/* ---------- Carta: faixa do traço de efeito ---------- */
+.cf-effect { font-family: 'Cinzel', serif; font-size: 6px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; text-align: center; color: #fde68a; border: 1px solid rgba(251,191,36,.4); border-radius: 999px; padding: 2px 6px; margin: -2px auto 3px; width: fit-content; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: linear-gradient(180deg, rgba(251,191,36,.18), rgba(251,191,36,.05)); text-shadow: 0 1px 2px #000; }
+.card-face--mini .cf-effect { display: none; }
+
+/* ---------- Forja: seletor de traços ---------- */
+.effect-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; max-height: 232px; overflow-y: auto; padding: 2px; scrollbar-width: thin; }
+.effect-chip { display: flex; align-items: center; gap: 6px; font-family: inherit; text-align: left; border: 1px solid rgba(148,163,184,.22); background: rgba(2,6,23,.4); border-radius: 9px; padding: 5px 7px; cursor: pointer; transition: border-color .15s, background .15s, transform .1s; }
+.effect-chip:hover { border-color: rgba(251,191,36,.45); transform: translateY(-1px); }
+.effect-chip:focus-visible { outline: 2px solid #fde047; outline-offset: 1px; }
+.effect-chip.is-active { border-color: #fbbf24; background: linear-gradient(160deg, rgba(251,191,36,.2), rgba(251,191,36,.06)); box-shadow: 0 0 12px -3px rgba(251,191,36,.4), inset 0 0 8px rgba(251,191,36,.12); }
+.effect-chip-num { flex: 0 0 17px; width: 17px; height: 17px; border-radius: 50%; border: 1px solid rgba(251,191,36,.5); color: #fde68a; font-family: 'Cinzel', serif; font-size: 8px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.effect-chip.is-active .effect-chip-num { background: #fbbf24; color: #451a03; }
+.effect-chip-name { font-size: 8.5px; font-weight: 800; color: #e2e8f0; line-height: 1.25; letter-spacing: .02em; }
+.effect-chip.is-active .effect-chip-name { color: #fef3c7; }
+
+/* ---------- Fim de jogo ---------- */
+.am-finish-title { font-family: 'Cinzel', serif; letter-spacing: .06em; color: #fef3c7; }
+
+@media (max-width: 480px) {
+    .am-tablewrap { gap: 5px; }
+    .am-pile-meta { max-width: 40px; }
+    .am-cardback { width: 28px; height: 40px; }
+    .am-table { min-height: 84px; }
+    .effect-grid { grid-template-columns: 1fr 1fr; max-height: 200px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #arena-match::before, #arena-match::after { opacity: .5; }
+}
