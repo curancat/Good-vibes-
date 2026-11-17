@@ -1,4 +1,4 @@
 {
-  "version": "5.0.0",
-  "notes": "Arena 3.0: Mesa de Guerra — cartas com 10 traços de efeito por categoria (100 efeitos), tabuleiro League of Runeterra com monte e descarte visíveis, criaturas atacam criaturas antes do rosto, mão com swipe e rebaralhar automático"
+  "version": "5.1.0",
+  "notes": "Mesa de Trabalho da Arena — relíquias e Núcleos de Evolução forjáveis na bancada 3x3: forje as 4 relíquias com materiais, evolua cartas gastando Núcleos do Baú (ou gold), novo app de segredos na Mesa e o modal de Evolução mostra seus núcleos"
 }

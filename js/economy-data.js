@@ -140,7 +140,7 @@ const REFINED_MATERIALS = [
     M('lingote_enfeitiçado', 'Lingote Enfeitiçado', '🪄', 600)
 ];
 
-/* ---------- 36 RECEITAS DA REFINARIA ---------- */
+/* ---------- 49 RECEITAS DA MESA DE TRABALHO ---------- */
 /* inputs: { idMaterial: quantidade } — todos os materiais brutos ou refinados */
 const RECIPES = [
     { id: 'r_prancha', out: 'prancha', qty: 2, inputs: { madeira_carvalho: 2 }, shape: ["XX"], key: {"X":"madeira_carvalho"} },
@@ -185,7 +185,14 @@ const RECIPES = [
     { id: 'r_art_rosario', out: 'art_rosario_bronze', qty: 1, inputs: { liga_de_bronze: 1, la_fiada: 2 }, shape: ["L", "B", "L"], key: { L: 'la_fiada', B: 'liga_de_bronze' } },
     { id: 'r_art_idolo', out: 'art_idolo_marmore', qty: 1, inputs: { bloco_de_marmore: 2, tinta_violeta: 1 }, shape: ["M", "M", "T"], key: { M: 'bloco_de_marmore', T: 'tinta_violeta' } },
     { id: 'r_art_coroa', out: 'art_coroa_refugio', qty: 1, inputs: { barra_ouro: 2, gema_lapidada: 1 }, shape: ["G.G", ".E."], key: { G: 'barra_ouro', E: 'gema_lapidada' } },
-    { id: 'r_art_orbe', out: 'art_orbe_encantado', qty: 1, inputs: { lingote_enfeitiçado: 1, cristal_lapidado: 1, essencia_concentrada: 1 }, shape: ["L", "C", "E"], key: { L: 'lingote_enfeitiçado', C: 'cristal_lapidado', E: 'essencia_concentrada' } }
+    { id: 'r_art_orbe', out: 'art_orbe_encantado', qty: 1, inputs: { lingote_enfeitiçado: 1, cristal_lapidado: 1, essencia_concentrada: 1 }, shape: ["L", "C", "E"], key: { L: 'lingote_enfeitiçado', C: 'cristal_lapidado', E: 'essencia_concentrada' } },
+    // Núcleos de Evolução e Relíquias forjáveis da Arena
+    { id: 'r_core_evo', out: 'core_evo', qty: 1, inputs: { essencia_concentrada: 1, cristal_lapidado: 1 }, shape: ["E","C"], key: {"E":"essencia_concentrada","C":"cristal_lapidado"} },
+    { id: 'r_core_primus', out: 'core_primus', qty: 1, inputs: { lingote_enfeitiçado: 1, gema_lapidada: 1 }, shape: ["L","G"], key: {"L":"lingote_enfeitiçado","G":"gema_lapidada"} },
+    { id: 'r_relic_escama', out: 'relic_escama', qty: 1, inputs: { liga_de_aco: 2 }, shape: ["A","A"], key: {"A":"liga_de_aco"} },
+    { id: 'r_relic_orbe', out: 'relic_orbe', qty: 1, inputs: { lingote_enfeitiçado: 1, essencia_concentrada: 1 }, shape: ["L","E"], key: {"L":"lingote_enfeitiçado","E":"essencia_concentrada"} },
+    { id: 'r_relic_sifao', out: 'relic_sifao', qty: 1, inputs: { barra_ouro: 1, gema_lapidada: 1, perola_polida: 1 }, shape: ["O","G","P"], key: {"O":"barra_ouro","G":"gema_lapidada","P":"perola_polida"} },
+    { id: 'r_relic_eco', out: 'relic_eco', qty: 1, inputs: { lingote_enfeitiçado: 1, cristal_lapidado: 1, gema_lapidada: 1 }, shape: ["L","C","G"], key: {"L":"lingote_enfeitiçado","C":"cristal_lapidado","G":"gema_lapidada"} }
 ];
 
 /* ---------- 12 CONSTRUÇÕES ---------- */
@@ -354,17 +361,22 @@ const CARD_COSMETICS = COSMETIC_THEMES.map((theme, i) => {
 const CARD_COSMETIC_BY_ID = Object.fromEntries(CARD_COSMETICS.map((c) => [c.id, c]));
 
 const ARENA_RELICS = [
-    { id: 'relic_orbe', name: 'Orbe de Poder', emoji: '🔮', price: 900, desc: '+20% no efeito principal da carta', tint: '#a78bfa' },
-    { id: 'relic_sifao', name: 'Sifão de Sangue', emoji: '🩸', price: 1200, desc: 'Ao jogar, você se cura 25% do efeito principal', tint: '#f87171' },
-    { id: 'relic_eco', name: 'Eco Arcano', emoji: '🐚', price: 1500, desc: 'O efeito principal dispara de novo com 40% de potência', tint: '#38bdf8' },
-    { id: 'relic_escama', name: 'Escama de Aço', emoji: '🛡️', price: 600, desc: 'Ao jogar, concede +4 de escudo físico', tint: '#cbd5e1' }
+    { id: 'relic_orbe', name: 'Orbe de Poder', emoji: '🔮', price: 900, desc: '+20% no efeito principal da carta', tint: '#a78bfa', hint: 'Lingote enfeitiçado sobre essência…' },
+    { id: 'relic_sifao', name: 'Sifão de Sangue', emoji: '🩸', price: 1200, desc: 'Ao jogar, você se cura 25% do efeito principal', tint: '#f87171', hint: 'Ouro, gema e pérola, em coluna…' },
+    { id: 'relic_eco', name: 'Eco Arcano', emoji: '🐚', price: 1500, desc: 'O efeito principal dispara de novo com 40% de potência', tint: '#38bdf8', hint: 'Lingote, cristal e gema em coluna…' },
+    { id: 'relic_escama', name: 'Escama de Aço', emoji: '🛡️', price: 600, desc: 'Ao jogar, concede +4 de escudo físico', tint: '#cbd5e1', hint: 'Duas ligas de aço em coluna…' }
 ];
 const ARENA_RELIC_BY_ID = Object.fromEntries(ARENA_RELICS.map((r) => [r.id, r]));
 
 const COSMETICS = buildCosmeticsCatalog();
 
 const SELL_RATE = 0.6; // venda = 60% do preço
-const ALL_MATERIALS = [...RAW_MATERIALS, ...REFINED_MATERIALS];
+/* ---------- NÚCLEOS DA ARENA ⚔️ (saídas especiais da Mesa de Trabalho) ---------- */
+const ARENA_MATERIALS = [
+    { id: 'core_evo', name: 'Núcleo de Evolução', emoji: '✦', price: 250, hint: 'Essência e cristal, em coluna…' },
+    { id: 'core_primus', name: 'Núcleo Primordial', emoji: '✦✦', price: 700, hint: 'Lingote enfeitiçado sobre uma gema…' }
+];
+const ALL_MATERIALS = [...RAW_MATERIALS, ...REFINED_MATERIALS, ...ARENA_MATERIALS];
 const MATERIAL_BY_ID = Object.fromEntries(ALL_MATERIALS.map((m) => [m.id, m]));
 const COSMETIC_BY_ID = Object.fromEntries(COSMETICS.map((c) => [c.id, c]));
 
@@ -372,6 +384,7 @@ window.GV_ECO = {
     RAW_MATERIALS,
     REFINED_MATERIALS,
     ALL_MATERIALS,
+    ARENA_MATERIALS,
     MATERIAL_BY_ID,
     RECIPES,
     ARTIFACTS,

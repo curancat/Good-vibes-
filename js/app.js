@@ -1791,7 +1791,8 @@ const ecoUserRef = () => doc(db, 'users', currentUser.uid);
 const fmtGold = (n) => `${Math.floor(Number(n) || 0).toLocaleString('pt-BR')} gold`;
 const matQty = (id) => (economyState?.inv?.[id] || 0);
 const artifactQty = (id) => (economyState?.artifacts?.[id] || 0);
-const outputInfo = (id) => ECO?.MATERIAL_BY_ID?.[id] || ECO?.ARTIFACT_BY_ID?.[id] || { id, name: id, emoji: '📦' };
+const outputInfo = (id) => ECO?.MATERIAL_BY_ID?.[id] || ECO?.ARTIFACT_BY_ID?.[id] || ECO?.ARENA_RELIC_BY_ID?.[id] || { id, name: id, emoji: '📦' };
+const ARENA_CORE_IDS = { 1: 'core_evo', 2: 'core_primus' };
 const isArtifact = (id) => !!(ECO?.ARTIFACT_BY_ID?.[id]);
 
 function normalizeEconomy(d = {}) {
@@ -2119,6 +2120,21 @@ function renderCraftArea() {
     }
 
     // Resultado
+    // Segredos da Arena ⚔️ (relíquias e núcleos forjáveis na bancada)
+    const secrets = $('#arena-craft-secrets');
+    if (secrets && ECO?.ARENA_RELICS) {
+        const ownedRelics = new Set(economyState.arenaRelics || []);
+        const invNow = economyState.inv || {};
+        const items = [
+            ...ECO.ARENA_RELICS.map((r) => ({ emoji: r.emoji, name: r.name, hint: r.hint, status: ownedRelics.has(r.id) ? `<span class="artifact-passive">✓ Forjada</span>` : '<span class="artifact-passive">🔒 ???</span>', owned: ownedRelics.has(r.id) })),
+            ...(ECO.ARENA_MATERIALS || []).map((m) => ({ emoji: m.emoji, name: m.name, hint: m.hint, status: (Number(invNow[m.id]) || 0) > 0 ? `<span class="artifact-passive">×${invNow[m.id]} no Baú</span>` : '<span class="artifact-passive">🔒 ???</span>', owned: (Number(invNow[m.id]) || 0) > 0 }))
+        ];
+        secrets.innerHTML = items.map((a) => a.owned
+            ? `<div class="artifact-card"><span class="artifact-emoji">${a.emoji}</span><span class="artifact-info"><span class="artifact-name">${escapeHtml(a.name)}</span><span class="artifact-hint">${escapeHtml(a.hint)}</span></span>${a.status}</div>`
+            : `<div class="artifact-card locked"><span class="artifact-emoji">🕳️</span><span class="artifact-info"><span class="artifact-name">???</span><span class="artifact-hint">${escapeHtml(a.hint)}</span></span>${a.status}</div>`
+        ).join('');
+    }
+
     const match = matchCraftRecipe(craftGrid);
     const resultEl = $('#craft-result');
     const resultName = $('#craft-result-name');
@@ -2164,6 +2180,11 @@ async function craftNow() {
     if (!ECO || !economyState) return;
     const match = matchCraftRecipe(craftGrid);
     if (!match) { showToast('Esse formato não bate com nenhuma receita 🤔', 'warn'); return; }
+    const relicOut = ECO.ARENA_RELIC_BY_ID?.[match.out];
+    if (relicOut && (economyState.arenaRelics || []).includes(relicOut.id)) {
+        showToast(`Você já tem a ${relicOut.name} ${relicOut.emoji} — essa forja não dá nada novo.`, 'info');
+        return;
+    }
     const inv = { ...economyState.inv };
     for (const id of craftGrid) {
         if (!id) continue;
@@ -2173,6 +2194,16 @@ async function craftNow() {
     const artifact = ECO.ARTIFACT_BY_ID?.[match.out];
     craftGrid = Array(9).fill(null);
     craftSelected = null;
+    if (relicOut) {
+        const arenaRelics = [...(economyState.arenaRelics || []), relicOut.id];
+        addLedger('craft', `Relíquia forjada: ${relicOut.name}`, 0);
+        await saveEconomy({ inv, arenaRelics });
+        renderArenaRelicShop();
+        if (arenaCardTreeOpenId) renderCardTreeModal();
+        vibrate([12, 60, 12, 60, 18]);
+        showToast(`⚒️ ${relicOut.emoji} ${relicOut.name} forjada na bancada! Equipe na Árvore da carta.`, 'success', 4500);
+        return;
+    }
     if (artifact) {
         const artifacts = { ...(economyState.artifacts || {}) };
         artifacts[artifact.id] = (artifacts[artifact.id] || 0) + 1;
@@ -4262,6 +4293,9 @@ function renderCardTreeModal() {
     const chosen = profile?.branches.find((b) => b.key === evo.branch);
     const tier = (evo.t1 ? 1 : 0) + (evo.t2 ? 1 : 0);
     const relicBit = relicId && ECO?.ARENA_RELIC_BY_ID?.[relicId] ? ` · ${ECO.ARENA_RELIC_BY_ID[relicId].emoji} ${escapeHtml(ECO.ARENA_RELIC_BY_ID[relicId].name)}` : '';
+    const invNow = economyState.inv || {};
+    const coresT1 = Number(invNow.core_evo) || 0, coresT2 = Number(invNow.core_primus) || 0;
+    setHtml('#ctm-cores', `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-sparkles"></use></svg><b>${coresT1}</b> Núcleo · <b>${coresT2}</b> Primordial <span class="ctm-cores-hint">do Baú — forjados na Mesa 🛠️</span>`);
     setHtml('#ctm-summary', `Traço <b>${escapeHtml(profile?.word || card.category)}</b> · Caminho <b>${chosen ? escapeHtml(chosen.name) : 'não traçado'}</b> · Patamar <b>${tier}/2</b>${relicBit}`);
     if (!profile) { setHtml('#ctm-branches', '<p class="muted">Categoria sem evolução definida.</p>'); }
     else {
@@ -4274,8 +4308,12 @@ function renderCardTreeModal() {
                 const t2Owned = isChosen && evo.t2;
                 const t1Cost = ARENA_EVO_T1, t2Cost = ARENA_EVO_T2;
                 const gold = Number(economyState.gold) || 0;
-                const t1Disabled = lockedOut || t1Owned || gold < t1Cost;
-                const t2Disabled = lockedOut || !t1Owned || t2Owned || gold < t2Cost;
+                const canT1 = coresT1 >= 1 || gold >= t1Cost;
+                const canT2 = coresT2 >= 1 || gold >= t2Cost;
+                const t1Pay = coresT1 >= 1 ? '✦ 1 Núcleo' : `🪙 ${t1Cost.toLocaleString('pt-BR')}`;
+                const t2Pay = coresT2 >= 1 ? '✦✦ 1 Primordial' : `🪙 ${t2Cost.toLocaleString('pt-BR')}`;
+                const t1Disabled = lockedOut || t1Owned || !canT1;
+                const t2Disabled = lockedOut || !t1Owned || t2Owned || !canT2;
                 const status = lockedOut ? '🔒 selado' : isChosen ? (t2Owned ? '✔ completo' : t1Owned ? 'T1 ✔' : 'traçado') : 'disponível';
                 return `<div class="ctm-branch evo-branch${isChosen ? ' is-chosen' : ''}${lockedOut ? ' is-locked' : ''}">
             <div class="ctm-branch-head">
@@ -4287,13 +4325,13 @@ function renderCardTreeModal() {
                     <span class="evo-tier-tag">T1 · Patamar 1</span>
                     <b>${escapeHtml(b.t1.name)}</b>
                     <p>${escapeHtml(b.t1.desc)}</p>
-                    <button class="ctm-buy${t1Owned ? ' maxed' : ''}" data-arena-evo="${escapeHtml(b.key)}" data-card-id="${escapeHtml(cardId)}" data-tier="1" ${t1Disabled ? 'disabled' : ''}>${t1Owned ? 'Aprendido ✓' : lockedOut ? 'Caminho selado' : evo.branch === '' ? `Traçar caminho — 🪙 ${t1Cost.toLocaleString('pt-BR')}` : `Evoluir — 🪙 ${t1Cost.toLocaleString('pt-BR')}`}</button>
+                    <button class="ctm-buy${t1Owned ? ' maxed' : ''}" data-arena-evo="${escapeHtml(b.key)}" data-card-id="${escapeHtml(cardId)}" data-tier="1" ${t1Disabled ? 'disabled' : ''}>${t1Owned ? 'Aprendido ✓' : lockedOut ? 'Caminho selado' : evo.branch === '' ? `Traçar caminho — ${t1Pay}` : `Evoluir — ${t1Pay}`}</button>
                 </div>
                 <div class="evo-tier${t2Owned ? ' owned' : ''}${!t1Owned && !lockedOut ? ' needs-t1' : ''}">
                     <span class="evo-tier-tag">T2 · Patamar 2</span>
                     <b>${escapeHtml(b.t2.name)}</b>
                     <p>${escapeHtml(b.t2.desc)}</p>
-                    <button class="ctm-buy${t2Owned ? ' maxed' : ''}" data-arena-evo="${escapeHtml(b.key)}" data-card-id="${escapeHtml(cardId)}" data-tier="2" ${t2Disabled ? 'disabled' : ''}>${t2Owned ? 'Dominado ✓' : lockedOut ? 'Caminho selado' : !t1Owned ? 'Requer T1' : `Evoluir — 🪙 ${t2Cost.toLocaleString('pt-BR')}`}</button>
+                    <button class="ctm-buy${t2Owned ? ' maxed' : ''}" data-arena-evo="${escapeHtml(b.key)}" data-card-id="${escapeHtml(cardId)}" data-tier="2" ${t2Disabled ? 'disabled' : ''}>${t2Owned ? 'Dominado ✓' : lockedOut ? 'Caminho selado' : !t1Owned ? 'Requer T1' : `Evoluir — ${t2Pay}`}</button>
                 </div>
             </div>
         </div>`;
@@ -4327,14 +4365,29 @@ async function buyArenaEvolution(cardId, branch, tier) {
     if (t === 2 && !evo.t1) { showToast('Aprenda o Patamar 1 primeiro.', 'warn'); return; }
     if (t === 2 && evo.t2) { showToast('Esta carta já dominou o Patamar 2.', 'info'); return; }
     const cost = t === 1 ? ARENA_EVO_T1 : ARENA_EVO_T2;
-    if (Number(economyState.gold) < cost) { showToast(`Falta gold — precisa de ${fmtGold(cost)} 🪙`, 'warn'); return; }
+    const coreId = ARENA_CORE_IDS[t];
+    const inv = { ...(economyState.inv || {}) };
+    const hasCore = (Number(inv[coreId]) || 0) >= 1;
+    if (!hasCore && Number(economyState.gold) < cost) {
+        const coreName = t === 1 ? 'Núcleo de Evolução' : 'Núcleo Primordial';
+        showToast(`Falta recurso — ${fmtGold(cost)} 🪙 ou 1 ${coreName} (forjado na Mesa de Trabalho)`, 'warn', 4500);
+        return;
+    }
     if (!evo.branch) {
         const ok = window.confirm(`Traçar o caminho ${branchDef.name} é PERMANENTE para “${card.name}”.\n\nVocê não poderá trocar de caminho depois. Confirmar?`);
         if (!ok) return;
     }
     const next = { branch, t1: true, t2: t === 2 ? true : !!evo.t2 };
-    addLedger('compra', `Evolução ${profile.word} · ${branchDef.name} T${t} — ${card.name}`, -cost);
-    await saveEconomy({ gold: economyState.gold - cost, arenaEvo: { ...(economyState.arenaEvo || {}), [cardId]: next } });
+    if (hasCore) {
+        inv[coreId] = (Number(inv[coreId]) || 0) - 1;
+        if (inv[coreId] <= 0) delete inv[coreId];
+        const coreName = t === 1 ? 'Núcleo de Evolução' : 'Núcleo Primordial';
+        addLedger('craft', `Evolução ${profile.word} · ${branchDef.name} T${t} — ${card.name} (via ${coreName})`, 0);
+        await saveEconomy({ inv, arenaEvo: { ...(economyState.arenaEvo || {}), [cardId]: next } });
+    } else {
+        addLedger('compra', `Evolução ${profile.word} · ${branchDef.name} T${t} — ${card.name}`, -cost);
+        await saveEconomy({ gold: economyState.gold - cost, arenaEvo: { ...(economyState.arenaEvo || {}), [cardId]: next } });
+    }
     vibrate([12, 25, 12]);
     showToast(t === 1 ? `${branchDef.t1.name} aprendido! ✦` : `${branchDef.t2.name} dominado! ✦✦`, 'success', 2200);
     renderCardTreeModal();
@@ -6161,6 +6214,9 @@ document.addEventListener('click', async (e) => {
         return;
     }
 
+    const ctmWorkbench = t.closest?.('#ctm-workbench-btn');
+    if (ctmWorkbench) { closeModal('arena-card-tree-modal'); openApp('refinery'); return; }
+
     const acceptBtn = t.closest?.('[data-arena-accept]');
     if (acceptBtn) { openArenaBetModal({ type: 'accept', matchId: acceptBtn.dataset.arenaAccept }); return; }
 
@@ -6344,7 +6400,7 @@ setInterval(tickClock, 1000);
 /* ================= ATUALIZAÇÃO DO APP (NOVA VERSÃO) ================= */
 // ATENÇÃO: subir junto com version.json/sw.js em CADA release — se ficar pra
 // trás, o app acha que há atualização pra sempre e o aviso não some.
-const APP_VERSION = '5.0.0';
+const APP_VERSION = '5.1.0';
 const appVersionEl = $('#app-version');
 if (appVersionEl) appVersionEl.textContent = `Good Vibes 🌊 · O Refúgio · v${APP_VERSION}`;
 let swRegistration = null;

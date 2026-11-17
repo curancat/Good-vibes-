@@ -641,7 +641,7 @@
                     <span class="app-header-spacer"></span>
                 </header>
                 <div class="app-body">
-                    <p class="card-sub">Bancada estilo Minecraft: <strong>arraste os materiais</strong> do seu baú para a grade 3x3 (ou toque no material e depois na célula). Cada receita tem um formato — descubra-o! O quadrado de resultado solta o item quando a receita fecha.</p>
+                    <p class="card-sub">Bancada estilo Minecraft: <strong>arraste os materiais</strong> do seu baú para a grade 3x3 (ou toque no material e depois na célula). Cada receita tem um formato — descubra-o! O quadrado de resultado solta o item quando a receita fecha. <strong>Novas receitas forjam as relíquias 🔮 e os Núcleos de Evolução ✦ da Arena</strong> — os formatos são segredos com dicas logo abaixo.</p>
                     <div class="craft-top">
                         <div class="craft-grid" id="craft-grid" role="group" aria-label="Grade de craft 3 por 3"></div>
                         <div class="craft-arrow" aria-hidden="true">➜</div>
@@ -656,6 +656,8 @@
                     </div>
                     <h3 class="eco-h3">🎒 Seus materiais <span class="eco-h3-count">toque ou arraste</span></h3>
                     <div class="craft-tray" id="craft-tray" aria-label="Materiais disponíveis"></div>
+                    <h3 class="eco-h3">⚔️ Segredos da Arena <span class="eco-h3-count">relíquias e núcleos forjáveis — dicas apenas</span></h3>
+                    <div class="artifact-list" id="arena-craft-secrets"></div>
                 </div>
             </section>
 
@@ -1163,7 +1165,9 @@
                         <div class="card-tree-face" id="ctm-face"></div>
                         <div class="card-tree-side">
                             <div class="card-tree-gold"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-coin"></use></svg><b id="ctm-gold">0</b> gold</div>
+                            <div class="card-tree-cores" id="ctm-cores"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-sparkles"></use></svg><b>0</b> Núcleo <span class="ctm-cores-hint">do Baú</span></div>
                             <div class="card-tree-summary" id="ctm-summary"></div>
+                            <button type="button" class="ctm-workbench-btn" id="ctm-workbench-btn">🛠️ Forjar na Mesa de Trabalho</button>
                         </div>
                     </div>
                     <div class="card-tree-branches" id="ctm-branches"></div>

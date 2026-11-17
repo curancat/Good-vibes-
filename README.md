@@ -2,6 +2,24 @@
 
 Uma rede social privada entre amigos, agora com cara de **tela inicial de telefone**: cada menu é um aplicativo. Feita em HTML/CSS/JS puro (sem build), com Firebase (Auth + Firestore), instalável como **PWA** no celular.
 
+## 🛠️ A Mesa de Trabalho da Arena (v5.1.0)
+
+> **v5.1.0** — **A bancada 3x3 agora forja as RELÍQUIAS e os NÚCLEOS DE EVOLUÇÃO da Arena.** Duas saídas novas (`Núcleo de Evolução` ✦ e `Núcleo Primordial` ✦✦) funcionam como **moeda de evolução**: pagando a Evolução da carta (T1/T2) com um Núcleo do seu Baú, o gold fica guardado no bolso. E as **4 relíquias da Arena podem ser forjadas com materiais da bancada** — alternativa real à compra em gold. A Mesa ganhou uma seção **⚔️ Segredos da Arena** (só dicas de formato + estado) e o modal de Evolução da carta agora **mostra seus núcleos** e um atalho direto pra Mesa.
+>
+> | O que forja | Formato sugerido (descubra na grade!) | Custo equivalente |
+> | --- | --- | --- |
+> | ✦ Núcleo de Evolução | essência + cristal, em coluna | ~520 🪙 em materiais |
+> | ✦✦ Núcleo Primordial | lingote enfeitiçado + gema, em coluna | ~1.100 🪙 em materiais |
+> | 🔮 Orbe de Poder | lingote + essência, em coluna | 900 🪙 na loja |
+> | 🩸 Sifão de Sangue | ouro + gema + pérola, em coluna | 1.200 🪙 na loja |
+> | 🐚 Eco Arcano | lingote + cristal + gema, em coluna | 1.500 🪙 na loja |
+> | 🛡️ Escama de Aço | duas ligas de aço, em coluna | 600 🪙 na loja |
+>
+> - **Evoluir gasta UM Núcleo automaticamente** (se você tiver) ou o gold normal — a Árvore da carta mostra `✦ 1 Núcleo` / `🪙 preço` no botão e seus totais no topo do modal
+> - **Forjar uma relíquia que você já possui é bloqueado** (nada de duplicata perdida) — a relíquia equipa na Árvore da carta como sempre
+> - **Nenhuma regra do Firestore muda** — `inv`, `arenaRelics` e `arenaEvo` já estavam liberados na v4.8.0; nada precisa ser republicado
+> - **Nenhuma regra de partida muda** — o snapshot da partida continua idêntico; núcleos/relíquias forjadas entram na economia do jogador, não na sala
+
 ## ⚔️ Arena — crie suas cartas e batalhe ao vivo (v5.0.0)
 
 > **v5.0.0** — **Arena 3.0: Mesa de Guerra** (vibe League of Runeterra). **Cada carta agora escolhe o próprio TRAÇO de efeito ao ser forjada — 10 traços por categoria, 100 efeitos no total** — e cada traço muda a mecânica de verdade. **A mesa virou um tabuleiro**: monte de compra e descarte visíveis pros dois lados (o monte acabou → o descarte reembaralha), **criaturas se atacam antes de bater no rosto**, e a **mão desliza** com o dedo/roda do mouse. Tudo com moldura de obsidiana, ouro envelhecido e tipografia Cinzel/Alegreya.
