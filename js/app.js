@@ -40,6 +40,10 @@ const escapeHtml = (str = '') => String(str)
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
+/* Cor vinda de fora (ex.: cosmético no doc do post) NUNCA entra no style sem passar aqui */
+const safeCssColor = (v, fb = '#fbbf24') => (/^#[0-9a-fA-F]{3,8}$/.test(String(v || '')) ? String(v) : fb);
+const safeCssSlug = (v) => (/^[a-z0-9_-]{1,32}$/.test(String(v || '')) ? String(v) : 'comum');
+
 /** Aceita apenas URLs http/https; caso contrário retorna null. */
 const sanitizeUrl = (url = '') => {
     try {
@@ -998,11 +1002,13 @@ function postCardHTML(docSnap) {
         ? cosAvatarHTML(cosMap.moldura, cosMap.aura, `<span class="avatar-initials" aria-hidden="true">${initials}</span>` + (avatarUrl ? `<img src="${escapeHtml(avatarUrl)}" alt="" onerror="this.remove()">` : ''))
         : `<span class="avatar-initials" aria-hidden="true">${initials}</span>` + (avatarUrl ? `<img src="${escapeHtml(avatarUrl)}" alt="" onerror="this.remove()">` : '');
     const authorNameHTML = nameHtmlFor(data.authorName || 'Usuário', cosMap.nome);
-    const articleStyle = cosEfx ? ` style="--f1:${cosEfx.c1};--f2:${cosEfx.c2};--c1:${cosEfx.c1};--c2:${cosEfx.c2}"` : '';
+    const cosEfxC1 = cosEfx ? safeCssColor(cosEfx.c1) : '';
+    const cosEfxC2 = cosEfx ? safeCssColor(cosEfx.c2, '#8b5cf6') : '';
+    const articleStyle = cosEfx ? ` style="--f1:${cosEfxC1};--f2:${cosEfxC2};--c1:${cosEfxC1};--c2:${cosEfxC2}"` : '';
     const articleClasses = ['post'];
     if (cosMap.fundo) articleClasses.push('post-fundo');
-    if (cosMap.efeito) articleClasses.push('fx', `fx-${cosMap.efeito.fx || 'shimmer'}`);
-    const sealHtml = cosMap.selo ? `<span class="post-seal" style="--c1:${cosMap.selo.c1};--c2:${cosMap.selo.c2}" title="${escapeHtml(cosMap.selo.name || 'Selo do Refúgio')}">${escapeHtml(cosMap.selo.emoji || '🏷️')}</span>` : '';
+    if (cosMap.efeito) articleClasses.push('fx', `fx-${CSS_FX_IDS.has(cosMap.efeito.fx) ? cosMap.efeito.fx : 'shimmer'}`);
+    const sealHtml = cosMap.selo ? `<span class="post-seal" style="--c1:${safeCssColor(cosMap.selo.c1)};--c2:${safeCssColor(cosMap.selo.c2, '#f59e0b')}" title="${escapeHtml(cosMap.selo.name || 'Selo do Refúgio')}">${escapeHtml(cosMap.selo.emoji || '🏷️')}</span>` : '';
     const myReaction = myEquippedCat('reacao');
     const myReactionCount = myReaction ? Number(data.reactions?.[myReaction.emoji] || 0) : 0;
 
@@ -1427,7 +1433,9 @@ async function recordDmActivity(roomHash, encryptedText, senderName) {
 }
 
 async function sendChatMessageText(messageText) {
-    const text = messageText.trim();
+    // O texto vai encriptado pro Firestore; ciphertext passa de 4000 chars fácil,
+    // então a mensagem em si precisa caber bem antes disso (máx. 800).
+    const text = messageText.trim().slice(0, 800);
     if (!text || !currentUser) return false;
     const collectionName = currentChatRoom.startsWith('dm_') ? currentChatRoom : `chats_${currentChatRoom}`;
     const encrypted = encrypt(text);
@@ -1959,22 +1967,24 @@ function myEquippedCat(cat) {
 function renderAuthorFlair(c) {
     if (!c) return '';
     const name = escapeHtml(c.name || 'Cosmético');
+    const c1 = safeCssColor(c.c1), c2 = safeCssColor(c.c2, '#f59e0b');
     if (c.cat === 'titulo') {
         const themeTxt = escapeHtml(c.themeName || c.theme || 'Refúgio');
-        return `<span class="author-title" style="--c1:${c.c1 || '#fbbf24'};--c2:${c.c2 || '#f59e0b'}" title="${name}">${c.emoji || ''} ${themeTxt} do Refúgio</span>`;
+        return `<span class="author-title" style="--c1:${c1};--c2:${c2}" title="${name}">${escapeHtml(c.emoji || '')} ${themeTxt} do Refúgio</span>`;
     }
     if (c.cat === 'emblema') {
-        return `<span class="author-emblem" style="--c1:${c.c1 || '#fbbf24'};--c2:${c.c2 || '#f59e0b'}" title="${name}">${c.emoji || '🏅'}</span>`;
+        return `<span class="author-emblem" style="--c1:${c1};--c2:${c2}" title="${name}">${escapeHtml(c.emoji || '🏅')}</span>`;
     }
     return '';
 }
 const nameHtmlFor = (name, c) => (c?.cat === 'nome'
-    ? `<span class="author-name-grad" style="background-image:linear-gradient(135deg, ${c.c1 || '#fbbf24'}, ${c.c2 || '#f59e0b'})">${escapeHtml(name)}</span>`
+    ? `<span class="author-name-grad" style="background-image:linear-gradient(135deg, ${safeCssColor(c.c1)}, ${safeCssColor(c.c2, '#f59e0b')})">${escapeHtml(name)}</span>`
     : escapeHtml(name));
 /* Avatar com moldura/aura: um único círculo autocontido (sem :has, sem herdar cascata) */
 const cosAvatarHTML = (moldura, aura, innerHTML) => {
     if (!moldura && !aura) return innerHTML;
     const src = moldura || aura;
+    src.c1 = safeCssColor(src.c1); src.c2 = safeCssColor(src.c2, '#f59e0b');
     const classes = ['cos-avatar'];
     if (moldura) classes.push('cos-moldura');
     if (aura) classes.push('cos-aura');
@@ -2027,7 +2037,7 @@ function cosmeticCardHTML(c, owned) {
     return `<div class="cosmetic-card" title="${escapeHtml(c.name)} — ${escapeHtml(c.rarityName)}">
         <span class="cosmetic-emoji">${c.catEmoji}${c.emoji}</span>
         <span class="cosmetic-name">${escapeHtml(c.name)}</span>
-        <span class="rarity-chip rarity-${c.rarity}">${c.gem} ${escapeHtml(c.rarityName)}</span>
+        <span class="rarity-chip rarity-${safeCssSlug(c.rarity)}">${c.gem} ${escapeHtml(c.rarityName)}</span>
         <span class="cosmetic-effect">${escapeHtml(c.effect || '')}</span>
         ${owned ? '' : `<span class="cosmetic-price">🪙 ${c.price.toLocaleString('pt-BR')}</span>`}
         ${btn}
@@ -2070,7 +2080,7 @@ function renderInventory() {
         eq.innerHTML = entries.length
             ? entries.map((c) => {
                 const catMeta = ECO.COSMETIC_CATEGORIES.find((k) => k.id === c.cat);
-                return `<button class="eq-slot" data-equip-cosmetic="${escapeHtml(c.id)}" title="Tocar para remover o slot de ${escapeHtml(catMeta?.word || c.cat)}"><span class="eco-equipped-emoji">${c.catEmoji}${c.emoji}</span><span class="eco-equipped-info"><small>${escapeHtml(catMeta?.word || c.cat)} · <i>${escapeHtml(c.rarityName)}</i></small><strong>${escapeHtml(c.name)}</strong><small class="eco-effect-line"><span class="eco-swatch" style="background:linear-gradient(135deg, ${c.c1}, ${c.c2})"></span>${escapeHtml(c.effect || '')}</small></span><span class="eq-remove">✕</span></button>`;
+                return `<button class="eq-slot" data-equip-cosmetic="${escapeHtml(c.id)}" title="Tocar para remover o slot de ${escapeHtml(catMeta?.word || c.cat)}"><span class="eco-equipped-emoji">${c.catEmoji}${c.emoji}</span><span class="eco-equipped-info"><small>${escapeHtml(catMeta?.word || c.cat)} · <i>${escapeHtml(c.rarityName)}</i></small><strong>${escapeHtml(c.name)}</strong><small class="eco-effect-line"><span class="eco-swatch" style="background:linear-gradient(135deg, ${safeCssColor(c.c1)}, ${safeCssColor(c.c2, '#f59e0b')})"></span>${escapeHtml(c.effect || '')}</small></span><span class="eq-remove">✕</span></button>`;
             }).join('')
             : `<span class="eco-equipped-emoji">🫥</span><span class="eco-equipped-info"><small>Nenhum cosmético equipado</small><strong>Toque nos cosméticos do seu baú para equipar — cada um muda seu visual pra valer ✨</strong></span>`;
     }
@@ -4022,6 +4032,7 @@ const arenaEffectDesc = (category, effectId, power) => {
     const base = Math.max(1, Math.round(p * 3) + 2);
     return e.desc(base, p);
 };
+const CSS_FX_IDS = new Set(['flame', 'flash', 'neon', 'sparkle', 'aurora', 'rainbow', 'comet', 'glow', 'shimmer']);
 const arenaTraitName = (category, effectId) => {
     const list = ARENA_EFFECTS[category];
     if (!list) return '';
@@ -4043,8 +4054,8 @@ function myCardFrame() {
 function cardFaceHTML(card, { mini = false, extraClass = '', attrs = '', frameOverride = null } = {}) {
     const cat = ECO?.CARD_CATEGORY_BY_ID?.[card.category];
     const frame = frameOverride || myCardFrame();
-    const style = frame ? `--f1:${escapeHtml(frame.c1)};--f2:${escapeHtml(frame.c2)}` : '';
-    const tintClass = card.category ? `tint-${card.category}` : '';
+    const style = frame ? `--f1:${safeCssColor(frame.c1)};--f2:${safeCssColor(frame.c2, '#f59e0b')}` : '';
+    const tintClass = ARENA_CATEGORY_GLYPHS[card.category] ? `tint-${card.category}` : '';
     const art = sanitizeUrl(card.artUrl || '');
     // Arte: imagem enviada > emblema SVG da categoria (emojis só em cartas antigas)
     const artHtml = art
@@ -4067,7 +4078,7 @@ function cardFaceHTML(card, { mini = false, extraClass = '', attrs = '', frameOv
     </div>`;
 }
 function arenaCardThumbHTML(c) {
-    const tintClass = c.category ? `tint-${c.category}` : '';
+    const tintClass = ARENA_CATEGORY_GLYPHS[c.category] ? `tint-${c.category}` : '';
     const art = sanitizeUrl(c.artUrl || '');
     const inner = art
         ? `<img src="${escapeHtml(art)}" alt="" loading="lazy" onerror="this.remove()">`
@@ -4160,7 +4171,7 @@ async function saveArenaCard() {
     const name = arenaCollapseSpaces($('#ac-name')?.value || '');
     const flavor = arenaCollapseSpaces($('#ac-flavor')?.value || '').slice(0, 120);
     const rawUrl = ($('#ac-art-url')?.value || '').trim();
-    const artUrl = rawUrl ? sanitizeUrl(rawUrl).slice(0, ARENA_ART_MAX) : '';
+    const artUrl = rawUrl ? (sanitizeUrl(rawUrl)?.slice(0, ARENA_ART_MAX) || '') : '';
     const category = $('#ac-category')?.value || 'dano';
     const cost = Math.min(5, Math.max(1, Number(arenaDraft.cost) || 3));
     const power = Math.min(5, Math.max(1, Number(arenaDraft.power) || 3));
@@ -4264,7 +4275,7 @@ function renderArenaDeckPane() {
         list.innerHTML = stats.cards.length
             ? stats.cards.map((c) => `<button class="arena-deck-row" data-arena-deck-toggle="${escapeHtml(c.id)}" title="Tocar para tirar do deck" aria-label="Remover ${escapeHtml(c.name)} do deck">
                 ${arenaCardThumbHTML(c)}
-                <span class="arena-deck-info"><span class="arena-deck-name">${escapeHtml(c.name)}</span><span class="arena-deck-meta tint-${escapeHtml(c.category)}">${arenaCatIconSVG(c.category, 12)}<span>${escapeHtml(ECO?.CARD_CATEGORY_BY_ID?.[c.category]?.word || c.category || '')}</span></span></span>
+                <span class="arena-deck-info"><span class="arena-deck-name">${escapeHtml(c.name)}</span><span class="arena-deck-meta tint-${ARENA_CATEGORY_GLYPHS[c.category] ? escapeHtml(c.category) : ''}">${arenaCatIconSVG(c.category, 12)}<span>${escapeHtml(ECO?.CARD_CATEGORY_BY_ID?.[c.category]?.word || c.category || '')}</span></span></span>
                 <span class="arena-deck-cost" title="Custo em pontos do deck">${arenaHexIconSVG()}${Number(c.cost) || 1}</span>
                 <span class="arena-deck-remove" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#arena-minus"></use></svg></span>
             </button>`).join('')
@@ -4330,9 +4341,9 @@ function renderCardCosmeticShop() {
         else if (isOwned) btn = `<button class="cosmetic-buy owned" data-equip-card-frame="${escapeHtml(c.id)}">🃏 Usar nas cartas</button>`;
         else btn = `<button class="cosmetic-buy" data-buy-card-frame="${escapeHtml(c.id)}">🪙 ${c.price.toLocaleString('pt-BR')}</button>`;
         return `<div class="cosmetic-card" title="${escapeHtml(c.name)} — ${escapeHtml(c.rarityName)}">
-            <span class="cosmetic-emoji" style="background:linear-gradient(160deg, ${escapeHtml(c.c1)}, ${escapeHtml(c.c2)});border-radius:14px;display:flex;align-items:center;justify-content:center;width:64px;height:88px;box-shadow:inset 0 0 0 3px rgba(255,255,255,.18), 0 4px 12px rgba(0,0,0,.4);font-size:30px">🃏</span>
+            <span class="cosmetic-emoji" style="background:linear-gradient(160deg, ${safeCssColor(c.c1)}, ${safeCssColor(c.c2, '#f59e0b')});border-radius:14px;display:flex;align-items:center;justify-content:center;width:64px;height:88px;box-shadow:inset 0 0 0 3px rgba(255,255,255,.18), 0 4px 12px rgba(0,0,0,.4);font-size:30px">🃏</span>
             <span class="cosmetic-name">${escapeHtml(c.name)}</span>
-            <span class="rarity-chip rarity-${escapeHtml(c.rarity)}">${escapeHtml(c.rarityName)}</span>
+            <span class="rarity-chip rarity-${safeCssSlug(c.rarity)}">${escapeHtml(c.rarityName)}</span>
             <span class="cosmetic-effect">${escapeHtml(c.desc || '')}</span>
             ${isOwned ? '' : `<span class="cosmetic-price">🪙 ${c.price.toLocaleString('pt-BR')}</span>`}
             ${btn}
@@ -4368,7 +4379,7 @@ function renderArenaRelicShop() {
     grid.innerHTML = ECO.ARENA_RELICS.map((r) => {
         const has = owned.has(r.id);
         return `<div class="cosmetic-card" title="${escapeHtml(r.name)} — ${escapeHtml(r.desc)}">
-            <span class="cosmetic-emoji relic-emoji" style="background:radial-gradient(circle at 42% 38%, ${escapeHtml(r.tint)}66, transparent 72%),linear-gradient(160deg,#1e1b4b,#0f172a);border:1px solid ${escapeHtml(r.tint)}55;border-radius:14px;display:flex;align-items:center;justify-content:center;width:64px;height:64px;font-size:32px">${r.emoji}</span>
+            <span class="cosmetic-emoji relic-emoji" style="background:radial-gradient(circle at 42% 38%, ${safeCssColor(r.tint)}66, transparent 72%),linear-gradient(160deg,#1e1b4b,#0f172a);border:1px solid ${safeCssColor(r.tint)}55;border-radius:14px;display:flex;align-items:center;justify-content:center;width:64px;height:64px;font-size:32px">${r.emoji}</span>
             <span class="cosmetic-name">${escapeHtml(r.name)}</span>
             <span class="cosmetic-effect">${escapeHtml(r.desc)}</span>
             ${has ? '<span class="cosmetic-price" style="color:#6ee7b7">✓ Sua</span>' : `<span class="cosmetic-price">🪙 ${r.price.toLocaleString('pt-BR')}</span>`}
@@ -5975,7 +5986,7 @@ function arenaTokenHTML(u, m, side) {
     const title = escapeHtml(u.name || '');
     if (u.kind === 'residence') {
         const aura = { cura: '+2 vida/turno', defesa: '+1 escudo fís./turno', defesa_magica: '+1 escudo mág./turno', dano_terra: `+${Number(u.aura) || 2} dano em golpes de terra` }[u.trait] || 'residência';
-        return `<span class="am-token am-token--residence" title="${title} — residência: ${aura}. Fica no campo."><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-tree"></use></svg><small>${escapeHtml(shortName)}</small><b>${aura}</b></span>`;
+        return `<span class="am-token am-token--residence" title="${title} — residência: ${aura}. Fica no campo."><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-tree-icon"></use></svg><small>${escapeHtml(shortName)}</small><b>${aura}</b></span>`;
     }
     if (u.kind === 'resquicio') {
         return `<span class="am-token am-token--resquicio" title="${title} — resquício do efeito (${Number(u.turnsLeft) || 1} turno${Number(u.turnsLeft) === 1 ? '' : 's'} restante)"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-wind"></use></svg><small>${escapeHtml(shortName)}</small><b>resquício · ${Number(u.turnsLeft) || 1}t</b></span>`;
@@ -6014,7 +6025,7 @@ function renderArenaMatch(m) {
     const myUid = currentUser?.uid;
     const oppName = arenaMatchCardName(m, foe);
     const oppAvatarEl = $('#am-opponent-avatar');
-    const oppAvatar = foe === 'A' ? m.playerAAvatar : m.playerBAvatar;
+    const oppAvatar = sanitizeUrl(foe === 'A' ? m.playerAAvatar : m.playerBAvatar);
     if (oppAvatarEl) {
         if (oppAvatar) { oppAvatarEl.src = oppAvatar; oppAvatarEl.style.visibility = 'visible'; }
         else oppAvatarEl.style.visibility = 'hidden';
@@ -6523,7 +6534,7 @@ setInterval(tickClock, 1000);
 /* ================= ATUALIZAÇÃO DO APP (NOVA VERSÃO) ================= */
 // ATENÇÃO: subir junto com version.json/sw.js em CADA release — se ficar pra
 // trás, o app acha que há atualização pra sempre e o aviso não some.
-const APP_VERSION = '5.2.0';
+const APP_VERSION = '5.3.0';
 const appVersionEl = $('#app-version');
 if (appVersionEl) appVersionEl.textContent = `Good Vibes 🌊 · O Refúgio · v${APP_VERSION}`;
 let swRegistration = null;
@@ -6726,7 +6737,7 @@ async function openUserProfile(uid) {
     upmState.name = name;
 
     if (cover) {
-        if (cosMap.fundo) cover.setAttribute('style', `background:linear-gradient(135deg, ${cosMap.fundo.c1}, ${cosMap.fundo.c2})`);
+        if (cosMap.fundo) cover.setAttribute('style', `background:linear-gradient(135deg, ${safeCssColor(cosMap.fundo.c1)}, ${safeCssColor(cosMap.fundo.c2, '#8b5cf6')})`);
     }
     const initials = escapeHtml(name.trim().substring(0, 2).toUpperCase() || 'GV');
     const avatarUrl = sanitizeUrl(u.avatarUrl || latestData.authorAvatar || '');

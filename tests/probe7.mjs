@@ -1,4 +1,4 @@
-/* Probe 7 (v5.2.0): fluxo de ATUALIZAÇÃO do app — version.json manda no aviso.
+/* Probe 7 (v5.3.0): fluxo de ATUALIZAÇÃO do app — version.json manda no aviso.
    Reproduz o bug "notifica pra sempre": APP_VERSION desatualizado fazia o banner
    aparecer em toda carga, independente de hard reload ou resgate. */
 import { JSDOM } from 'jsdom';
@@ -11,7 +11,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const html = readFileSync(`${root}/index.html`, 'utf8');
 let js = readFileSync(`${root}/js/app.js`, 'utf8');
 
-const REMOTE = { version: '5.2.0', notes: 'notas de teste' }; // o que o "servidor" publica
+const REMOTE = { version: '5.3.0', notes: 'notas de teste' }; // o que o "servidor" publica
 js = js
   .replace(/import \{ initializeApp \}[^;]+;/, `const initializeApp = () => ({});`)
   .replace(/import \{ getAuth[^;]+;/, `const getAuth = () => ({});
@@ -62,7 +62,7 @@ await new Promise((r) => setTimeout(r, 400));
 const $ = (s) => window.document.querySelector(s);
 
 // 1) App na mesma versão do version.json → NUNCA mostra o banner
-assert.equal($('#app-version').textContent.includes('5.2.0'), true, `#app-version mostra a versão atual (veio: ${$('#app-version').textContent})`);
+assert.equal($('#app-version').textContent.includes('5.3.0'), true, `#app-version mostra a versão atual (veio: ${$('#app-version').textContent})`);
 assert.equal($('#update-banner').hidden, true, 'banner escondido quando app == remoto');
 console.log('✓ app atualizado: nenhum aviso de nova versão');
 
@@ -90,7 +90,7 @@ assert.equal($('#update-banner').hidden, false, 'versão nova diferente da dispe
 console.log('✓ deploy posterior à dispensa volta a avisar');
 
 // 5) App alcança o remoto → dispensa antiga é limpo (próximo deploy avisa normalmente)
-REMOTE.version = '5.2.0';
+REMOTE.version = '5.3.0';
 await window.eval('checkVersionFile')();
 assert.equal($('#update-banner').hidden, true, 'app atualizado esconde o banner');
 assert.equal(window.localStorage.getItem('gv_update_dismissed_for'), '', 'dispensa antiga limpa quando app == remoto');

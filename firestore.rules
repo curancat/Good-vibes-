@@ -12,8 +12,12 @@ rules_version = '2';
 // projeto veem "Missing or insufficient permissions" em TUDO
 // (perfil, feed, chat e inbox) — exatamente o erro relatado.
 //
-// 🔥 ATUALIZADO (Arena: convites diretos + correção da query de
-//    'winner'): publique de novo no Console depois de substituir.
+// 🔥 ATUALIZADO (v5.3.0): o índice 'dms' agora exige que 'members'
+//    continue IDÊNTICO (ninguém inclui um terceiro no "chat secreto"
+//    de outra pessoa), limita os campos gravados ao que o app usa e
+//    exige que lastSenderId seja quem está escrevendo. O bloco
+//    'inbox' deixa de permitir update/delete (o app só lê).
+//    ⚠️ publique de novo no Console depois de substituir.
 // ============================================================
 
 service cloud.firestore {
@@ -222,7 +226,15 @@ service cloud.firestore {
         && request.resource.data.members is list
         && request.resource.data.members.size() == 2
         && request.auth.uid in request.resource.data.members;
-      allow update: if signedIn() && request.auth.uid in resource.data.members;
+      // ATENÇÃO: 'members' nunca muda (senão um membro dobraria no próprio
+      // favor e traria um terceiro pro chat alheio), e só os campos do
+      // resumo da última mensagem podem ser gravados — pelo próprio autor.
+      allow update: if signedIn()
+        && request.auth.uid in resource.data.members
+        && request.resource.data.members == resource.data.members
+        && request.resource.data.lastSenderId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['members', 'lastText', 'lastSenderId', 'lastSenderName', 'updatedAt']);
       allow delete: if false;
     }
 
@@ -368,8 +380,10 @@ service cloud.firestore {
         && request.resource.data.type == 'comment'
         && request.resource.data.text is string
         && request.resource.data.text.size() <= 300;
-      // Destinatário pode marcar como lida ou apagar
-      allow update, delete: if signedIn() && resource.data.to == request.auth.uid;
+      // Ninguém mexe depois de criada (o app só lê; o histórico é apagado
+      // do lado do aparelho). Assim o destinatário não forja remetentes nem
+      // edita o aviso dos outros.
+      allow update, delete: if false;
     }
   }
 }

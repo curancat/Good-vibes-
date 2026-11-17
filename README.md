@@ -2,7 +2,29 @@
 
 Uma rede social privada entre amigos, agora com cara de **tela inicial de telefone**: cada menu é um aplicativo. Feita em HTML/CSS/JS puro (sem build), com Firebase (Auth + Firestore), instalável como **PWA** no celular.
 
-## 📖 O Livro do Artesão (v5.2.0)
+## 🛡️ v5.3.0 — Auditoria total, correções e regras reforçadas
+
+> **v5.3.0** — **Auditoria de ponta a ponta em todos os arquivos, bugs corrigidos e regras do Firestore endurecidas. Publique as regras de novo!** (Firebase Console → Firestore → Regras → cole `firestore.rules` → Publicar)
+>
+> **Bugs corrigidos**
+> - `Arena → Forja`: digitar uma URL inválida derrubava a Forja com `TypeError` (o aviso "URL parece inválida" nunca aparecia) — `sanitizeUrl` agora é tratado com segurança
+> - IDs duplicados de `#arena-tree` (SVG sprite × deck) — renomeado para `#arena-tree-icon`
+> - **Chat sem limite**: mensagens longuíssimas passavam de 4.000 chars já encriptadas e o Firestore recusava — o campo agora tem `maxlength=800` e o envio corta antes de encriptar
+> - **Cores vindas de fora** (cosméticos no doc de post/carta) injetadas direto em `style="..."` e em `class="tint-…"` podiam quebrar o layout/spoofar CSS — agora passam por `safeCssColor()`/`safeCssSlug()` (só `#hex` e slugs `[a-z0-9_-]`), em posts, aura/moldura, selos, molduras, relíquias e cartas
+> - Avatar do rival no duelo (`am-opponent-avatar`) não passava pelo `sanitizeUrl` — URL `javascript:` não roda em `<img src>`, mas agora é validada como todo avatar
+>
+> **Auditoria sem achados (verificado)**
+> - ESLint: `app.js`, `economy-data.js`, `sw.js` sem erros de verdade (só os 3 esperados de `CryptoJS`, global de CDN); chaves/comentários do CSS balanceados
+> - XSS: dados de usuário passam por `escapeHtml` ou `textContent` em todos os pontos revisados; catálogo estático validado por regex
+> - Todas as escritas do cliente cruzadas com `firestore.rules` (posts, comentários, inbox, gifts, jobs, market, loans, cards, arena_matches, dms, ledger) — coerentes
+>
+> **Regras do Firestore (`firestore.rules`) — REPUBLIQUE**
+> - `inbox`: ninguém mais pode **editar/apagar avisos** (antes até o destinatário podia marcar/apagar — dava pra forjar ou sumir com avisos dos outros); agora é só criar/ler, como o app usa
+> - `dms` (índice de PVs): `members` fica **imutável** (ninguém dobra o chat alheio incluindo um terceiro), só os campos do resumo podem mudar (`lastText`, `lastSenderId`, `lastSenderName`, `updatedAt`, `members`) e `lastSenderId` precisa ser quem está escrevendo
+>
+> ⚠️ **As regras NÃO se auto-publicam**: copie `firestore.rules` no Console do Firebase → Firestore Database → Regras → "Publicar". Sem isso, o app continua funcionando com as regras antigas (que já "funcionavam", mas aceitavam os abusos acima).
+>
+> ## 📖 O Livro do Artesão (v5.2.0)
 
 > **v5.2.0** — **Um app só para as receitas: o 📖 Livro do Artesão.** Toque no ícone na tela inicial e tenha o grimoire completo da Mesa de Trabalho organizado em 4 seções — **⚔️ Relíquias da Arena**, **✦ Núcleos de Evolução**, **🧿 Artefatos do Refúgio** e **🛠️ Refinaria & Bancada**. **Cada página só se abre quando você forja a receita** — a grade 3x3 exata e a lista de materiais aparecem catalogadas, e o que falta fica como dica/???. Com barra de progresso (X de 49 catalogadas) e atalho direto pra Mesa. A descoberta é **salva na sua conta** (campo `knownRecipes`, já liberado pelas regras do Firestore) — trocou de aparelho, o livro vai junto.
 >

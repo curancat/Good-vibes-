@@ -232,7 +232,7 @@
                             <button class="chat-attach-btn" id="gallery-chat-btn" aria-label="Enviar foto da galeria" title="Enviar foto da galeria">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17 5-5 4 4 3.5-3.5L21 17"/></svg>
                             </button>
-                            <input type="text" id="chat-input" placeholder="Mensagem ou link de imagem…" autocomplete="off">
+                            <input type="text" id="chat-input" maxlength="800" placeholder="Mensagem ou link de imagem…" autocomplete="off">
                             <button class="chat-send-btn" id="chat-send-btn" aria-label="Enviar mensagem">
                                 <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4 21.6 12 3.4 3.6 3.4 10l13 2-13 2 0 6.4z"/></svg>
                             </button>
@@ -799,7 +799,7 @@
 
                             <div class="arena-tree-card">
                                 <div class="arena-tree-head">
-                                    <div class="arena-tree-emblem" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#arena-tree"></use></svg></div>
+                                    <div class="arena-tree-emblem" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#arena-tree-icon"></use></svg></div>
                                     <div class="arena-tree-title">
                                         <h4>Árvore do Refúgio</h4>
                                         <p>Cada ponto soma <b>+6%</b> no ramo. Cada carta do ramo no deck soma <b>+2%</b> de afinidade.</p>
@@ -1264,7 +1264,7 @@
             <symbol id="arena-cards" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="12.5" height="17" rx="2.5"/><path d="M8.5 1.8h10a2 2 0 0 1 2 2v15.7"/></symbol>
             <symbol id="arena-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/><path d="M18.6 14.5l.8 2.1 2.1.8-2.1.8-.8 2.1-.8-2.1-2.1-.8 2.1-.8.8-2.1z"/></symbol>
             <symbol id="arena-hammer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 4.2l6.3 6.3-2.8 2.8-6.3-6.3 2.8-2.8z"/><path d="M10.7 10.7L4.4 17l2.8 2.8 6.3-6.3"/><path d="M4.5 20.5h3"/></symbol>
-            <symbol id="arena-tree" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="5.5" r="2.3"/><circle cx="17.5" cy="5.5" r="2.3"/><circle cx="12" cy="12.5" r="2.3"/><circle cx="12" cy="21" r="1.9"/><path d="M7.8 7.4l3 3.6"/><path d="M16.2 7.4l-3 3.6"/><path d="M12 14.8v4.3"/></symbol>
+            <symbol id="arena-tree-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="5.5" r="2.3"/><circle cx="17.5" cy="5.5" r="2.3"/><circle cx="12" cy="12.5" r="2.3"/><circle cx="12" cy="21" r="1.9"/><path d="M7.8 7.4l3 3.6"/><path d="M16.2 7.4l-3 3.6"/><path d="M12 14.8v4.3"/></symbol>
             <symbol id="arena-coin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="3.6"/></symbol>
             <symbol id="arena-hex" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.4l8.2 4.8v9.6L12 21.6l-8.2-4.8V7.2L12 2.4z"/></symbol>
             <symbol id="arena-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.2 2L5 13.6h5.6L9 22l8.2-11.6h-5.6L13.2 2z"/></symbol>
