@@ -1813,6 +1813,7 @@ function normalizeEconomy(d = {}) {
         cardFrame: typeof d.cardFrame === 'string' ? d.cardFrame : '',
         arenaDeck: Array.isArray(d.arenaDeck) ? d.arenaDeck.filter((x) => typeof x === 'string') : [],
         arenaUpgrades: d.arenaUpgrades && typeof d.arenaUpgrades === 'object' ? { ...d.arenaUpgrades } : {},
+        arenaEvo: d.arenaEvo && typeof d.arenaEvo === 'object' ? { ...d.arenaEvo } : {},
         arenaRelics: Array.isArray(d.arenaRelics) ? d.arenaRelics.filter((x) => typeof x === 'string') : [],
         arenaRelicEquips: d.arenaRelicEquips && typeof d.arenaRelicEquips === 'object' ? { ...d.arenaRelicEquips } : {}
     };
@@ -3558,18 +3559,168 @@ const ARENA_SHIELD_MAX = 40;
 const ARENA_TOKEN_TURNS = 3;
 const ARENA_CARD_LIMIT = 30;            // teto de cartas criadas por jogador
 const ARENA_ART_MAX = 500;              // teto de URL de arte
-const ARENA_UPG_MAX = 3;                // pontos por ramo da árvore da carta
-const ARENA_UPG_COSTS = [400, 900, 1600]; // custo do 1º/2º/3º ponto de cada ramo
 const ARENA_FRONT_MAX = 3;              // criaturas na frente
-const ARENA_BACK_MAX = 2;               // estruturas na retaguarda
-/* Árvores por carta (3 ramos, 3 pontos cada) */
-const ARENA_UPG_BRANCHES = [
-    { key: 'forca', word: 'Força', desc: '+12% no efeito principal da carta por ponto.' },
-    { key: 'sintonia', word: 'Sintonia', desc: '+10% por ponto no ramo elementar desta carta (soma à Árvore do Refúgio).' },
-    { key: 'eco', word: 'Eco', desc: '+1 de intensidade por ponto no efeito secundário da carta.' }
-];
-const arenaUpgradesOf = (cardId) => ({ f: 0, s: 0, e: 0, ...(economyState?.arenaUpgrades?.[cardId] || {}) });
-const arenaUpgradePoints = (cardId) => { const u = arenaUpgradesOf(cardId); return ['f', 's', 'e'].reduce((a, k) => a + (Number(u[k]) || 0), 0); };
+const ARENA_BACK_MAX = 4;               // retaguarda: estruturas + residências
+const ARENA_EVO_T1 = 500;               // custo do Ponto de Evolução I
+const ARENA_EVO_T2 = 1200;              // custo do Ponto de Evolução II
+const ARENA_RESQ_TURNS = 2;             // resquício (carta jogada de efeito rápido) fica 2 turnos no campo
+/* Cada carta evolui pelo PRÓPRIO TRAÇO — 3 caminhos, 2 evoluções cada.
+   Cada nó MUDA a mecânica do efeito (não é % — é outra jogada). */
+const ARENA_EVO = {
+    dano: {
+        word: 'Lâmina', icon: 'arena-sword', style: 'rajada',
+        aura: 'golpe físico direto + Sangramento (2/turno, 2 turnos)',
+        branches: [
+            { key: 'amputar', name: 'Amputar', tagline: 'a ferida como arma',
+              t1: { name: 'Cortar Fundo', desc: 'O Sangramento dura +1 turno (3 no total).' },
+              t2: { name: 'Corrupção Necrótica', desc: 'A ferida final causa dano DOBRADO antes de fechar (o Sangramento detona).' } },
+            { key: 'estocada', name: 'Estocada', tagline: 'precisão fatal',
+              t1: { name: 'Golpe Penetrante', desc: 'O golpe ATRAVESSA o escudo físico, indo direto na vida.' },
+              t2: { name: 'Lâmina Arrancadora', desc: 'O golpe também causa 4 de dano em CADA criatura inimiga (pode destruí-las).' } },
+            { key: 'execucao', name: 'Execução', tagline: 'caçador de feridos',
+              t1: { name: 'Sentença', desc: 'Alvo com 25% de vida ou menos leva +60% de dano no golpe.' },
+              t2: { name: 'Misericórdia Letal', desc: 'Contra alvos com 50% de vida ou menos, o Sangramento causa o dobro.' } }
+        ]
+    },
+    dano_fogo: {
+        word: 'Ignição', icon: 'arena-flame', style: 'rajada',
+        aura: 'dano mágico de fogo + Queimadura (2/turno, 2 turnos)',
+        branches: [
+            { key: 'incendio', name: 'Incêndio', tagline: 'queima de espalhar',
+              t1: { name: 'Propagação', desc: 'Todas as criaturas inimigas sofrem 4 de dano de fogo imediatamente.' },
+              t2: { name: 'Brasa Eterna', desc: 'Suas Queimaduras NÃO expiram enquanto você tiver uma Estrutura em campo.' } },
+            { key: 'tormento', name: 'Tormento', tagline: 'o fogo abastece',
+              t1: { name: 'Roubo de Chamas', desc: 'Você se cura 50% do dano que a jogada causou.' },
+              t2: { name: 'Marca de Cinza', desc: 'Cada turno que o alvo queimar, +2 de dano mágico fixo (empilha até +6).' } },
+            { key: 'labareda', name: 'Labareda', tagline: 'timing é tudo',
+              t1: { name: 'Explosão Inicial', desc: 'Seu dano de fogo atravessa o escudo mágico (vai direto na vida).' },
+              t2: { name: 'Combustão', desc: 'Se o alvo estiver com 0 de escudos, o dano desta jogada é DOBRADO.' } }
+        ]
+    },
+    dano_agua: {
+        word: 'Maré', icon: 'arena-droplet', style: 'rajada',
+        aura: 'erosão (rói escudo mágico) + dano de água',
+        branches: [
+            { key: 'diluvio', name: 'Dilúvio', tagline: 'desmontar muralhas',
+              t1: { name: 'Erosão Total', desc: 'Erosão também rói 3 de escudo FÍSICO.' },
+              t2: { name: 'Absorver a Corrente', desc: 'Você ganha escudo mágico igual ao total que você corroeu.' } },
+            { key: 'sedada', name: 'Sedada', tagline: 'afogar o ritmo',
+              t1: { name: 'Encharcar', desc: 'O dano de água também ATORDOA (rival não compra no próximo turno).' },
+              t2: { name: 'Ressaca', desc: 'Se o rival está atordoado, este golpe causa +50% de dano.' } },
+            { key: 'marebaxa', name: 'Maré Baixa', tagline: 'água que contorna',
+              t1: { name: 'Fissura', desc: 'Metade do dano desta jogada ignora o escudo mágico.' },
+              t2: { name: 'Transbordar', desc: 'Se o alvo ficar com 0 escudos, o golpe atinge também TODAS as criaturas inimigas (5).' } }
+        ]
+    },
+    dano_ar: {
+        word: 'Tempestade', icon: 'arena-wind', style: 'rajada',
+        aura: 'ignora escudos indo direto na vida + atordoa (sem compra)',
+        branches: [
+            { key: 'vendaval', name: 'Vendaval', tagline: 'nenhum respiro',
+              t1: { name: 'Turbilhão', desc: 'O atordoamento dura +1 turno (2 turnos sem comprar).' },
+              t2: { name: 'Ímpeto', desc: 'Se o alvo JÁ estava atordoado, este golpe é DOBRADO.' } },
+            { key: 'laminas', name: 'Lâminas ao Vento', tagline: 'vento que desarma',
+              t1: { name: 'Fio Cortante', desc: '+1 de dano por carta na MÃO DO RIVAL (informação pública).' },
+              t2: { name: 'Desarmar', desc: 'O golpe ARRANCA 1 carta aleatória da mão do rival.' } },
+            { key: 'arcort', name: 'Ar Cortante', tagline: 'sem perigo de escudo',
+              t1: { name: 'Esquiva', desc: 'Você ganha Esquiva: o próximo dano físico contra você cai a 50%.' },
+              t2: { name: 'Faseamento', desc: 'Sua Esquiva anula 100% do dano físico (não apenas 50%).' } }
+        ]
+    },
+    dano_terra: {
+        word: 'Terremoto', icon: 'arena-mountain', style: 'residencia',
+        aura: 'dano de terra + você GANHA muralha física ao jogar; a residência fica no campo (+2 dano em golpes de terra)',
+        branches: [
+            { key: 'monolito', name: 'Monólito', tagline: 'erga o que não cai',
+              t1: { name: 'Núcleo de Granito', desc: 'A residência é inabalável: sua muralha ganha +2 de escudo físico extra.' },
+              t2: { name: 'Aura Sísmica', desc: 'A residência dá +4 de dano mágico aos seus golpes de terra (antes eram +2).' } },
+            { key: 'abundancia', name: 'Abundância', tagline: 'a terra provê',
+              t1: { name: 'Pele de Pedra', desc: 'A muralha física desta jogada é DOBRADA.' },
+              t2: { name: 'Raízes Profundas', desc: 'Enquanto o Monólito estiver no seu campo, você cura 2 no início do seu turno.' } },
+            { key: 'demolicao', name: 'Demolição', tagline: 'quebradeira total',
+              t1: { name: 'Cataclisma', desc: 'O golpe também atinge TODAS as criaturas inimigas com 5 de dano.' },
+              t2: { name: 'Linha de Trincamento', desc: 'Golpes de terra causam o DOBRO contra criaturas e estruturas.' } }
+        ]
+    },
+    cura: {
+        word: 'Bênção', icon: 'arena-heart', style: 'residencia',
+        aura: 'restaura vida (o excedente vira escudo) · a residência fica no campo (+2 vida/turno)',
+        branches: [
+            { key: 'renovacao', name: 'Renovação', tagline: 'vida que retorna',
+              t1: { name: 'Vitalidade', desc: '+4 de cura por criatura SUA em campo.' },
+              t2: { name: 'Segundo Fôlego', desc: 'O excedente se transforma em escudo MÁGICO no dobro da taxa.' } },
+            { key: 'espelho', name: 'Espelho', tagline: 'cura que se protege',
+              t1: { name: 'Refletir Energia', desc: 'O excedente vira escudo FÍSICO também (metade de cada).' },
+              t2: { name: 'Couraça Vital', desc: 'Em vez de escudo, o excedente vira Barreira de 30%.' } },
+            { key: 'purificacao', name: 'Purificação', tagline: 'expulsar a sujeira',
+              t1: { name: 'Limpeza', desc: 'A cura também remove Sangramento e Queimadura DE VOCÊ.' },
+              t2: { name: 'Santidade', desc: 'A cura desta jogada é TOTAL (você volta ao máximo sempre).' } }
+        ]
+    },
+    defesa: {
+        word: 'Bastião', icon: 'arena-shield', style: 'residencia',
+        aura: 'escudo físico + Espinhos (4, 2 turnos) · a residência fica no campo (+1 escudo físico/turno)',
+        branches: [
+            { key: 'fortaleza', name: 'Fortaleza', tagline: 'uma parede de espinhos',
+              t1: { name: 'Espinhos Duradouros', desc: 'Espinhos duram +1 turno (3 no total).' },
+              t2: { name: 'Espinhos Totais', desc: 'Espinhos refletem também dano MÁGICO sofrido pelo Bastião.' } },
+            { key: 'contraataque', name: 'Contra-ataque', tagline: 'cada pancada dói nos dois',
+              t1: { name: 'Riposta', desc: 'Ao refletir dano com Espinhos, você COMPRA 1 carta.' },
+              t2: { name: 'Mártir de Ferro', desc: 'Cada golpe que seus Espinhos devolvem te cura 4.' } },
+            { key: 'muralha', name: 'Muralha de Aço', tagline: 'nada passa',
+              t1: { name: 'Baluarte', desc: 'Você é IMUNE a dano físico neste turno.' },
+              t2: { name: 'Muro Perfeito', desc: 'Espinhos causam 50% a mais de dano e ignoram Barreiras.' } }
+        ]
+    },
+    defesa_magica: {
+        word: 'Véu', icon: 'arena-shield-mag', style: 'residencia',
+        aura: 'escudo mágico + Barreira (−25% dano mágico, 2 cargas) · a residência fica no campo (+1 escudo mágico/turno)',
+        branches: [
+            { key: 'prisao', name: 'Prisão', tagline: 'a barreira manda',
+              t1: { name: 'Barreira Total', desc: 'A PRIMEIRA carga da Barreira absorve 100% do dano.' },
+              t2: { name: 'Santuário', desc: 'Você NÃO pode ser atordoado enquanto tiver Barreira.' } },
+            { key: 'reflexao', name: 'Reflexão', tagline: 'devolva o que veio',
+              t1: { name: 'Transubstanciação', desc: '50% do dano mágico ABSORVIDO pela Barreira é DEVOLVIDO ao lançador.' },
+              t2: { name: 'Descarga', desc: 'Se sua Barreira zerar as cargas, o rival sofre Queimadura 4/turno (2 turnos).' } },
+            { key: 'santuario', name: 'Santuário', tagline: 'fortaleza interior',
+              t1: { name: 'Afinidade Etérea', desc: 'No início do seu turno, +2 de escudo mágico EXTRA.' },
+              t2: { name: 'Ápice', desc: 'Enquanto você tiver Barreira, você cura 3 no início do seu turno.' } }
+        ]
+    },
+    invocacao: {
+        word: 'Invocação', icon: 'arena-moon', style: 'summon',
+        aura: 'criatura na frente golpeando pelo dobro do poder por 3 turnos',
+        branches: [
+            { key: 'ferocidade', name: 'Ferocidade', tagline: 'sangue frio, garras quentes',
+              t1: { name: 'Carga Imediata', desc: 'A criatura ataca IMEDIATAMENTE ao ser invocada (50% da força).' },
+              t2: { name: 'Fúria Primordial', desc: 'O golpe da criatura ignora o escudo físico.' } },
+            { key: 'horda', name: 'Horda', tagline: 'um exército de um só gesto',
+              t1: { name: 'Enxame', desc: 'Invoca 2 criaturas MENORES (poder 2, 2 turnos) em vez de uma.' },
+              t2: { name: 'Vínculo Vital', desc: 'A criatura te cura 2 a cada golpe que ela dá.' } },
+            { key: 'retorno', name: 'Retorno', tagline: 'a morte é só um intervalo',
+              t1: { name: 'Persistência', desc: 'A criatura dura +2 turnos.' },
+              t2: { name: 'Último Suspiro', desc: 'Quando a criatura expira, ela EXPLODE: 6 direto na vida do rival.' } }
+        ]
+    },
+    estrutura: {
+        word: 'Estrutura', icon: 'arena-tower', style: 'estrutura',
+        aura: 'dano imediato + dano mágico por turno + cura 1/turno · fica na retaguarda',
+        branches: [
+            { key: 'industrial', name: 'Poder Industrial', tagline: 'a máquina que nutre',
+              t1: { name: 'Sobrecarga', desc: 'A estrutura cura você +3 por turno (em vez de 1).' },
+              t2: { name: 'Núcleo de Gênese', desc: 'A estrutura cura também 2 de escudo MÁGICO por turno.' } },
+            { key: 'artilharia', name: 'Artilharia', tagline: 'canhão de longo alcance',
+              t1: { name: 'Bombardeio', desc: 'A estrutura atinge também as CRIATURAS inimigas com 3.' },
+              t2: { name: 'Mina Terrestre', desc: 'A estrutura IGNORA o escudo mágico da retaguarda… atravessa tudo.' } },
+            { key: 'fortaleza', name: 'Bastião Industrial', tagline: 'para o desespero',
+              t1: { name: 'Último Recurso', desc: 'Com 20 de vida ou menos, a estrutura causa o DOBRO.' },
+              t2: { name: 'Baluarte Vivo', desc: 'Enquanto você tiver a estrutura, seu escudo físico +4.' } }
+        ]
+    }
+};
+const ARENA_EVO_ORDER = ['dano', 'dano_fogo', 'dano_agua', 'dano_ar', 'dano_terra', 'cura', 'defesa', 'defesa_magica', 'invocacao', 'estrutura'];
+const arenaEvoOf = (cardId) => ({ branch: '', t1: false, t2: false, ...(economyState?.arenaEvo?.[cardId] || {}) });
+const arenaEvoPathCost = (tierIdx) => (tierIdx === 1 ? ARENA_EVO_T1 : ARENA_EVO_T2);
 const arenaRelicOwned = (relicId) => (economyState?.arenaRelics || []).includes(relicId);
 const arenaRelicEquippedOn = (cardId) => economyState?.arenaRelicEquips?.[cardId] || '';
 
@@ -3686,11 +3837,11 @@ function renderArenaCardsGrid() {
     if (countEl) countEl.textContent = `${arenaCards.length}/${ARENA_CARD_LIMIT}`;
     const deckSet = new Set(arenaDeckIds());
     grid.innerHTML = arenaCards.length
-        ? arenaCards.map((c) => { const upgPts = arenaUpgradePoints(c.id); return `<div class="card-in-grid">
+        ? arenaCards.map((c) => { const evo = arenaEvoOf(c.id); const evoTier = (evo.t1 ? 1 : 0) + (evo.t2 ? 1 : 0); const evoWord = ARENA_EVO[c.category]?.word || 'Evolução'; return `<div class="card-in-grid">
             ${cardFaceHTML(c, { mini: true })}
             <div class="card-in-grid-actions">
                 <button class="card-deck-toggle${deckSet.has(c.id) ? ' indk' : ''}" data-arena-deck-toggle="${escapeHtml(c.id)}">${deckSet.has(c.id) ? '✓ No deck' : '+ Deck'}</button>
-                <button class="card-upgrade" data-arena-card-upgrade="${escapeHtml(c.id)}" title="Árvore da carta: +Força, +Sintonia, +Eco e relíquia">✦${upgPts > 0 ? `<span class="up-count">${upgPts}</span>` : ''}</button>
+                <button class="card-upgrade" data-arena-card-upgrade="${escapeHtml(c.id)}" title="Evolução ${escapeHtml(evoWord)}: escolha o caminho e evolua a carta">✦${evoTier > 0 ? `<span class="up-count">${evoTier}</span>` : ''}</button>
                 <button class="card-delete" data-arena-card-delete="${escapeHtml(c.id)}" aria-label="Apagar carta" title="Apagar carta"><svg viewBox="0 0 24 24"><use href="#arena-trash"></use></svg></button>
             </div>
         </div>`; }).join('')
@@ -3937,10 +4088,10 @@ async function buyArenaRelic(id) {
     if (arenaCardTreeOpenId) renderCardTreeModal(); // atualiza o gold do modal aberto
 }
 
-/* ---------- Árvore da carta (3 ramos independentes por carta) ---------- */
+/* ---------- Evolução da carta (1 caminho por carta, escolhe-se e evolui em 2 patamares) ---------- */
 let arenaCardTreeOpenId = null;
-const arenaUpgBranchKey = (branch) => ({ forca: 'f', sintonia: 's', eco: 'e' }[branch] || branch);
-const arenaUpgTotalPoints = (u) => (Number(u?.f) || 0) + (Number(u?.s) || 0) + (Number(u?.e) || 0);
+const ARENA_EVO_ORDER_SET = new Set(ARENA_EVO_ORDER);
+function arenaEvoPathCostFor(tier) { return tier === 1 ? ARENA_EVO_T1 : ARENA_EVO_T2; }
 function openCardTreeModal(cardId) {
     arenaCardTreeOpenId = cardId;
     renderCardTreeModal();
@@ -3951,32 +4102,52 @@ function renderCardTreeModal() {
     if (!cardId || !economyState) return;
     const card = (arenaCards || []).find((c) => c.id === cardId);
     if (!card) return;
-    const u = arenaUpgradesOf(cardId);
+    const evo = arenaEvoOf(cardId);
+    const profile = ARENA_EVO[card.category];
     const relicId = arenaRelicEquippedOn(cardId);
     const setHtml = (sel, html) => { const el = $(sel); if (el) el.innerHTML = html; };
     setHtml('#ctm-face', cardFaceHTML(card, { mini: true }));
     const goldEl = $('#ctm-gold'); if (goldEl) goldEl.textContent = Math.floor(Number(economyState.gold) || 0).toLocaleString('pt-BR');
-    const powPct = Math.round(((1 + u.f * 0.12) * (1 + (relicId === 'relic_orbe' ? 0.20 : 0)) - 1) * 100);
-    const synPct = Math.round(u.s * 10);
+    const chosen = profile?.branches.find((b) => b.key === evo.branch);
+    const tier = (evo.t1 ? 1 : 0) + (evo.t2 ? 1 : 0);
     const relicBit = relicId && ECO?.ARENA_RELIC_BY_ID?.[relicId] ? ` · ${ECO.ARENA_RELIC_BY_ID[relicId].emoji} ${escapeHtml(ECO.ARENA_RELIC_BY_ID[relicId].name)}` : '';
-    setHtml('#ctm-summary', `Efeito <b>+${powPct}%</b> · Afinidade <b>+${synPct}%</b> · Secundário <b>Nv ${u.e}</b> · Pontos <b>${arenaUpgTotalPoints(u)}/${ARENA_UPG_MAX * 3}</b>${relicBit}`);
-    setHtml('#ctm-branches', ARENA_UPG_BRANCHES.map((b) => {
-        const key = arenaUpgBranchKey(b.key);
-        const pts = Number(u[key]) || 0;
-        const maxed = pts >= ARENA_UPG_MAX;
-        const cost = maxed ? 0 : ARENA_UPG_COSTS[pts];
-        const canAfford = !maxed && Number(economyState.gold) >= cost;
-        const pips = [0, 1, 2].map((i) => `<span class="ctm-pip${i < pts ? ' on' : ''}"></span>`).join('');
-        const iconId = b.key === 'forca' ? 'arena-sword' : b.key === 'sintonia' ? 'arena-tree' : 'arena-sparkles';
-        return `<div class="ctm-branch">
+    setHtml('#ctm-summary', `Traço <b>${escapeHtml(profile?.word || card.category)}</b> · Caminho <b>${chosen ? escapeHtml(chosen.name) : 'não traçado'}</b> · Patamar <b>${tier}/2</b>${relicBit}`);
+    if (!profile) { setHtml('#ctm-branches', '<p class="muted">Categoria sem evolução definida.</p>'); }
+    else {
+        const sealed = !!evo.branch;
+        setHtml('#ctm-branches', `<div class="evo-head"><span class="evo-style evo-style--${escapeHtml(profile.style)}">${escapeHtml({rajada: 'Estilo Rajada', residencia: 'Estilo Residência', summon: 'Estilo Invocação', estrutura: 'Estilo Estrutura'}[profile.style] || profile.style)}</span><span class="evo-aura">${escapeHtml(profile.aura)}</span></div>`
+            + profile.branches.map((b) => {
+                const isChosen = evo.branch === b.key;
+                const lockedOut = sealed && !isChosen;
+                const t1Owned = isChosen && evo.t1;
+                const t2Owned = isChosen && evo.t2;
+                const t1Cost = ARENA_EVO_T1, t2Cost = ARENA_EVO_T2;
+                const gold = Number(economyState.gold) || 0;
+                const t1Disabled = lockedOut || t1Owned || gold < t1Cost;
+                const t2Disabled = lockedOut || !t1Owned || t2Owned || gold < t2Cost;
+                const status = lockedOut ? '🔒 selado' : isChosen ? (t2Owned ? '✔ completo' : t1Owned ? 'T1 ✔' : 'traçado') : 'disponível';
+                return `<div class="ctm-branch evo-branch${isChosen ? ' is-chosen' : ''}${lockedOut ? ' is-locked' : ''}">
             <div class="ctm-branch-head">
-                <span class="ctm-branch-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#${iconId}"></use></svg></span>
-                <span class="ctm-branch-title"><b>${escapeHtml(b.word)} <small style="opacity:.6">${pts}/${ARENA_UPG_MAX}</small></b><span>${escapeHtml(b.desc)}</span></span>
-                <span class="ctm-pips">${pips}</span>
+                <span class="ctm-branch-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#${escapeHtml(profile.icon)}"></use></svg></span>
+                <span class="ctm-branch-title"><b>${escapeHtml(b.name)} <small style="opacity:.6">${escapeHtml(status)}</small></b><span>${escapeHtml(b.tagline)}</span></span>
             </div>
-            <button class="ctm-buy${maxed ? ' maxed' : ''}" data-arena-upg="${escapeHtml(b.key)}" data-card-id="${escapeHtml(cardId)}" ${maxed || !canAfford ? 'disabled' : ''}>${maxed ? 'Ramo no máximo ✓' : `Investir 1 ponto — 🪙 ${cost.toLocaleString('pt-BR')}`}</button>
+            <div class="evo-tiers">
+                <div class="evo-tier${t1Owned ? ' owned' : ''}">
+                    <span class="evo-tier-tag">T1 · Patamar 1</span>
+                    <b>${escapeHtml(b.t1.name)}</b>
+                    <p>${escapeHtml(b.t1.desc)}</p>
+                    <button class="ctm-buy${t1Owned ? ' maxed' : ''}" data-arena-evo="${escapeHtml(b.key)}" data-card-id="${escapeHtml(cardId)}" data-tier="1" ${t1Disabled ? 'disabled' : ''}>${t1Owned ? 'Aprendido ✓' : lockedOut ? 'Caminho selado' : evo.branch === '' ? `Traçar caminho — 🪙 ${t1Cost.toLocaleString('pt-BR')}` : `Evoluir — 🪙 ${t1Cost.toLocaleString('pt-BR')}`}</button>
+                </div>
+                <div class="evo-tier${t2Owned ? ' owned' : ''}${!t1Owned && !lockedOut ? ' needs-t1' : ''}">
+                    <span class="evo-tier-tag">T2 · Patamar 2</span>
+                    <b>${escapeHtml(b.t2.name)}</b>
+                    <p>${escapeHtml(b.t2.desc)}</p>
+                    <button class="ctm-buy${t2Owned ? ' maxed' : ''}" data-arena-evo="${escapeHtml(b.key)}" data-card-id="${escapeHtml(cardId)}" data-tier="2" ${t2Disabled ? 'disabled' : ''}>${t2Owned ? 'Dominado ✓' : lockedOut ? 'Caminho selado' : !t1Owned ? 'Requer T1' : `Evoluir — 🪙 ${t2Cost.toLocaleString('pt-BR')}`}</button>
+                </div>
+            </div>
         </div>`;
-    }).join(''));
+            }).join(''));
+    }
     const relics = ECO?.ARENA_RELICS || [];
     setHtml('#ctm-relics', relics.map((r) => {
         const owned = (economyState.arenaRelics || []).includes(r.id);
@@ -3991,17 +4162,30 @@ function renderCardTreeModal() {
         </button>`;
     }).join(''));
 }
-async function buyArenaUpgradePoint(cardId, branch) {
-    const key = arenaUpgBranchKey(branch);
-    const u = arenaUpgradesOf(cardId);
-    const pts = Number(u[key]) || 0;
-    if (pts >= ARENA_UPG_MAX) { showToast('Esse ramo já está no máximo.', 'info'); return; }
-    const cost = ARENA_UPG_COSTS[pts];
-    if (!economyState || Number(economyState.gold) < cost) { showToast(`Falta gold — precisa de ${fmtGold(cost)} 🪙`, 'warn'); return; }
-    const nextForCard = { f: u.f, s: u.s, e: u.e, [key]: pts + 1 };
-    await saveEconomy({ gold: economyState.gold - cost, arenaUpgrades: { ...(economyState.arenaUpgrades || {}), [cardId]: nextForCard } });
+async function buyArenaEvolution(cardId, branch, tier) {
+    if (!economyState) return;
+    const card = (arenaCards || []).find((c) => c.id === cardId);
+    if (!card) return;
+    const profile = ARENA_EVO[card.category];
+    const branchDef = profile?.branches.find((b) => b.key === branch);
+    if (!branchDef) return;
+    const evo = arenaEvoOf(cardId);
+    if (evo.branch && evo.branch !== branch) { showToast('O caminho desta carta já foi selado.', 'warn'); return; }
+    const t = Number(tier) || 1;
+    if (t === 1 && evo.t1) { showToast('Patamar 1 já aprendido.', 'info'); return; }
+    if (t === 2 && !evo.t1) { showToast('Aprenda o Patamar 1 primeiro.', 'warn'); return; }
+    if (t === 2 && evo.t2) { showToast('Esta carta já dominou o Patamar 2.', 'info'); return; }
+    const cost = t === 1 ? ARENA_EVO_T1 : ARENA_EVO_T2;
+    if (Number(economyState.gold) < cost) { showToast(`Falta gold — precisa de ${fmtGold(cost)} 🪙`, 'warn'); return; }
+    if (!evo.branch) {
+        const ok = window.confirm(`Traçar o caminho ${branchDef.name} é PERMANENTE para “${card.name}”.\n\nVocê não poderá trocar de caminho depois. Confirmar?`);
+        if (!ok) return;
+    }
+    const next = { branch, t1: true, t2: t === 2 ? true : !!evo.t2 };
+    addLedger('compra', `Evolução ${profile.word} · ${branchDef.name} T${t} — ${card.name}`, -cost);
+    await saveEconomy({ gold: economyState.gold - cost, arenaEvo: { ...(economyState.arenaEvo || {}), [cardId]: next } });
     vibrate([12, 25, 12]);
-    showToast('Ponto investido! 🔧', 'success', 1600);
+    showToast(t === 1 ? `${branchDef.t1.name} aprendido! ✦` : `${branchDef.t2.name} dominado! ✦✦`, 'success', 2200);
     renderCardTreeModal();
     renderArenaCardsGrid();
 }
@@ -4024,18 +4208,18 @@ function arenaEffectHintText(category, power) {
     const structureDmg = Math.max(1, Math.round(eff * 2) + 1);
     const structureTick = Math.max(1, Math.round(eff));
     switch (kind) {
-        case 'physical': return `Causa ${base} de dano físico (escudo físico absorve) + Sangramento 2/turno por 2 turnos (ignora escudos).`;
+        case 'physical': return `Rajada: causa ${base} de dano físico + Sangramento 2/turno (2 turnos, ignora escudos) e deixa um RESQUÍCIO no campo por 2 turnos.`;
         case 'magic':
-            if (category === 'dano_fogo') return `Causa ${base} de dano de fogo (escudo mágico absorve) + Queimadura 2/turno por 2 turnos (ignora escudos).`;
-            if (category === 'dano_agua') return `Corroi ${3} de escudo mágico e causa ${base} de dano de água.`;
-            if (category === 'dano_ar') return `Causa ${base} direto na vida (ignora escudos) + atordoa: o rival não compra no próximo turno.`;
-            if (category === 'dano_terra') return `Causa ${base} de dano de terra + você ganha 2 de escudo físico.`;
+            if (category === 'dano_fogo') return `Rajada: causa ${base} de fogo + Queimadura 2/turno (2 turnos) e deixa um RESQUÍCIO no campo por 2 turnos.`;
+            if (category === 'dano_agua') return `Rajada: rói 3 de escudo mágico e causa ${base} de água; deixa um RESQUÍCIO no campo por 2 turnos.`;
+            if (category === 'dano_ar') return `Rajada: causa ${base} direto na vida (ignora escudos) + atordoa (não compra) e deixa um RESQUÍCIO no campo.`;
+            if (category === 'dano_terra') return `Residência: causa ${base} de dano de terra + 2 de muralha; a residência FICA NO CAMPO (+2 de dano em golpes de terra).`;
             return `Causa ${base} de dano mágico — o escudo mágico do rival absorve primeiro.`;
-        case 'heal': return `Restaura ${base} de vida (máximo ${ARENA_HP}); o excedente vira 50% escudo mágico.`;
-        case 'shield': return `Concede ${base} de escudo físico (até o teto de ${ARENA_SHIELD_MAX}) + Espinhos: devolve 4 de dano físico por 2 turnos.`;
-        case 'shieldmagic': return `Concede ${base} de escudo mágico (até ${ARENA_SHIELD_MAX}) + Barreira: reduz 25% do dano mágico por 2 cargas.`;
-        case 'summon': return `Invoca uma criatura na frente, golpeando ${Math.max(1, Math.round(eff * 2))}/turno no início dos seus próximos ${ARENA_TOKEN_TURNS} turnos (máx. ${ARENA_FRONT_MAX} na frente).`;
-        case 'structure': return `Causa ${structureDmg} imediato + ${structureTick}/turno e cura você +1 por turno (máx. ${ARENA_BACK_MAX} na retaguarda).`;
+        case 'heal': return `Residência: restaura ${base} de vida (excedente vira escudo mágico); a residência FICA NO CAMPO (+2 de vida por turno).`;
+        case 'shield': return `Residência: +${base} de escudo físico + Espinhos (4 por 2 turnos); a residência FICA NO CAMPO (+1 de escudo por turno).`;
+        case 'shieldmagic': return `Residência: +${base} de escudo mágico + Barreira (−25%, 2 cargas); a residência FICA NO CAMPO (+1 de escudo mágico por turno).`;
+        case 'summon': return `Invoca uma criatura (vida ${2 + eff}) na frente, golpeando ~${Math.max(1, Math.round(eff * 2))}/turno por ${ARENA_TOKEN_TURNS} turnos (máx. ${ARENA_FRONT_MAX} na frente).`;
+        case 'structure': return `Estrutura (8 de vida): causa ${structureDmg} imediato + ${structureTick}/turno e cura você +1 por turno; fica na retaguarda (máx. ${ARENA_BACK_MAX}).`;
         default: return '';
     }
 }
@@ -4111,8 +4295,8 @@ function arenaCatCounts(cards) {
 function arenaUpgradeSnapshot(cards) {
     const out = {};
     for (const c of cards) {
-        const u = arenaUpgradesOf(c.id);
-        out[c.id] = { f: Number(u.f) || 0, s: Number(u.s) || 0, e: Number(u.e) || 0 };
+        const u = arenaEvoOf(c.id);
+        out[c.id] = { branch: u.branch || '', t1: !!u.t1, t2: !!u.t2 };
     }
     return out;
 }
@@ -4122,18 +4306,16 @@ function arenaRelicSnapshot(cards) {
     return out;
 }
 /* Leitura no documento da partida — quem age calcula com o que está aqui */
-const arenaUpgInMatch = (m, side, cardId) => (m?.[`upg${side}`] || {})[cardId] || { f: 0, s: 0, e: 0 };
+const arenaUpgInMatch = (m, side, cardId) => (m?.[`upg${side}`] || {})[cardId] || { branch: '', t1: false, t2: false };
 const arenaRelicInMatch = (m, side, cardId) => (m?.[`relics${side}`] || {})[cardId] || '';
-/* Multiplicadores finais de uma jogada: Refúgio (+6%/ponto) · Afinidade (+2%/carta do ramo)
-   · Sintonia desta carta (+10%) · Força (+12%/ponto) · Orbe de Poder (+20%) */
+/* Multiplicadores finais de uma jogada: Refúgio (+6%/ponto de árvore) · Afinidade (+2%/carta do ramo) · Orbe de Poder (+20%) */
 function arenaCombatMult(m, side, card) {
     const upg = arenaUpgInMatch(m, side, card.id);
     const ref = (Number(m?.[`tree${side}`]?.[card.category]) || 0) * 0.06;
     const aff = (Number(m?.[`catCount${side}`]?.[card.category]) || 0) * 0.02;
-    const syn = (Number(upg.s) || 0) * 0.10;
     const relic = arenaRelicInMatch(m, side, card.id);
-    const pow = (1 + (Number(upg.f) || 0) * 0.12) * (1 + (relic === 'relic_orbe' ? 0.20 : 0));
-    return { mult: 1 + ref + aff + syn, pow, eco: Number(upg.e) || 0, relic };
+    const pow = (1 + (relic === 'relic_orbe' ? 0.20 : 0));
+    return { mult: 1 + ref + aff, pow, evo: upg, eco: 0, relic };
 }
 function arenaMultOf(match, side, catId) {
     const tree = match?.[`tree${side}`] || {};
@@ -4164,72 +4346,139 @@ function arenaStartOfTurnPatch(m, side) {
     const handKey = arenaSideField(side, 'hand');
     const deckKey = arenaSideField(side, 'deck');
     const shieldFoeKey = arenaSideField(foe, 'shield');
+    const shieldMeKey = arenaSideField(side, 'shield');
     const log = [];
     let hpFoe = Number(m[hpFoeKey]) || ARENA_HP;
     let hpMe = Number(m[hpMeKey]) || ARENA_HP;
     const shieldFoe = { ...(m[shieldFoeKey] || { phys: 0, mag: 0 }) };
+    const shieldMe = { ...(m[shieldMeKey] || { phys: 0, mag: 0 }) };
     const meName = arenaMatchCardName(m, side);
+    const hasResidence = (trait) => (m[fieldKey] || []).some((u) => u.kind === 'residence' && u.trait === trait);
+    const residenceCount = (trait) => (m[fieldKey] || []).filter((u) => u.kind === 'residence' && u.trait === trait).length;
 
-    // 1) Dano ao longo do tempo (sangramento/queimadura) — ignora escudo
+    // 1) Dano ao longo do tempo // sem changelog: Sangramento real não dispara Espinhos (é ferida, não golpe)
     const dotKey = arenaSideField(side, 'dot');
     const dot = m[dotKey];
-    if (dot && (Number(dot.turns) || 0) > 0) {
-        hpMe -= Math.max(0, Number(dot.dmg) || 0);
-        const left = (Number(dot.turns) || 0) - 1;
-        log.push(`🩸 ${meName} sofreu ${dot.dmg} de ${dot.type === 'burn' ? 'queimadura' : 'sangramento'} (${left} turno${left === 1 ? '' : 's'} restante)`);
-        if (left <= 0) m = { ...m, [dotKey]: null };
-        else m = { ...m, [dotKey]: { ...dot, turns: left } };
+    let dotNext = dot && (Number(dot.turns) || 0) > 0 ? { ...dot } : null;
+    const hasStructure = (m[fieldKey] || []).some((u) => u.kind === 'structure');
+    if (dotNext) {
+        let dmg = Math.max(1, Number(dotNext.dmg) || 0);
+        if (dotNext.type === 'burn') dmg += Math.min(6, Number(dotNext.mark) || 0);
+        if (dotNext.vsWounded && hpMe / ARENA_HP <= 0.5) dmg *= 2;
+        const left = (Number(dotNext.turns) || 0) - 1;
+        if (dotNext.detonateFinal && left === 0) dmg *= 2;
+        hpMe -= dmg;
+        const label = dotNext.type === 'burn' ? 'queimadura' : 'sangramento';
+        log.push(`${dotNext.type === 'burn' ? '🔥' : '🩸'} ${meName} sofreu ${dmg} de ${label} (${left} turno${left === 1 ? '' : 's'} restante)`);
+        if (dotNext.type === 'burn' && dotNext.mark !== undefined) dotNext = { ...dotNext, mark: Math.min(6, (Number(dotNext.mark) || 0) + 2) };
+        if (dotNext.detonateFinal && left === 0) log.push(`💀 Corrupção Necrótica: a ferida detonou por ${dmg}`);
+        if (left > 0) dotNext = { ...dotNext, turns: left };
+        else if (dotNext.type === 'burn' && dotNext.eternal && hasStructure) { dotNext = { ...dotNext, turns: 2 }; log.push('🔥 Brasa Eterna: a queimadura se renova (estrutura em campo)'); }
+        else dotNext = null;
     }
 
-    // 2) Espinhos do lado `side` envelhecem no início do turno do DONO.
-    // Eles ferem quem ataca por último este turno (resolvido nos ataques + ações do oponente).
     const thornsKey = arenaSideField(side, 'thorns');
     const thorns = m[thornsKey];
     let thornsNext = thorns && (Number(thorns.turns) || 0) > 0 ? { ...thorns, turns: (Number(thorns.turns) || 0) - 1 } : null;
-    if (thorns && thornsNext && thornsNext.turns === 0) { thornsNext = null; log.push(`🛡️ Os espinhos de ${meName} se apagaram`); }
+    if (thorns && thornsNext && thornsNext.turns === 0) { thornsNext = null; log.push(`🛡️ Os Espinhos de ${meName} se apagaram`); }
 
+    // Esquiva (Ar Cortante t1): decai no início do seu turno
+    const dodgeKey = arenaSideField(side, 'dodge');
+    const dodge = Number(m[dodgeKey]) ? m[dodgeKey] : null;
+
+    let foeCreatureHit = 0;
     const field = [];
     for (const unit of m[fieldKey] || []) {
         const u = { ...unit };
         if (u.kind === 'summon') {
             const mult = arenaMultOf(m, side, 'invocacao');
-            const dmg = Math.max(1, Math.round((Number(u.power) || 1) * 2 * mult) + (Number(u.eco) || 0));
+            const dmg = Math.max(1, Math.round((Number(u.power) || 1) * 2 * mult));
             const foeThorns = m[arenaSideField(foe, 'thorns')];
-            const { shieldLeft, rest } = arenaAbsorb(shieldFoe.phys, dmg);
-            shieldFoe.phys = shieldLeft;
-            hpFoe -= rest;
-            log.push(`${u.emoji || '🗿'} ${meName}: ${u.name} golpeou por ${dmg} (${rest} na vida)`);
-            if (foeThorns && (Number(foeThorns.turns) || 0) > 0 && dmg > 0) {
+            if (u.fury) { hpFoe -= dmg; log.push(`${u.emoji || '🗿'} ${meName}: ${u.name} atravessou o escudo físico por ${dmg}`); }
+            else {
+                const { shieldLeft, rest } = arenaAbsorb(shieldFoe.phys, dmg);
+                shieldFoe.phys = shieldLeft;
+                hpFoe -= rest;
+                log.push(`${u.emoji || '🗿'} ${meName}: ${u.name} golpeou por ${dmg} (${rest} na vida)`);
+            }
+            if (u.healMe) { hpMe = Math.min(ARENA_HP, hpMe + 2); log.push(`💚 Vínculo Vital: +2 de vida`); }
+            if (foeThorns && (Number(foeThorns.turns) || 0) > 0 && dmg > 0 && !u.fury) {
                 const back = Math.max(1, Number(foeThorns.amount) || 0);
                 hpMe -= back;
-                const foeNameHere = arenaMatchCardName(m, foe);
-                log.push(`🛡️ Os Espinhos de ${foeNameHere} devolvem ${back} em ${meName}`);
+                log.push(`🛡️ Os Espinhos de ${arenaMatchCardName(m, foe)} devolvem ${back} em ${meName}`);
             }
             u.turnsLeft = (Number(u.turnsLeft) || ARENA_TOKEN_TURNS) - 1;
             if (u.turnsLeft > 0) field.push(u);
-            else log.push(`⏳ ${u.name} se desfez`);
+            else {
+                if (u.deathburst) { hpFoe -= 6; log.push(`💥 ${u.name} explode: 6 direto na vida de ${arenaMatchCardName(m, foe)}`); }
+                log.push(`⏳ ${u.name} se desfez`);
+            }
         } else if (u.kind === 'structure') {
-            const dmg = Math.max(1, Number(u.tick) || 1);
-            const { shieldLeft, rest } = arenaAbsorb(shieldFoe.mag, dmg);
-            shieldFoe.mag = shieldLeft;
-            hpFoe -= rest;
-            log.push(`🏗️ ${meName}: ${u.name} causou ${dmg} de dano`);
+            const hpBet = Number(m[hpMeKey]) || ARENA_HP;
+            const lowHp = hpBet <= 20 && u.desperation;
+            const dmg = Math.max(1, Math.round((Number(u.tick) || 1) * (lowHp ? 2 : 1)));
+            if (u.pierceMag) { hpFoe -= dmg; log.push(`🏗️ ${meName}: ${u.name} atravessou o escudo mágico por ${dmg}`); }
+            else {
+                const { shieldLeft, rest } = arenaAbsorb(shieldFoe.mag, dmg);
+                shieldFoe.mag = shieldLeft;
+                hpFoe -= rest;
+                log.push(`🏗️ ${meName}: ${u.name} causou ${dmg} de dano`);
+            }
             const heal = Math.max(0, Number(u.heal) || 0);
             if (heal > 0) hpMe = Math.min(ARENA_HP, hpMe + heal);
+            if (u.genMagic) shieldMe.mag = Math.min(ARENA_SHIELD_MAX, shieldMe.mag + 2);
+            if (u.bombard) foeCreatureHit = (foeCreatureHit || 0) + 3;
             field.push(u);
+        } else if (u.kind === 'resquicio') {
+            const left = (Number(u.turnsLeft) || 0) - 1;
+            if (left > 0) field.push({ ...u, turnsLeft: left });
+            else log.push(`🌫️ ${u.name} se dissipou`);
         } else {
-            field.push(u);
+            field.push(u); // residências permanecem
         }
     }
 
-    // 3) Compra — o Ar (Rajada) atrapalha: não compra este turno
+    // 3a) Bombardeio acumulado: acerta criaturas inimigas
+    let foeFieldPatch = null;
+    if (foeCreatureHit > 0) {
+        const foeFieldKey = arenaSideField(foe, 'field');
+        const foeField = [];
+        for (const fu of m[foeFieldKey] || []) {
+            if (fu.kind === 'summon') {
+                const hpLeft = (Number(fu.hp) || (2 + (Number(fu.power) || 1))) - foeCreatureHit;
+                if (hpLeft <= 0) { log.push(`💥 Bombardeio destruiu ${fu.name}!`); continue; }
+                foeField.push({ ...fu, hp: hpLeft });
+            } else foeField.push({ ...fu });
+        }
+        foeFieldPatch = foeField;
+    }
+
+    // 3) Auras das residências e estruturas (side começa o turno com elas)
+    const bless = residenceCount('cura');
+    if (bless > 0) { hpMe = Math.min(ARENA_HP, hpMe + 2 * bless); log.push(`💚 Bênção: +${2 * bless} de vida (aura)`); }
+    const bastion = residenceCount('defesa');
+    if (bastion > 0) { shieldMe.phys = Math.min(ARENA_SHIELD_MAX, shieldMe.phys + bastion); }
+    const veilUnits = (m[fieldKey] || []).filter((u) => u.kind === 'residence' && u.trait === 'defesa_magica');
+    const veil = veilUnits.length;
+    if (veil > 0) { shieldMe.mag = Math.min(ARENA_SHIELD_MAX, shieldMe.mag + veil); }
+    const afinity = veilUnits.filter((u) => u.afinidade).length;
+    if (afinity > 0) { shieldMe.mag = Math.min(ARENA_SHIELD_MAX, shieldMe.mag + 2 * afinity); log.push(`✨ Afinidade Etérea: +${2 * afinity} de escudo mágico`); }
+    const wardSelf = m[arenaSideField(side, 'ward')];
+    if (wardSelf && Number(wardSelf.charges) > 0 && wardSelf.apice) { hpMe = Math.min(ARENA_HP, hpMe + 3); log.push('✨ Ápice: +3 de vida (você tem Barreira)'); }
+    const bulwarkCount = (m[fieldKey] || []).filter((u) => u.kind === 'structure' && u.bulwark).length;
+    if (bulwarkCount > 0) { shieldMe.phys = Math.min(ARENA_SHIELD_MAX, shieldMe.phys + 4 * bulwarkCount); log.push(`🧱 Baluarte Vivo: +${4 * bulwarkCount} de escudo físico`); }
+    const roots = residenceCount('dano_terra') > 0;
+    if (roots && (m[fieldKey] || []).some((u) => u.kind === 'residence' && u.trait === 'dano_terra' && u.roots)) { hpMe = Math.min(ARENA_HP, hpMe + 2); }
+
+    // 4) Compra — atordoamento
     const skipKey = arenaSideField(side, 'skipDraw');
-    let skipNext = Number(m[skipKey]) ? true : false;
+    const skipObj = m[skipKey];
+    let skipTurns = typeof skipObj === 'object' && skipObj ? Number(skipObj.turns) || 0 : Number(skipObj) || 0;
     const hand = [...(m[handKey] || [])];
     let deck = [...(m[deckKey] || [])];
-    if (skipNext) {
-        log.push(`🌪️ ${meName} foi atordoado e não comprou carta`);
-        skipNext = false;
+    if (skipTurns > 0) {
+        skipTurns -= 1;
+        log.push(`🌪️ ${meName} foi atordoado e não comprou carta (${skipTurns} turno${skipTurns === 1 ? '' : 's'} restante)`);
     } else {
         while (hand.length < 5 && deck.length) {
             hand.push(deck[0]);
@@ -4239,15 +4488,18 @@ function arenaStartOfTurnPatch(m, side) {
 
     const patch = {
         [hpMeKey]: hpMe,
+        [shieldMeKey]: shieldMe,
         [fieldKey]: field,
         [handKey]: hand,
         [deckKey]: deck,
         [shieldFoeKey]: shieldFoe,
         [hpFoeKey]: hpFoe,
-        [dotKey]: (m[dotKey] && (Number(m[dotKey].turns) || 0) > 0) ? m[dotKey] : null,
+        [dotKey]: dotNext && (Number(dotNext.turns) || 0) > 0 ? dotNext : null,
         [thornsKey]: thornsNext,
-        [skipKey]: skipNext
+        [skipKey]: skipTurns > 0 ? { turns: skipTurns } : null,
+        [dodgeKey]: null
     };
+    if (foeFieldPatch) patch[arenaSideField(foe, 'field')] = foeFieldPatch;
     return { patch, log, hpFoe, hpMe, foe };
 }
 
@@ -4281,10 +4533,15 @@ async function playArenaCard(cardId) {
             const card = hand[idx];
             const cat = ECO?.CARD_CATEGORY_BY_ID?.[card.category];
             if (!cat) throw new Error('Categoria desconhecida.');
-            const { mult, pow, eco, relic } = arenaCombatMult(m, side, card);
+            const { mult, pow, evo, relic } = arenaCombatMult(m, side, card);
             const eff = Number(card.power) * mult * pow;
             const meName = arenaMatchCardName(m, side);
             const foeName = arenaMatchCardName(m, foe);
+            const evoBranch = evo.branch || '';
+            const evoT1 = !!evo.t1;
+            const evoT2 = !!evo.t2;
+            const hasB = (b) => evoBranch === b;
+            const upg = (b, t) => hasB(b) && (t === 1 ? evoT1 : evoT2);
 
             const patch = {};
             const log = [];
@@ -4293,139 +4550,304 @@ async function playArenaCard(cardId) {
             const shieldMe = { ...(m[arenaSideField(side, 'shield')] || { phys: 0, mag: 0 }) };
             const shieldFoe = { ...(m[arenaSideField(foe, 'shield')] || { phys: 0, mag: 0 }) };
             const wardFoe = { ...(m[arenaSideField(foe, 'ward')] || { pct: 0, charges: 0 }) };
-            const dotFoe = { ...(m[arenaSideField(foe, 'dot')] || null) } || null;
-            let dotFoeNext = dotFoe && Number(dotFoe.turns) > 0 ? dotFoe : null;
+            const dotFoeBase = m[arenaSideField(foe, 'dot')] || null;
+            let dotFoeNext = dotFoeBase && Number(dotFoeBase.turns) > 0 ? { ...dotFoeBase } : null;
+            const skipFoeBase = m[arenaSideField(foe, 'skipDraw')];
+            let skipFoeNext = typeof skipFoeBase === 'object' && skipFoeBase ? { ...skipFoeBase } : (Number(skipFoeBase) ? { turns: Number(skipFoeBase) } : null);
             const fieldKey = arenaSideField(side, 'field');
             const field = [...(m[fieldKey] || [])];
             const summons = field.filter((u) => u.kind === 'summon').length;
-            const structures = field.filter((u) => u.kind === 'structure').length;
+            const backline = field.filter((u) => u.kind === 'structure' || u.kind === 'residence').length;
+            const sideDeckKey = arenaSideField(side, 'deck');
+            let sideDeck = [...(m[sideDeckKey] || [])];
+            const drawForMe = (n = 1) => {
+                let drew = 0;
+                while (drew < n && sideDeck.length && hand.length < 5) { hand.push(sideDeck[0]); sideDeck = sideDeck.slice(1); drew += 1; }
+                if (drew > 0) patch[sideDeckKey] = sideDeck;
+                return drew;
+            };
+            const foeFieldKey = arenaSideField(foe, 'field');
+            const dmgCreatures = (dmg, { doubleIfTrincamento = false } = {}) => {
+                if (!(dmg > 0) && !doubleIfTrincamento) return 0;
+                const mul = doubleIfTrincamento ? 2 : 1;
+                const foeField = [];
+                let hit = 0;
+                for (const fu of m[foeFieldKey] || []) {
+                    if (fu.kind === 'summon') {
+                        const hpLeft = (Number(fu.hp) || (2 + (Number(fu.power) || 1))) - dmg * mul;
+                        hit += 1;
+                        if (hpLeft <= 0) { log.push(`💥 ${meName} destruiu ${fu.name}!`); continue; }
+                        foeField.push({ ...fu, hp: hpLeft });
+                    } else foeField.push({ ...fu });
+                }
+                patch[foeFieldKey] = foeField;
+                return hit;
+            };
+            const dmgStructures = (dmg, mul = 1) => {
+                const foeField = [...(m[foeFieldKey] || [])];
+                const out = [];
+                for (const fu of foeField) {
+                    if (fu.kind === 'structure') {
+                        const hpLeft = (Number(fu.hp) || 8) - dmg * mul;
+                        if (hpLeft <= 0) { log.push(`💥 ${meName} DESTRUIU a estrutura ${fu.name}!`); continue; }
+                        out.push({ ...fu, hp: hpLeft });
+                    } else out.push({ ...fu });
+                }
+                patch[foeFieldKey] = out;
+            };
+            const terraResidenceAura = () => field.filter((u) => u.kind === 'residence' && u.trait === 'dano_terra').reduce((acc, u) => acc + (Number(u.aura) || 2), 0);
+            const stunnedNow = !!(skipFoeNext && Number(skipFoeNext.turns) > 0);
+            const foeWardNoStun = wardFoe.charges > 0 && !!wardFoe.noStun;
 
             /* Escudos/condições de ambos os lados */
-            const dealPhys = (dmg) => {
-                const { shieldLeft, rest } = arenaAbsorb(shieldFoe.phys, dmg);
-                shieldFoe.phys = shieldLeft; hpFoe -= rest;
-                // Espinhos: quem tem o thorns e tomou pancada devolve pro atacante (na vida)
+            const reflectFoeThorns = (dmg, src) => {
                 const foeThorns = m[arenaSideField(foe, 'thorns')];
-                if (foeThorns && (Number(foeThorns.turns) || 0) > 0 && dmg > 0) {
-                    const back = Math.max(1, Number(foeThorns.amount) || 0);
-                    hpMe -= back;
-                    log.push(`🛡️ Os Espinhos de ${foeName} devolvem ${back} em ${meName}`);
-                }
-                return rest;
+                if (!(foeThorns && Number(foeThorns.turns) > 0) || dmg <= 0) return;
+                if (src === 'mag' && !foeThorns.reflectiveMagic) return;
+                let back = Math.max(1, Number(foeThorns.amount) || 0);
+                if (foeThorns.direct) back = Math.floor(back * 1.5);
+                hpMe -= back;
+                log.push(`🛡️ Os Espinhos de ${foeName} devolvem ${back} em ${meName}`);
+                if (foeThorns.riposte) { const drew = drawForMe(1); if (drew) log.push('🃏 Riposta: você compra 1 carta'); }
+                if (foeThorns.martyr) { hpMe = Math.min(ARENA_HP, hpMe + 4); log.push('🩸 Mártir de Ferro: +4 de vida'); }
             };
-            const dealMag = (dmg) => {
+            const dealPhys = (dmg, { pierce = false, ignoreThorns = false } = {}) => {
+                const foeDodge = m[arenaSideField(foe, 'dodge')];
+                if (foeDodge && Number(foeDodge.pct) > 0) {
+                    const pct = Math.min(1, Number(foeDodge.pct));
+                    const reduced = Math.round(dmg * (1 - pct));
+                    log.push(`💨 Esquiva de ${foeName}: ${dmg} → ${reduced}`);
+                    dmg = reduced;
+                }
+                if (pierce) { hpFoe -= dmg; log.push(`🏹 Golpe atravessou o escudo físico (${dmg} direto na vida)`); }
+                else {
+                    const { shieldLeft, rest } = arenaAbsorb(shieldFoe.phys, dmg);
+                    shieldFoe.phys = shieldLeft; hpFoe -= rest;
+                }
+                if (!ignoreThorns) reflectFoeThorns(dmg, 'phys');
+                return dmg;
+            };
+            const dealMag = (dmg, { ignoreBarrier = false, ignoreShield = false } = {}) => {
                 let amount = dmg;
-                // Ward: barreira mágica de quem apanha reduz o dano e consome uma carga
-                if (wardFoe.charges > 0) {
-                    amount = Math.max(1, Math.round(dmg * (1 - (Number(wardFoe.pct) || 0))));
+                if (!ignoreBarrier && wardFoe.charges > 0) {
+                    const firstFull = wardFoe.firstFull && Number(wardFoe.charges) === 2 ? 1 : (Number(wardFoe.pct) || 0);
+                    amount = Math.max(0, Math.round(dmg * (1 - firstFull)));
+                    const absorbed = dmg - amount;
+                    if (wardFoe.reflectBack && absorbed > 0) { hpMe -= Math.round(absorbed * 0.5); log.push(`🔮 Transubstanciação: ${Math.round(absorbed * 0.5)} de dano devolvido a ${meName}`); }
                     wardFoe.charges = Math.max(0, (Number(wardFoe.charges) || 0) - 1);
+                    if (wardFoe.charges === 0 && wardFoe.onBreak) { patch[arenaSideField(side, 'dot')] = { dmg: 4, turns: 2, type: 'burn' }; log.push(`💥 Descarga: a Barreira de ${foeName} estourou — Queimadura 4 em ${meName}`); }
                     log.push(`🔮 Barreira de ${foeName} absorveu parte do dano mágico (${dmg} → ${amount})`);
                 }
+                if (ignoreShield) { hpFoe -= amount; reflectFoeThorns(amount, 'mag'); return amount; }
                 const { shieldLeft, rest } = arenaAbsorb(shieldFoe.mag, amount);
                 shieldFoe.mag = shieldLeft; hpFoe -= rest;
+                reflectFoeThorns(amount, 'mag');
                 return rest;
             };
-            const addDotFoe = (dmg, type) => {
-                const turns = 2;
-                if (!dotFoeNext || (Number(dotFoeNext.dmg) || 0) < dmg) dotFoeNext = { dmg, turns, type };
-                else dotFoeNext = { ...dotFoeNext, turns, type };
+            const addDotFoe = (dmg, type, extra) => {
+                let turns = 2;
+                if (type === 'bleed' && hasB('amputar') && evoT1) turns += 1;
+                if (!dotFoeNext || (Number(dotFoeNext.dmg) || 0) <= dmg) dotFoeNext = { dmg, turns, type, ...(extra || {}) };
+                else dotFoeNext = { ...dotFoeNext, turns: Math.max(turns, Number(dotFoeNext.turns) || 0), ...(extra || {}) };
             };
-            const addThornsMe = (amount) => { const cur = m[arenaSideField(side, 'thorns')]; const better = !cur || (Number(cur.amount) || 0) < amount || (Number(cur.turns) || 0) <= 0; if (better) patch[arenaSideField(side, 'thorns')] = { amount, turns: 2 }; };
-            const addWardMe = (pct) => { patch[arenaSideField(side, 'ward')] = { pct, charges: 2 }; };
+            const addThornsMe = (amount, { reflectiveMagic = false, direct = false, riposte = false, martyr = false, turns = 2 } = {}) => {
+                const bestTurns = (hasB('fortaleza') && evoT1 ? 3 : turns);
+                patch[arenaSideField(side, 'thorns')] = { amount, turns: bestTurns, reflectiveMagic, direct, riposte, martyr };
+            };
+            const addWardMe = (pct) => {
+                const payload = { pct, charges: 2 };
+                if (hasB('prisao') && evoT1) payload.firstFull = true;
+                if (hasB('reflexao') && evoT1) payload.reflectBack = true;
+                if (hasB('reflexao') && evoT2) payload.onBreak = true;
+                if (hasB('prisao') && evoT2) payload.noStun = true;
+                if (hasB('santuario') && evoT2) payload.apice = true;
+                patch[arenaSideField(side, 'ward')] = payload;
+            };
             const mainAmountOf = () => Math.max(1, Math.round(eff * 3) + 2);
             const healSelf = (n) => { hpMe = Math.min(ARENA_HP, hpMe + n); return n; };
             const relicNote = () => { if (relic === 'relic_escama') { shieldMe.phys = Math.min(ARENA_SHIELD_MAX, shieldMe.phys + 4); log.push(`🛡️ Escama de Aço: +4 de escudo físico para ${meName}`); } if (relic === 'relic_sifao') { const h = healSelf(Math.max(1, Math.round(mainAmountOf() * 0.25))); log.push(`🩸 Sifão de Sangue: ${meName} se cura ${h}`); } };
             const relicEcho = (primaryFn, primary) => { if (relic === 'relic_eco') { const echo = Math.max(1, Math.round(primary * 0.4)); primaryFn(echo); log.push(`🐚 Eco Arcano: efeito disparou de novo (${echo})`); } };
+            const spawnResquicio = () => {
+                field.push({ kind: 'resquicio', uid: `rq_${Date.now()}_${Math.floor(Math.random() * 1e6)}`, name: card.name, emoji: card.emoji || '🌫️', trait: card.category, turnsLeft: ARENA_RESQ_TURNS });
+            };
+            const spawnResidence = (trait, extra) => {
+                field.push({ kind: 'residence', uid: `res_${Date.now()}_${Math.floor(Math.random() * 1e6)}`, name: card.name, emoji: card.emoji || '✨', trait, turnsLeft: 999, ...(extra || {}) });
+            };
+            const tryStunFoe = (turns) => {
+                if (foeWardNoStun) { log.push(`🛕 Santuário de ${foeName}: o atordoamento foi anulado`); return; }
+                skipFoeNext = { turns: Math.max(Number(skipFoeNext?.turns) || 0, turns) };
+            };
+            const tryResidence = (trait, extra) => {
+                if (backline >= ARENA_BACK_MAX) throw new Error(`Retaguarda cheia (máx. ${ARENA_BACK_MAX}).`);
+                spawnResidence(trait, extra);
+            };
 
+            const dmgBase = Math.max(1, Math.round(eff * 3) + 2);
             switch (cat.kind) {
                 case 'physical': {
-                    const dmg = Math.max(1, Math.round(eff * 3) + 2);
-                    const rest = dealPhys(dmg);
-                    addDotFoe(2 + eco, 'bleed');
-                    log.push(`🗡️ ${meName} usou ${card.name}: ${dmg} de dano físico (${rest} na vida de ${foeName}) + Sangramento ${2 + eco}/turno`);
+                    const pierce = upg('estocada', 1);
+                    let dmg = dmgBase;
+                    if (upg('execucao', 1) && hpFoe / ARENA_HP <= 0.25) dmg = Math.round(dmg * 1.6);
+                    dealPhys(dmg, { pierce });
+                    if (upg('estocada', 2)) dmgCreatures(4);
+                    const bleedExtra = {};
+                    if (upg('execucao', 2)) bleedExtra.vsWounded = true;
+                    if (upg('amputar', 2)) bleedExtra.detonateFinal = true;
+                    addDotFoe(2, 'bleed', bleedExtra);
+                    spawnResquicio();
+                    log.push(`🗡️ ${meName} usou ${card.name}: ${dmg} de dano físico${pierce ? ' (atravessou o escudo)' : ''} + Sangramento`);
                     relicEcho(dealPhys, dmg);
                     break;
                 }
                 case 'magic': {
-                    const base = Math.max(1, Math.round(eff * 3) + 2);
                     if (card.category === 'dano_fogo') {
-                        const rest = dealMag(base);
-                        addDotFoe(2 + eco, 'burn');
-                        log.push(`🔥 ${meName} usou ${card.name}: ${base} de dano de fogo (${rest} na vida) + Queimadura ${2 + eco}/turno`);
-                        relicEcho(dealMag, base);
+                        const ignoreShield = upg('labareda', 1);
+                        let dmg = dmgBase;
+                        if (upg('labareda', 2) && shieldFoe.mag <= 0 && shieldFoe.phys <= 0) dmg *= 2;
+                        dealMag(dmg, { ignoreShield });
+                        const burnExtra = {};
+                        if (upg('incendio', 2)) burnExtra.eternal = true;
+                        if (upg('tormento', 2)) burnExtra.mark = 0;
+                        addDotFoe(2, 'burn', burnExtra);
+                        if (upg('incendio', 1)) dmgCreatures(4);
+                        if (upg('tormento', 1)) healSelf(Math.round(dmg * 0.5));
+                        spawnResquicio();
+                        log.push(`🔥 ${meName} usou ${card.name}: ${dmg} de dano de fogo + Queimadura${ignoreShield ? ' (atravessou o escudo)' : ''}${burnExtra.eternal ? ' (Brasa Eterna)' : ''}`);
+                        relicEcho(dealMag, dmg);
                     } else if (card.category === 'dano_agua') {
-                        const erode = 3 + eco * 2;
-                        const before = shieldFoe.mag;
-                        shieldFoe.mag = Math.max(0, before - erode);
-                        const rest = dealMag(base);
-                        log.push(`💧 ${meName} usou ${card.name}: Erosão ${Math.min(before, erode)} do escudo mágico + ${base} de dano (${rest} na vida)`);
-                        relicEcho(dealMag, base);
+                        const erodeMag = 3, erodePhys = upg('diluvio', 1) ? 3 : 0;
+                        const beforeMag = shieldFoe.mag, beforePhys = shieldFoe.phys;
+                        shieldFoe.mag = Math.max(0, shieldFoe.mag - erodeMag);
+                        if (erodePhys) shieldFoe.phys = Math.max(0, shieldFoe.phys - erodePhys);
+                        const corroded = (beforeMag - shieldFoe.mag) + (beforePhys - shieldFoe.phys);
+                        if (upg('diluvio', 2) && corroded > 0) { shieldMe.mag = Math.min(ARENA_SHIELD_MAX, shieldMe.mag + corroded); log.push(`🌊 Absorver a Corrente: +${corroded} de escudo mágico`); }
+                        if (upg('sedada', 1)) tryStunFoe(1);
+                        let dmg = dmgBase;
+                        if (upg('sedada', 2) && stunnedNow) dmg = Math.round(dmg * 1.5);
+                        const halfPierce = upg('marebaxa', 1) ? Math.round(dmgBase / 2) : 0;
+                        const rest = dealMag(dmg - halfPierce);
+                        if (halfPierce) { hpFoe -= halfPierce; log.push(`🌊 Fissura: ${halfPierce} ignorou o escudo mágico`); }
+                        if (upg('marebaxa', 2) && shieldFoe.mag <= 0 && shieldFoe.phys <= 0) dmgCreatures(5);
+                        spawnResquicio();
+                        log.push(`💧 ${meName} usou ${card.name}: Erosão ${erodeMag} no escudo mágico${erodePhys ? ` + ${erodePhys} no físico` : ''} + ${dmg} de água`);
+                        relicEcho(dealMag, dmg - halfPierce);
                     } else if (card.category === 'dano_ar') {
-                        const amount = base + eco;
+                        const handFoeCount = (m[arenaSideField(foe, 'hand')] || []).length;
+                        let amount = dmgBase + (upg('laminas', 1) ? handFoeCount : 0);
+                        if (upg('vendaval', 2) && stunnedNow) amount *= 2;
                         hpFoe -= amount;
-                        patch[arenaSideField(foe, 'skipDraw')] = true;
-                        log.push(`🌪️ ${meName} usou ${card.name}: ${amount} direto na vida (ignora escudos) + atordoou`);
-                        relicEcho((n) => { hpFoe -= n; }, base);
+                        if (upg('vendaval', 1)) tryStunFoe(2); else tryStunFoe(1);
+                        if (upg('arcort', 1) || upg('arcort', 2)) patch[arenaSideField(side, 'dodge')] = { pct: upg('arcort', 2) ? 1 : 0.5 };
+                        if (upg('laminas', 2)) {
+                            const foeHand = [...(m[arenaSideField(foe, 'hand')] || [])];
+                            if (foeHand.length) { const dropIdx = Math.floor(Math.random() * foeHand.length); const dropped = foeHand.splice(dropIdx, 1)[0]; patch[arenaSideField(foe, 'hand')] = foeHand; log.push(`🌪️ Desarmar arrancou “${dropped?.name || 'uma carta'}” da mão de ${foeName}`); }
+                        }
+                        spawnResquicio();
+                        log.push(`🌪️ ${meName} usou ${card.name}: ${amount} direto na vida${stunnedNow ? ' (o rival estava atordoado!)' : ''}`);
+                        relicEcho((n) => { hpFoe -= n; }, amount);
                     } else if (card.category === 'dano_terra') {
-                        const rest = dealMag(base);
-                        const wall = 2 + eco;
+                        const auraBonus = terraResidenceAura();
+                        const dmg = dmgBase + auraBonus;
+                        const rest = dealMag(dmg);
+                        if (upg('demolicao', 1)) dmgCreatures(5);
+                        if (upg('demolicao', 2)) { dmgCreatures(dmg, { doubleIfTrincamento: true }); dmgStructures(dmg, 2); }
+                        let wall = 2 + (upg('monolito', 1) ? 2 : 0);
+                        if (upg('abundancia', 1)) wall *= 2;
                         shieldMe.phys = Math.min(ARENA_SHIELD_MAX, shieldMe.phys + wall);
-                        log.push(`🪨 ${meName} usou ${card.name}: ${base} de dano de terra (${rest} na vida) + ${wall} de escudo físico pra você`);
-                        relicEcho(dealMag, base);
+                        tryResidence('dano_terra', { roots: upg('abundancia', 2), aura: upg('monolito', 2) ? 4 : 2 });
+                        log.push(`🪨 ${meName} usou ${card.name}: ${dmg} de dano de terra (${rest} na vida) + ${wall} de muralha${auraBonus ? ` (aura +${auraBonus})` : ''}`);
+                        relicEcho(dealMag, dmg);
                     } else {
-                        const rest = dealMag(base);
-                        log.push(`${cat.emoji} ${meName} usou ${card.name}: ${base} de dano mágico (${rest} na vida)`);
-                        relicEcho(dealMag, base);
+                        const rest = dealMag(dmgBase);
+                        log.push(`${cat.emoji} ${meName} usou ${card.name}: ${dmgBase} de dano mágico (${rest} na vida)`);
+                        relicEcho(dealMag, dmgBase);
                     }
                     break;
                 }
                 case 'heal': {
-                    const heal = Math.max(1, Math.round(eff * 3) + 2);
+                    let heal = dmgBase;
+                    if (upg('purificacao', 2)) heal = ARENA_HP;
+                    if (upg('renovacao', 1)) heal += 4 * summons;
                     const before = hpMe;
                     hpMe = Math.min(ARENA_HP, hpMe + heal);
                     const overflow = Math.max(0, before + heal - ARENA_HP);
                     if (overflow > 0) {
-                        const rate = Math.min(1, 0.5 + eco * 0.25);
-                        const toShield = Math.round(overflow * rate);
-                        shieldMe.mag = Math.min(ARENA_SHIELD_MAX, shieldMe.mag + toShield);
-                        if (toShield > 0) log.push(`🔮 Sobrecura: ${toShield} virou escudo mágico`);
+                        if (upg('espelho', 2)) { addWardMe(0.30); log.push('🔮 Couraça Vital: o excedente virou Barreira de 30%'); }
+                        else {
+                            const rate = upg('renovacao', 2) ? 1 : 0.5;
+                            const toShield = Math.round(overflow * rate);
+                            if (upg('espelho', 1)) {
+                                const half = Math.round(toShield / 2);
+                                shieldMe.phys = Math.min(ARENA_SHIELD_MAX, shieldMe.phys + half);
+                                shieldMe.mag = Math.min(ARENA_SHIELD_MAX, shieldMe.mag + (toShield - half));
+                                log.push(`✂️ Sobrecura dividida: ${half} físico e ${toShield - half} mágico`);
+                            } else {
+                                shieldMe.mag = Math.min(ARENA_SHIELD_MAX, shieldMe.mag + toShield);
+                                if (toShield > 0) log.push(`🔮 Sobrecura: ${toShield} virou escudo mágico`);
+                            }
+                        }
                     }
-                    log.push(`💚 ${meName} usou ${card.name}: +${heal} de vida`);
+                    if (upg('purificacao', 1)) { patch[arenaSideField(side, 'dot')] = null; log.push('✨ Purificação: sua ferida foi estancada'); }
+                    tryResidence('cura');
+                    log.push(`💚 ${meName} usou ${card.name}: +${Math.min(heal, ARENA_HP - before)} de vida e deixou sua bênção no campo`);
                     relicEcho((n) => { hpMe = Math.min(ARENA_HP, hpMe + n); }, heal);
                     break;
                 }
                 case 'shield': {
-                    const add = Math.max(1, Math.round(eff * 3) + 2);
+                    const add = dmgBase;
                     shieldMe.phys = Math.min(ARENA_SHIELD_MAX, shieldMe.phys + add);
-                    addThornsMe(4 + eco * 2);
-                    log.push(`🛡️ ${meName} ergueu ${card.name}: +${add} de escudo físico + Espinhos ${4 + eco * 2}`);
+                    addThornsMe(4, {
+                        reflectiveMagic: hasB('fortaleza') && evoT2,
+                        direct: hasB('muralha') && evoT2,
+                        riposte: hasB('contraataque') && evoT1,
+                        martyr: hasB('contraataque') && evoT2,
+                        turns: hasB('fortaleza') && evoT1 ? 3 : 2
+                    });
+                    if (upg('muralha', 1)) patch[arenaSideField(side, 'dodge')] = { pct: 1 };
+                    tryResidence('defesa');
+                    log.push(`🛡️ ${meName} ergueu ${card.name}: +${add} de escudo físico + Espinhos`);
                     relicEcho((n) => { shieldMe.phys = Math.min(ARENA_SHIELD_MAX, shieldMe.phys + n); }, add);
                     break;
                 }
                 case 'shieldmagic': {
-                    const add = Math.max(1, Math.round(eff * 3) + 2);
+                    const add = dmgBase;
                     shieldMe.mag = Math.min(ARENA_SHIELD_MAX, shieldMe.mag + add);
-                    const pct = Math.min(0.55, 0.25 + eco * 0.10);
-                    addWardMe(pct);
-                    log.push(`🔮 ${meName} ergueu ${card.name}: +${add} de escudo mágico + Barreira ${Math.round(pct * 100)}%`);
+                    addWardMe(0.25);
+                    tryResidence('defesa_magica', { afinidade: upg('santuario', 1) });
+                    log.push(`🔮 ${meName} ergueu ${card.name}: +${add} de escudo mágico + Barreira`);
                     relicEcho((n) => { shieldMe.mag = Math.min(ARENA_SHIELD_MAX, shieldMe.mag + n); }, add);
                     break;
                 }
                 case 'summon': {
-                    if (summons >= ARENA_FRONT_MAX) throw new Error(`Frente cheia (máx. ${ARENA_FRONT_MAX} criaturas).`);
                     const power = Math.max(1, Number(card.power) || 1);
-                    field.push({ kind: 'summon', uid: `tk_${Date.now()}_${Math.floor(Math.random() * 1e6)}`, name: card.name, emoji: card.emoji || '🗿', category: card.category, power, eco, turnsLeft: ARENA_TOKEN_TURNS });
-                    log.push(`🗿 ${meName} invocou ${card.name}! Golpe +${eco} por Eco (${ARENA_TOKEN_TURNS} turnos)`);
+                    const extraTurns = upg('retorno', 1) ? 2 : 0;
+                    const needSlots = (hasB('horda') && evoT1 && !evoT2) ? 2 : 1;
+                    if (summons + needSlots > ARENA_FRONT_MAX) throw new Error(`Frente cheia: ${needSlots === 2 ? 'o Enxame precisa de 2 espaços' : `máx. ${ARENA_FRONT_MAX} criaturas`}.`);
+                    if (hasB('horda') && evoT1) {
+                        for (let i = 0; i < 2; i++) field.push({ kind: 'summon', uid: `tk_${Date.now()}_${i}_${Math.floor(Math.random() * 1e6)}`, name: `${card.name} (enxame)`, emoji: card.emoji || '🗿', category: card.category, power: 2, hp: 4, healMe: upg('horda', 2), deathburst: upg('retorno', 2), turnsLeft: 2 + extraTurns });
+                        log.push(`🗿 ${meName} invocou a HORDA de ${card.name}! (2× poder 2)`);
+                    } else {
+                        field.push({ kind: 'summon', uid: `tk_${Date.now()}_${Math.floor(Math.random() * 1e6)}`, name: card.name, emoji: card.emoji || '🗿', category: card.category, power, hp: 2 + power, fury: upg('ferocidade', 2), healMe: upg('horda', 2), deathburst: upg('retorno', 2), turnsLeft: ARENA_TOKEN_TURNS + extraTurns });
+                        log.push(`🗿 ${meName} invocou ${card.name}!`);
+                    }
+                    if (upg('ferocidade', 1)) {
+                        const hasteDmg = Math.max(1, Math.round(power * mult * 2 * 0.5));
+                        dealPhys(hasteDmg, { pierce: upg('ferocidade', 2) });
+                        log.push(`⚡ Carga Imediata: golpe de ${hasteDmg} na hora`);
+                    }
                     relicEcho(() => { const u2 = field[field.length - 1]; if (u2 && u2.kind === 'summon') u2.turnsLeft += 1; }, 1);
                     break;
                 }
                 case 'structure': {
-                    if (structures >= ARENA_BACK_MAX) throw new Error(`Retaguarda cheia (máx. ${ARENA_BACK_MAX} estruturas).`);
-                    const dmg = Math.max(1, Math.round(eff * 2) + 1);
-                    const tick = Math.max(1, Math.round(eff));
-                    const heal = 1 + eco;
-                    const rest = dealMag(dmg);
-                    field.push({ kind: 'structure', uid: `st_${Date.now()}_${Math.floor(Math.random() * 1e6)}`, name: card.name, emoji: '🏗️', category: card.category, tick, heal });
+                    if (backline >= ARENA_BACK_MAX) throw new Error(`Retaguarda cheia (máx. ${ARENA_BACK_MAX}).`);
+                    const desperation = upg('fortaleza', 1);
+                    const lowHp = desperation && hpMe <= 20;
+                    const dmg = Math.max(1, Math.round(eff * 2) + 1) * (lowHp ? 2 : 1);
+                    const rest = dealMag(dmg, { ignoreShield: upg('artilharia', 2) });
+                    const tick = Math.max(1, Math.round(eff)) * (lowHp ? 2 : 1);
+                    const heal = upg('industrial', 1) ? 3 : 1;
+                    field.push({ kind: 'structure', uid: `st_${Date.now()}_${Math.floor(Math.random() * 1e6)}`, name: card.name, emoji: '🏗️', category: card.category, tick, heal, hp: 8, desperation, pierceMag: upg('artilharia', 2), genMagic: upg('industrial', 2), bulwark: upg('fortaleza', 2), bombard: upg('artilharia', 1) });
+                    if (upg('artilharia', 1)) dmgCreatures(3);
                     log.push(`🏗️ ${meName} ergueu ${card.name}: ${dmg} imediato + ${tick}/turno e cura ${heal}/turno`);
                     relicEcho(dealMag, dmg);
                     break;
@@ -4437,11 +4859,16 @@ async function playArenaCard(cardId) {
 
             // Statuses: merge do documento original + alterações desta jogada
             patch[arenaSideField(foe, 'dot')] = dotFoeNext;
+            patch[arenaSideField(foe, 'skipDraw')] = skipFoeNext && Number(skipFoeNext.turns) > 0 ? skipFoeNext : null;
             if (patch[arenaSideField(side, 'ward')] === undefined) {
                 const oldWard = m[arenaSideField(side, 'ward')];
                 patch[arenaSideField(side, 'ward')] = oldWard && (Number(oldWard.charges) || 0) > 0 ? oldWard : null;
             }
             patch[arenaSideField(foe, 'ward')] = (Number(wardFoe.charges) || 0) > 0 ? wardFoe : null;
+            if (patch[arenaSideField(side, 'dot')] === undefined) {
+                const oldDot = m[arenaSideField(side, 'dot')];
+                patch[arenaSideField(side, 'dot')] = oldDot && (Number(oldDot.turns) || 0) > 0 ? oldDot : null;
+            }
 
             // Remove da mão e passa a vez; o turno do adversário começa com os gatilhos dele
             hand.splice(idx, 1);
@@ -4458,19 +4885,14 @@ async function playArenaCard(cardId) {
             } else if (hpMe <= 0) {
                 Object.assign(patch, arenaFinishPatch(m, foe === 'A' ? m.playerA : m.playerB, [...log, `🏆 Os espinhos de ${foeName} derrubaram ${meName}!`]));
             } else {
-                // Passa a vez e aplica o início do turno do adversário:
-                // as criaturas/estruturas DELE batem em VOCÊ, e ele compra.
-                // (start.hpFoe devolve a vida de QUEM recebeu a vez... não:
-                //  devolve a vida do oponente de quem está começando, ou seja,
-                //  a SUA vida — por isso a derrota aqui é sua.)
                 const mAfter = { ...m, ...patch };
                 const start = arenaStartOfTurnPatch(mAfter, foe);
                 Object.assign(patch, start.patch);
                 log.push(...start.log);
                 patch.turn = foe;
                 patch.turnNumber = (Number(m.turnNumber) || 1) + 1;
-                const meDead = (start.hpFoe ?? patch[arenaSideField(side, 'hp')]) <= 0;   // quem recebeu a vez derrubou VOCÊ
-                const selfDead = (start.hpMe ?? patch[arenaSideField(foe, 'hp')]) <= 0;   // quem recebeu a vez morreu no próprio começo (DoT)
+                const meDead = (start.hpFoe ?? patch[arenaSideField(side, 'hp')]) <= 0;
+                const selfDead = (start.hpMe ?? patch[arenaSideField(foe, 'hp')]) <= 0;
                 if (meDead) {
                     Object.assign(patch, arenaFinishPatch(m, foe === 'A' ? m.playerA : m.playerB, [...log, `🏆 Os gatilhos de ${foeName} derrubaram ${meName}!`]));
                 } else if (selfDead) {
@@ -4490,7 +4912,6 @@ async function playArenaCard(cardId) {
     }
 }
 
-/* Passar o turno */
 async function passArenaTurn() {
     if (!currentUser || !arenaOpenMatchId) return;
     const matchId = arenaOpenMatchId;
@@ -5095,14 +5516,23 @@ function leaveArenaMatch() {
     refreshArenaUI();
 }
 function arenaTokenHTML(u, m, side) {
-    if (u.kind === 'structure') {
-        const healBit = Number(u.heal) > 0 ? ` · <small>cura ${Number(u.heal)}</small>` : '';
-        return `<span class="am-struct" title="${escapeHtml(u.name || 'Estrutura')} — tick de dano mágico e cura do dono"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-tower"></use></svg>${escapeHtml(u.name || 'Estrutura')} · ${Number(u.tick) || 1}/turno${healBit}</span>`;
+    const shortName = String(u.name || '').slice(0, 16);
+    const title = escapeHtml(u.name || '');
+    if (u.kind === 'residence') {
+        const aura = { cura: '+2 vida/turno', defesa: '+1 escudo fís./turno', defesa_magica: '+1 escudo mág./turno', dano_terra: `+${Number(u.aura) || 2} dano em golpes de terra` }[u.trait] || 'residência';
+        return `<span class="am-token am-token--residence" title="${title} — residência: ${aura}. Fica no campo."><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-tree"></use></svg><small>${escapeHtml(shortName)}</small><b>${aura}</b></span>`;
     }
-    const shortName = String(u.name || 'Criatura').slice(0, 14);
-    const legacy = u.emoji ? `<span class="am-token-emoji">${escapeHtml(u.emoji)}</span>` : '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-moon"></use></svg>';
-    const golpe = m && side ? Math.max(1, Math.round((Number(u.power) || 1) * 2 * arenaMultOf(m, side, 'invocacao')) + (Number(u.eco) || 0)) : Math.max(1, (Number(u.power) || 1) * 2);
-    return `<span class="am-token" title="${escapeHtml(u.name || 'Criatura')} — gole ${golpe}/turno físico${Number(u.eco) ? ` (+${Number(u.eco)} de Eco)` : ''}">${legacy}<small>${escapeHtml(shortName)}</small><b>golpe ${golpe} · ${Number(u.turnsLeft) || 0} turnos</b></span>`;
+    if (u.kind === 'resquicio') {
+        return `<span class="am-token am-token--resquicio" title="${title} — resquício do efeito (${Number(u.turnsLeft) || 1} turno${Number(u.turnsLeft) === 1 ? '' : 's'} restante)"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-wind"></use></svg><small>${escapeHtml(shortName)}</small><b>resquício · ${Number(u.turnsLeft) || 1}t</b></span>`;
+    }
+    if (u.kind === 'structure') {
+        const healBit = Number(u.heal) > 0 ? ` · cura ${Number(u.heal)}` : '';
+        return `<span class="am-struct" title="${title} — tick de dano mágico por turno e cura do dono (HP ${Number(u.hp) || 8})"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-tower"></use></svg>${escapeHtml(shortName)} · ${Number(u.tick) || 1}/turno${healBit} · ${Number(u.hp) || 8}❤</span>`;
+    }
+    const golpe = m && side ? Math.max(1, Math.round((Number(u.power) || 1) * 2 * arenaMultOf(m, side, 'invocacao'))) : Math.max(1, (Number(u.power) || 1) * 2);
+    const furyBit = u.fury ? ' · atravessa escudo' : '';
+    const hpBit = Number(u.hp) ? ` · ${Number(u.hp)}❤` : '';
+    return `<span class="am-token" title="${title} — golpe ${golpe}/turno${furyBit}${hpBit}"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#arena-moon"></use></svg><small>${escapeHtml(shortName)}</small><b>golpe ${golpe} · ${Number(u.turnsLeft) || 0} turnos${hpBit}</b></span>`;
 }
 /* Linha de efeitos ativos de um lado (sangramento, espinhos, barreira, atordoado) */
 function arenaStatusChipsHTML(m, side) {
@@ -5110,13 +5540,16 @@ function arenaStatusChipsHTML(m, side) {
     const dot = m[`dot${side}`];
     if (dot && (Number(dot.turns) || 0) > 0) {
         const isBurn = dot.type === 'burn';
-        chips.push(`<span class="am-status-chip ${isBurn ? 'am-status-burn' : 'am-status-bleed'}">${isBurn ? '🔥 Queimadura' : '🩸 Sangramento'} ${Number(dot.dmg) || 0}×${Number(dot.turns)}</span>`);
+        const markBit = Number(dot.mark) > 0 ? ` (+${Number(dot.mark)} marca)` : '';
+        chips.push(`<span class="am-status-chip ${isBurn ? 'am-status-burn' : 'am-status-bleed'}">${isBurn ? '🔥 Queimadura' : '🩸 Sangramento'} ${Number(dot.dmg) || 0}×${Number(dot.turns)}${markBit}</span>`);
     }
     const th = m[`thorns${side}`];
     if (th && (Number(th.turns) || 0) > 0) chips.push(`<span class="am-status-chip am-status-thorns">🛡️ Espinhos ${Number(th.amount) || 0}×${Number(th.turns)}</span>`);
     const w = m[`ward${side}`];
     if (w && (Number(w.charges) || 0) > 0) chips.push(`<span class="am-status-chip am-status-ward">🔮 Barreira ${Math.round((Number(w.pct) || 0) * 100)}%×${Number(w.charges)}</span>`);
-    if (Number(m[`skipDraw${side}`])) chips.push(`<span class="am-status-chip am-status-stun">🌪️ Atordoado (não compra)</span>`);
+    const skipChip = m[`skipDraw${side}`];
+    const skipTurnsChip = typeof skipChip === 'object' && skipChip ? Number(skipChip.turns) || 0 : Number(skipChip) || 0;
+    if (skipTurnsChip > 0) chips.push(`<span class="am-status-chip am-status-stun">🌪️ Atordoado (${skipTurnsChip}t, não compra)</span>`);
     return chips.join('');
 }
 
@@ -5156,8 +5589,9 @@ function renderArenaMatch(m) {
     const myFieldUnits = m[`field${me}`] || [];
     const oppSummons = oppFieldUnits.filter((u) => u.kind === 'summon').length;
     const mySummons = myFieldUnits.filter((u) => u.kind === 'summon').length;
-    const oppStructures = oppFieldUnits.filter((u) => u.kind === 'structure').length;
-    const myStructures = myFieldUnits.filter((u) => u.kind === 'structure').length;
+    const backOf = (units) => units.filter((u) => u.kind === 'structure' || u.kind === 'residence').length;
+    const oppStructures = backOf(oppFieldUnits);
+    const myStructures = backOf(myFieldUnits);
     setText('#am-front-count-opponent', `${oppSummons}/${ARENA_FRONT_MAX}`);
     setText('#am-front-count-me', `${mySummons}/${ARENA_FRONT_MAX}`);
     setText('#am-back-count-opponent', `${oppStructures}/${ARENA_BACK_MAX}`);
@@ -5178,10 +5612,11 @@ function renderArenaMatch(m) {
     if (oppFieldEl) oppFieldEl.innerHTML = oppFieldUnits.filter(u => u.kind === 'summon').map((u) => arenaTokenHTML(u, m, foe)).join('');
     const myFieldEl = $('#am-board-me');
     if (myFieldEl) myFieldEl.innerHTML = myFieldUnits.filter(u => u.kind === 'summon').map((u) => arenaTokenHTML(u, m, me)).join('');
+    const backKinds = (u) => u.kind === 'structure' || u.kind === 'residence' || u.kind === 'resquicio';
     const oppStructEl = $('#am-structures-opponent');
-    if (oppStructEl) oppStructEl.innerHTML = oppFieldUnits.filter(u => u.kind === 'structure').map((u) => arenaTokenHTML(u, m, foe)).join('');
+    if (oppStructEl) oppStructEl.innerHTML = oppFieldUnits.filter(backKinds).map((u) => arenaTokenHTML(u, m, foe)).join('');
     const myStructEl = $('#am-structures-me');
-    if (myStructEl) myStructEl.innerHTML = myFieldUnits.filter(u => u.kind === 'structure').map((u) => arenaTokenHTML(u, m, me)).join('');
+    if (myStructEl) myStructEl.innerHTML = myFieldUnits.filter(backKinds).map((u) => arenaTokenHTML(u, m, me)).join('');
 
     // Log
     const logEl = $('#arena-log');
@@ -5194,7 +5629,7 @@ function renderArenaMatch(m) {
             let playable = m.status === 'active' && m.turn === me;
             let why = '';
             if (playable && c.category === 'invocacao' && mySummons >= ARENA_FRONT_MAX) { playable = false; why = 'Frente cheia (máx. 3 criaturas)'; }
-            if (playable && c.category === 'estrutura' && myStructures >= ARENA_BACK_MAX) { playable = false; why = 'Retaguarda cheia (máx. 2 estruturas)'; }
+            if (playable && (c.category === 'estrutura' || c.category === 'dano_terra' || c.category === 'cura' || c.category === 'defesa' || c.category === 'defesa_magica') && myStructures >= ARENA_BACK_MAX) { playable = false; why = `Retaguarda cheia (máx. ${ARENA_BACK_MAX})`; }
             const selected = arenaSelectedHand === c.id;
             const title = why ? ` title="${escapeHtml(why)}"` : '';
             return cardFaceHTML(c, { extraClass: `${playable ? '' : 'disabled'}${selected ? ' selected' : ''}`, attrs: `data-arena-hand-card="${escapeHtml(c.id)}" role="button" tabindex="0"${title}` });
@@ -5441,8 +5876,8 @@ document.addEventListener('click', async (e) => {
     const cardUpgrade = t.closest?.('[data-arena-card-upgrade]');
     if (cardUpgrade) { openCardTreeModal(cardUpgrade.dataset.arenaCardUpgrade); return; }
 
-    const upgBtn = t.closest?.('[data-arena-upg]');
-    if (upgBtn) { await buyArenaUpgradePoint(upgBtn.dataset.cardId, upgBtn.dataset.arenaUpg); return; }
+    const upgBtn = t.closest?.('[data-arena-evo]');
+    if (upgBtn) { await buyArenaEvolution(upgBtn.dataset.cardId, upgBtn.dataset.arenaEvo, upgBtn.dataset.tier); return; }
 
     const buyRelic = t.closest?.('[data-buy-arena-relic]');
     if (buyRelic) { await buyArenaRelic(buyRelic.dataset.buyArenaRelic); return; }
@@ -5594,7 +6029,7 @@ setInterval(tickClock, 1000);
 /* ================= ATUALIZAÇÃO DO APP (NOVA VERSÃO) ================= */
 // ATENÇÃO: subir junto com version.json/sw.js em CADA release — se ficar pra
 // trás, o app acha que há atualização pra sempre e o aviso não some.
-const APP_VERSION = '4.8.0';
+const APP_VERSION = '4.9.0';
 const appVersionEl = $('#app-version');
 if (appVersionEl) appVersionEl.textContent = `Good Vibes 🌊 · O Refúgio · v${APP_VERSION}`;
 let swRegistration = null;

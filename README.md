@@ -2,9 +2,43 @@
 
 Uma rede social privada entre amigos, agora com cara de **tela inicial de telefone**: cada menu é um aplicativo. Feita em HTML/CSS/JS puro (sem build), com Firebase (Auth + Firestore), instalável como **PWA** no celular.
 
-## ⚔️ Arena — crie suas cartas e batalhe ao vivo (v4.8.0)
+## ⚔️ Arena — crie suas cartas e batalhe ao vivo (v4.9.0)
 
-> **v4.8.0** — **Arena Estratégica**: cada carta agora tem a **própria árvore de habilidades** (Força/Sintonia/Eco, 3 ramos × 3 pontos — compradas com gold e viajam com a carta), **relíquias equipáveis por carta** (Orbe de Poder, Sifão de Sangue, Eco Arcano, Escama de Aço), um **campo de batalha de verdade** (Frente de 3 criaturas, Retaguarda de 2 estruturas) e **efeitos reescritos e bem mais distintos** (Sangramento, Queimadura, Erosão, Rajada penetrante com atordoamento, Sobrecura, Espinhos refletivos, Barreira mágica…). Seu deck, sua árvore do Refúgio e a árvore de cada carta se multiplicam — jogue de forma focada.
+> **v4.9.0** — **Arena 2.0: Evolução por traço**. A árvore genérica acabou: **cada carta evolui pelo PRÓPRIO traço** — Dano
+> evolui pra **Lâmina**, Fogo pra **Ignição**, Água pra **Maré**, Ar pra **Tempestade**, Terra pra **Terremoto**, Cura pra **Bênção**,
+> Defesa pra **Bastião**, Defesa Mágica pro **Véu**, Invocação e Estrutura têm árvores próprias. **Cada caminho tem 2 patamares
+> que MUDAM a mecânica**, não apenas o número: ex. **Amputar** faz a ferida sangrar mais e depois detona em dobro; **Estocada**
+> atravessa o escudo e depois fere até as criaturas; **Vendaval** atordoa mais e depois dobra o dano em alvos atordoados.
+> **Cartas jogadas agora APARECEM no campo dos dois lados**: rajadas ficam como **Resquícios** (2 turnos); **Residências**
+> (Terra/Cura/Defesa/Véu) e **Estruturas** **ficam no campo dando bônus toda rodada** — visíveis pros dois jogadores.
+
+### ✦ Evolução da carta (NOVA — substitui a árvore antiga)
+
+- Abra qualquer carta em **Minhas cartas → ✦**: cada carta tem **3 caminhos de evolução** próprios da categoria dela
+- **Traçar um caminho é permanente** pra aquela carta — escolha com cabeça (Amputar ou Estocada ou Execução?)
+- **Patamar 1 (500 🪙)** muda a mecânica uma vez; **Patamar 2 (1.200 🪙)** muda de novo — ex.:
+  - **Lâmina · Amputar**: T1 o Sangramento dura 3 turnos · T2 a ferida final **detona em dano dobrado**
+  - **Lâmina · Estocada**: T1 o golpe **atravessa o escudo físico** · T2 também **fere 4 em cada criatura inimiga**
+  - **Ignição · Labareda**: T1 o fogo **atravessa o escudo mágico** · T2 com o rival zerado, **dano dobrado**
+  - **Maré · Maré Baixa**: T1 metade do dano **ignora o escudo** · T2 com escudos zerados, **atinge todas as criaturas (5)**
+  - **Tempestade · Ar Cortante**: T1 **Esquiva** (−50% no próximo dano físico) · T2 **Esquiva total** (anulado)
+  - **Terremoto · Monólito**: T1 muralha +2 · T2 a residência dá **+4 de dano** em golpes de terra
+  - **Bênção · Purificação**: T1 a cura **estanca sua ferida** · T2 a cura é **TOTAL**
+  - **Véu · Reflexão**: T1 **50% do absorvido é devolvido** · T2 se sua Barreira zerar, **o rival estoura em chamas**
+  - **Invocação · Horda**: T1 **2 criaturas** de poder 2 · T2 elas te **curam 2 por golpe**
+  - **Estrutura · Artilharia**: T1 **bombardeia criaturas inimigas** (3) · T2 a torre **ignora o escudo mágico**
+- A evolução **viaja com a carta** em toda partida (snapshot no documento da partida — as regras já liberam `upgB`)
+
+### 🏛️ O campo de verdade (frente × retaguarda × para os DOIS lados)
+
+- **Frente — criaturas (máx. 3)**: golpeiam no início do turno do dono; agora têm **vida** e podem ser **destruídas**
+- **Retaguarda — estruturas e residências (máx. 4)**: Estruturas disparam **tick de dano mágico** todo turno (8 de vida, podem ser destruídas); **Residências** ficam no campo dando bônus a cada turno
+- **Rajada (Físico/Fogo/Água/Ar) deixa um RESQUÍCIO** no campo por **2 turnos** — a carta aparece visualmente enfraquecendo
+- **Residências (Terra/Cura/Defesa/Véu) ficam para sempre**:
+  - Terremoto → +2 dano (ou +4 com Aura Sísmica) em golpes de terra e muralha ao jogar
+  - Bênção → **+2 vida** por turno · Bastião → **+1 escudo físico** por turno · Véu → **+1 escudo mágico** por turno
+  - **Raízes Profundas** (Abundância T2) cura +2/turno; **Ápice** (Santuário T2) cura +3 com Barreira ativa; **Baluarte Vivo** (Bastião Industrial T2) dá +4 escudo físico por torre em campo; **Afinidade Etérea** (Santuário T1) dá +2 escudo mágico por Véu
+- Todos os efeitos acima valem para os **DOIS jogadores**, visíveis na mesa (tokens, chips de status e contadores de zona)
 
 O que mudou no campo:
 
@@ -18,14 +52,10 @@ O que mudou no campo:
 - **Véu** (Defesa Mágica): além do escudo, **Barreira** reduz 25–55% do dano mágico que entrar (2 cargas)
 - **Eco** (ramo da árvore da carta): o efeito secundário cresce com ele — Sangramento/Queimadura/Erosão/Muralha/Espinhos/Barreira/Sobr cura/Invocar/Estrutura ficam mais fortes
 
-### ✦ Árvore da carta (NOVA — independente por carta)
+### ~~✦ Árvore da carta (v4.8.0)~~ — substituída pela Evolução
 
-- Cada carta tem **3 ramos próprios, 3 pontos cada** (9 no máximo), pra sempre e pra todo lugar:
-  - **Força** — +12% no efeito principal da carta por ponto (efeito em escala de tudo que ela faz)
-  - **Sintonia** — +10% por ponto no ramo elementar desta carta (soma à **Árvore do Refúgio**, só desta carta)
-  - **Eco** — +1 de intensidade por ponto no efeito secundário (Sangramento/Queimadura/Erosão/etc.)
-- Custo por ponto: **400 🪙 / 900 🪙 / 1.600 🪙** — compre pela carta na aba **Cartas** (botão ✦ ao lado de "+ Deck")
-- Aprimoramentos viajam **no documento da partida** — o cálculo dos efeitos roda no cliente de quem joga, e as regras do Firestore já liberam o campo `upgB` no aceite
+- A antiga árvore genérica Força/Sintonia/Eco foi **removida** — as evoluções agora são por traço (veja acima)
+- Pontos antigos investidos ficam guardados no perfil (nada é apagado), só não têm mais efeito no jogo
 
 ### 💠 Relíquias (equipam por carta, efeito sempre ligado)
 
@@ -95,7 +125,7 @@ O 16º aplicativo (ícone ⚔️ no grid): uma arena de cartas **criadas por que
 - **Não existe informação escondida de verdade**: o documento da partida é legível pelos dois jogadores — dá pra ver a mão do rival pelo Console se você quiser se dar esse trabalho
 - Um rival com o cliente alterado pode forçar resultado — a arena vale como **aposta entre amigos**, não como cassino
 - A liquidação do pote é feita pelo vencedor no cliente (custódia garante: quem perde já viu o cosmético sair do baú dele ao aceitar)
-- **As regras do Firestore precisam ser republicadas** (v4.8.0 inclui `upgB`/`relicsB` no aceite do desafio) — sem publicar, convites e aprimoramentos não funcionam e o app avisa na tela
+- **As regras do Firestore precisam ser republicadas** (desde a v4.8.0: `upgB`/`relicsB` no aceite do desafio; as regras não mudaram na v4.9.0) — sem publicar, convites não funcionam e o app avisa na tela
 - Se o rival sumir no meio da partida, a partida fica "aberta" pra sempre (sem WO automático por enquanto) — Combine com o rival ou use Desistir
 
 ## 🧿 Artefatos + Coleta reformulada (v4.4.0)

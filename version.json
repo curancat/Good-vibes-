@@ -1,4 +1,4 @@
 {
-  "version": "4.8.0",
-  "notes": "Arena Estratégica: árvore de habilidades por carta, relíquias equipáveis, campo com Frente/Retaguarda e efeitos reescritos"
+  "version": "4.9.0",
+  "notes": "Arena 2.0: Evolução por traço — cada carta evolui pelo próprio efeito em 2 patamares que mudam a mecânica; cartas jogadas ficam no campo (Resquícios 2 turnos · Residências e Estruturas permanentes pros dois lados)"
 }
