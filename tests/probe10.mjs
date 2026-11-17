@@ -45,6 +45,8 @@ const addDocCalls = [];
 const written = [];
 const updated = [];
 
+// Firestore real: qualquer undefined (até aninhado) invalida o commit. O mock faz o mesmo (ver __assertNoUndefined).
+
 const js = jsFile
   .replace(/import \{ initializeApp \}[^;]+;/, `const initializeApp = () => ({});`)
   .replace(/import \{ getAuth[^;]+;/, `const getAuth = () => ({});
@@ -71,11 +73,27 @@ const serverTimestamp = () => ({ toMillis: () => Date.now() });
 const updateDoc = async () => {};
 const increment = (n) => n;
 const where = () => ({});
+const __findUndefinedDeep = (value, path = 'root') => {
+  const bad = [];
+  const walk = (v, p) => {
+    if (v === undefined) { bad.push(p); return; }
+    if (Array.isArray(v)) { v.forEach((item, i) => walk(item, p + '[' + i + ']')); return; }
+    if (v && typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype) {
+      for (const k of Object.keys(v)) walk(v[k], p + '.' + k);
+    }
+  };
+  walk(value, path);
+  return bad;
+};
+const __assertNoUndefined = (data, where) => {
+  const bad = __findUndefinedDeep(data);
+  if (bad.length) throw new Error('Unsupported field value: undefined em ' + where + ': ' + bad.slice(0, 6).join(', '));
+};
 const runTransaction = async (db, fn) => {
   const tx = {
     get: async () => ({ data: () => ({ ...window.__MATCH }), exists: () => true }),
-    set: (ref, data, opts) => { window.__WRITTEN.push({ ref, data, opts }); Object.assign(window.__ECO, data || {}); },
-    update: (ref, data) => { window.__UPDATED.push({ ref, data }); Object.assign(window.__MATCH, data); }
+    set: (ref, data, opts) => { __assertNoUndefined(data, 'tx.set'); window.__WRITTEN.push({ ref, data, opts }); Object.assign(window.__ECO, data || {}); },
+    update: (ref, data) => { __assertNoUndefined(data, 'tx.update(arena_matches)'); window.__UPDATED.push({ ref, data }); Object.assign(window.__MATCH, data); }
   };
   return fn(tx);
 };
@@ -102,6 +120,9 @@ console.log('✓ app.js executou sem lançar exceção');
 await new Promise((r) => setTimeout(r, 300));
 const $ = (s) => window.document.querySelector(s);
 const $$ = (s) => [...window.document.querySelectorAll(s)];
+const pruneWarnings = [];
+const originalWarn = window.console.warn ? window.console.warn.bind(window.console) : () => {};
+window.console.warn = (...args) => { const msg = args.map(String).join(' '); if (msg.includes('pruneUndefined')) pruneWarnings.push(msg); else originalWarn(...args); };
 window.eval('globalThis.__authCb && globalThis.__authCb({ uid: "tester", email: "t@t.com", metadata: { creationTime: new Date().toISOString() } })');
 await new Promise((r) => setTimeout(r, 400));
 window.openApp('arena');
@@ -258,6 +279,10 @@ for (const [catId, effectId] of ALL) {
 }
 assert.deepEqual(failures, [], `traços com falha:\n${failures.join('\n')}`);
 console.log(`✓ motor: ${ok}/100 traços executados de ponta a ponta`);
+
+// Regressão v5.3.1: o motor NUNCA pode produzir undefined em payload de commit
+assert.deepEqual(pruneWarnings, [], `o motor emitiu campos undefined:\n${pruneWarnings.join('\n')}`);
+console.log('✓ motor: nenhum campo undefined em payloads de commit (sweep dos 100 traços)');
 
 assert.deepEqual(errors, [], 'nenhum erro de JS no window durante o probe');
 console.log('\n🎉 PROBE 10 PASSOU — Forja com traços, pilhas de monte/descarte e 100 efeitos de ponta a ponta');

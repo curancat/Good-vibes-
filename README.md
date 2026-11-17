@@ -2,6 +2,21 @@
 
 Uma rede social privada entre amigos, agora com cara de **tela inicial de telefone**: cada menu é um aplicativo. Feita em HTML/CSS/JS puro (sem build), com Firebase (Auth + Firestore), instalável como **PWA** no celular.
 
+## 🚑 v5.3.1 — Hotfix: a Arena parava de gravar a jogada (undefined)
+
+> **v5.3.1** — **Corrigido o erro `Function Transaction.update() called with invalid data. Unsupported field value: undefined (found in document arena_matches/...)`.** Jogar uma carta de **Estrutura** (ou de **Terra** que gera residência) tinha o commit RECUSADO pelo Firestore — a jogada/ turno inteiro era perdido e sobrava só o aviso amarelo.
+>
+> **Causa raiz** (dois campos nascendo `undefined` quando o efeito não se aplica):
+> - Estrutura: `desperation` e `pierceMag` vinham de `upg() || SPEC.x` → `undefined` sem upgrade/traço → entravam como `undefined` na unidade do campo
+> - Residência de Terra: `roots` idem (`upg('abundancia',2) || SPEC.rootsHeal`)
+>
+> **Correções**
+> - Os três campos agora nascem `true/false` explícitos
+> - **Blindagem global**: `pruneUndefinedDeep()` varre qualquer payload antes do commit (remove chaves `undefined` e avisa no console com o caminho exato, ex. `$.fieldA[0].roots`) — nenhum commit da Arena morre mais por esse motivo
+> - **probe10 virou guardião**: o mock de transação agora LANÇA o mesmo erro do Firestore se algum payload tiver `undefined`, e falha se o motor emitir qualquer campo `undefined` durante o cortejo dos **100 traços** jogados de ponta a ponta
+>
+> Nada muda no fluxo do jogador — basta recarregar; jogadas que falharam podem ser refeitas normalmente. **Regras do Firestore NÃO mudam** (as republicadas na v5.3.0 continuam valendo).
+
 ## 🛡️ v5.3.0 — Auditoria total, correções e regras reforçadas
 
 > **v5.3.0** — **Auditoria de ponta a ponta em todos os arquivos, bugs corrigidos e regras do Firestore endurecidas. Publique as regras de novo!** (Firebase Console → Firestore → Regras → cole `firestore.rules` → Publicar)

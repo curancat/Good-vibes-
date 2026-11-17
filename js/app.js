@@ -42,6 +42,26 @@ const escapeHtml = (str = '') => String(str)
 
 /* Cor vinda de fora (ex.: cosmético no doc do post) NUNCA entra no style sem passar aqui */
 const safeCssColor = (v, fb = '#fbbf24') => (/^#[0-9a-fA-F]{3,8}$/.test(String(v || '')) ? String(v) : fb);
+
+/* Firestore RECUSA qualquer valor undefined (até aninhado). Varre o objeto
+   antes do commit: chaves undefined viram AUSENTES e avisa no console (pra
+   achar a origem). Sentinelas do Firebase (serverTimestamp etc.) passam intactas. */
+const pruneUndefinedDeep = (value, path = '$') => {
+    if (Array.isArray(value)) {
+        for (let i = 0; i < value.length; i++) {
+            if (value[i] === undefined) { console.warn(`pruneUndefined: ${path}[${i}] era undefined → null`); value[i] = null; }
+            else value[i] = pruneUndefinedDeep(value[i], `${path}[${i}]`);
+        }
+        return value;
+    }
+    if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+        for (const key of Object.keys(value)) {
+            if (value[key] === undefined) { console.warn(`pruneUndefined: ${path}.${key} era undefined → chave removida`); delete value[key]; }
+            else value[key] = pruneUndefinedDeep(value[key], `${path}.${key}`);
+        }
+    }
+    return value;
+};
 const safeCssSlug = (v) => (/^[a-z0-9_-]{1,32}$/.test(String(v || '')) ? String(v) : 'comum');
 
 /** Aceita apenas URLs http/https; caso contrário retorna null. */
@@ -5182,7 +5202,7 @@ async function playArenaCard(cardId) {
                         let wall = 2 + (upg('monolito', 1) ? 2 : 0) + (SPEC.wallBonus || 0);
                         if (upg('abundancia', 1) || SPEC.wallDouble) wall *= 2;
                         shieldMe.phys = Math.min(ARENA_SHIELD_MAX, shieldMe.phys + wall);
-                        tryResidence('dano_terra', { roots: upg('abundancia', 2) || SPEC.rootsHeal, aura: SPEC.residenceAura || (upg('monolito', 2) ? 4 : 2) });
+                        tryResidence('dano_terra', { roots: !!(upg('abundancia', 2) || SPEC.rootsHeal), aura: SPEC.residenceAura || (upg('monolito', 2) ? 4 : 2) });
                         log.push(`🪨 ${meName} usou ${card.name}: ${dmg} de dano de terra (${rest} na vida) + ${wall} de muralha${auraBonus ? ` (aura +${auraBonus})` : ''}`);
                         relicEcho(dealMag, dmg);
                     } else {
@@ -5289,7 +5309,7 @@ async function playArenaCard(cardId) {
                 }
                 case 'structure': {
                     if (backline >= ARENA_BACK_MAX) throw new Error(`Retaguarda cheia (máx. ${ARENA_BACK_MAX}).`);
-                    const desperation = upg('fortaleza', 1) || EFF.desperationDouble;
+                    const desperation = !!(upg('fortaleza', 1) || EFF.desperationDouble);
                     const lowHp = desperation && hpMe <= 20;
                     const immMult = (EFF.structImmediateMult || 1) * (lowHp ? 2 : 1);
                     const dmg = Math.max(1, Math.round((Math.round(eff * 2) + 1) * immMult));
@@ -5297,7 +5317,7 @@ async function playArenaCard(cardId) {
                     const tick = Math.max(1, Math.round(eff)) * (lowHp ? 2 : 1);
                     const heal = (upg('industrial', 1) || EFF.genHeal) ? 3 : 1;
                     const tickHeal = EFF.tickHeal ? EFF.tickHeal : 0;
-                    field.push({ kind: 'structure', uid: `st_${Date.now()}_${Math.floor(Math.random() * 1e6)}`, name: card.name, emoji: '🏗️', category: card.category, tick, heal, hp: 8 + (EFF.structHpBonus || 0), desperation, pierceMag: upg('artilharia', 2) || EFF.pierceMagTick, genMagic: (upg('industrial', 2) || EFF.genMag) ? true : false, bulwark: (upg('fortaleza', 2) || EFF.bulwark) ? (EFF.bulwark || 4) : 0, bombard: (upg('artilharia', 1) || EFF.bombardCreatures) ? 3 : 0, tickHeal, immediate: dmg });
+                    field.push({ kind: 'structure', uid: `st_${Date.now()}_${Math.floor(Math.random() * 1e6)}`, name: card.name, emoji: '🏗️', category: card.category, tick, heal, hp: 8 + (EFF.structHpBonus || 0), desperation, pierceMag: !!(upg('artilharia', 2) || EFF.pierceMagTick), genMagic: (upg('industrial', 2) || EFF.genMag) ? true : false, bulwark: (upg('fortaleza', 2) || EFF.bulwark) ? (EFF.bulwark || 4) : 0, bombard: (upg('artilharia', 1) || EFF.bombardCreatures) ? 3 : 0, tickHeal, immediate: dmg });
                     if (upg('artilharia', 1) || EFF.bombardCreatures) dmgCreatures(EFF.bombardCreatures || 3);
                     log.push(`🏗️ ${meName} ergueu ${card.name}: ${dmg} imediato + ${tick}/turno e cura ${heal}/turno`);
                     relicEcho(dealMag, dmg);
@@ -5366,7 +5386,7 @@ async function playArenaCard(cardId) {
                     patch.log = arenaLogPush(m, log);
                 }
             }
-            tx.update(mRef, patch);
+            tx.update(mRef, pruneUndefinedDeep(patch));
         });
         vibrate(15);
         arenaSelectedHand = null;
@@ -5409,7 +5429,7 @@ async function passArenaTurn() {
                 patch.status = 'active';
                 patch.log = arenaLogPush(m, log);
             }
-            tx.update(mRef, patch);
+            tx.update(mRef, pruneUndefinedDeep(patch));
         });
         arenaSelectedHand = null;
     } catch (err) {
@@ -5433,7 +5453,7 @@ async function forfeitArenaMatch() {
             if (!side) throw new Error('Você não faz parte desta partida.');
             const winner = side === 'A' ? m.playerB : m.playerA;
             const loserName = arenaMatchCardName(m, side);
-            tx.update(mRef, arenaFinishPatch(m, winner, [`🏳️ ${loserName} desistiu`]));
+            tx.update(mRef, pruneUndefinedDeep(arenaFinishPatch(m, winner, [`🏳️ ${loserName} desistiu`])));
         });
     } catch (err) {
         showToast(err?.message || 'Não consegui desistir.', 'warn');
@@ -5697,7 +5717,7 @@ async function acceptArenaChallengeFromBet(matchId, stakeGold, stakeCos) {
             const cos = Array.isArray(u.cosmetics) ? u.cosmetics : [];
             for (const id of stakeCos) if (!cos.includes(id)) throw new Error('COSMETICO_AUSENTE');
             tx.set(uRef, { gold: gold - stakeGold, cosmetics: cos.filter((c) => !stakeCos.includes(c)) }, { merge: true });
-            tx.update(mRef, {
+            tx.update(mRef, pruneUndefinedDeep({
                 status: 'active',
                 playerB: uid, playerBName: myName, playerBAvatar: myAvatar,
                 stakeB: { gold: stakeGold, cosmetics: stakeCos },
@@ -5708,7 +5728,7 @@ async function acceptArenaChallengeFromBet(matchId, stakeGold, stakeCos) {
                 upgB: arenaUpgradeSnapshot(shuffled), relicsB: arenaRelicSnapshot(shuffled),
                 acceptedAt: serverTimestamp(),
                 log: [...(m.log || []), `🤝 ${myName} aceitou! ${arenaMatchCardName(m, 'A')} começa. Boa batalha!`].slice(-8)
-            });
+            }));
         });
         addLedger('arena', 'Aposta em desafio da Arena', -stakeGold);
         vibrate([12, 40, 12]);
@@ -5739,7 +5759,7 @@ async function declineArenaInvite(matchId) {
             const mSnap = await tx.get(mRef);
             const m = mSnap.data();
             if (!m || m.status !== 'invited' || m.invitedTo !== currentUser.uid) throw new Error('INVALIDA');
-            tx.update(mRef, { status: 'cancelled', declinedAt: serverTimestamp(), declinedBy: currentUser.uid });
+            tx.update(mRef, pruneUndefinedDeep({ status: 'cancelled', declinedAt: serverTimestamp(), declinedBy: currentUser.uid }));
         });
         showToast('Convite recusado.', 'info');
         refreshArenaBattlePane();
@@ -5795,7 +5815,7 @@ async function cancelArenaChallenge(matchId) {
                 gold: (typeof u.gold === 'number' ? u.gold : 0) + (Number(m.stakeA?.gold) || 0),
                 cosmetics: [...cos, ...stakeCos]
             }, { merge: true });
-            tx.update(mRef, { status: 'cancelled', cancelledAt: serverTimestamp() });
+            tx.update(mRef, pruneUndefinedDeep({ status: 'cancelled', cancelledAt: serverTimestamp() }));
         });
         showToast('Desafio cancelado — aposta devolvida ↩️', 'info');
         await reloadEconomyFromServer();
@@ -6534,7 +6554,7 @@ setInterval(tickClock, 1000);
 /* ================= ATUALIZAÇÃO DO APP (NOVA VERSÃO) ================= */
 // ATENÇÃO: subir junto com version.json/sw.js em CADA release — se ficar pra
 // trás, o app acha que há atualização pra sempre e o aviso não some.
-const APP_VERSION = '5.3.0';
+const APP_VERSION = '5.3.1';
 const appVersionEl = $('#app-version');
 if (appVersionEl) appVersionEl.textContent = `Good Vibes 🌊 · O Refúgio · v${APP_VERSION}`;
 let swRegistration = null;
