@@ -661,6 +661,29 @@
                 </div>
             </section>
 
+            <!-- ============ APP: LIVRO DO ARTESÃO ============ -->
+            <section class="app-window" id="app-recipes" data-app="recipes" aria-label="Livro do Artesão">
+                <header class="app-header">
+                    <button class="app-back" data-close-app aria-label="Voltar para a tela inicial">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+                        <span>Início</span>
+                    </button>
+                    <h2 class="app-title">📖 Livro do Artesão</h2>
+                    <span class="app-header-spacer"></span>
+                </header>
+                <div class="app-body">
+                    <div class="recipes-hero card">
+                        <div class="recipes-hero-top">
+                            <div><span class="recipes-hero-title">📕 O grimoire da bancada</span><span class="recipes-hero-sub">Cada página se abre quando você <b>forja</b> a receita na Mesa de Trabalho — nada de spoiler de graça.</span></div>
+                        </div>
+                        <div class="recipes-progress" role="progressbar" aria-label="Receitas catalogadas"><div class="recipes-progress-fill" id="recipes-progress-fill"></div></div>
+                        <div class="recipes-progress-text" id="recipes-progress-text">0 de 0 receitas catalogadas</div>
+                    </div>
+                    <div id="recipes-book" class="recipes-book"></div>
+                    <button class="primary-btn wide" id="recipes-go-bench"><span class="btn-label">🛠️ Ir para a Mesa de Trabalho</span></button>
+                </div>
+            </section>
+
             <!-- ============ APP: CONSTRUÇÃO ============ -->
             <section class="app-window" id="app-construction" data-app="construction" aria-label="Construção">
                 <header class="app-header">

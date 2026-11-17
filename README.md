@@ -2,6 +2,16 @@
 
 Uma rede social privada entre amigos, agora com cara de **tela inicial de telefone**: cada menu é um aplicativo. Feita em HTML/CSS/JS puro (sem build), com Firebase (Auth + Firestore), instalável como **PWA** no celular.
 
+## 📖 O Livro do Artesão (v5.2.0)
+
+> **v5.2.0** — **Um app só para as receitas: o 📖 Livro do Artesão.** Toque no ícone na tela inicial e tenha o grimoire completo da Mesa de Trabalho organizado em 4 seções — **⚔️ Relíquias da Arena**, **✦ Núcleos de Evolução**, **🧿 Artefatos do Refúgio** e **🛠️ Refinaria & Bancada**. **Cada página só se abre quando você forja a receita** — a grade 3x3 exata e a lista de materiais aparecem catalogadas, e o que falta fica como dica/???. Com barra de progresso (X de 49 catalogadas) e atalho direto pra Mesa. A descoberta é **salva na sua conta** (campo `knownRecipes`, já liberado pelas regras do Firestore) — trocou de aparelho, o livro vai junto.
+>
+> - **Nada de spoiler**: página trancada = nome/dica apenas; página aberta = formato completo centrado na grade 3x3 + ingredientes ×quantidade
+> - **Migração única**: quem já jogava antes tem as páginas "estimadas pelo inventário" na primeira abertura — dali em diante só crafta o que crafta
+> - **Obras**: os Artefatos do Refúgio ganharam a própria seção no livro (calavam a fome de organização da bancada)
+> - **Firestore**: nenhuma regra muda — a economia vive no documento `users/{uid}`, que já era escrivível pelo dono; `knownRecipes` é só mais um campo
+> - **Novo app** na tela inicial, entre a Mesa de Trabalho e as Obras; o aviso de versão (version.json) e o SW acompanham o v5.2.0
+
 ## 🛠️ A Mesa de Trabalho da Arena (v5.1.0)
 
 > **v5.1.0** — **A bancada 3x3 agora forja as RELÍQUIAS e os NÚCLEOS DE EVOLUÇÃO da Arena.** Duas saídas novas (`Núcleo de Evolução` ✦ e `Núcleo Primordial` ✦✦) funcionam como **moeda de evolução**: pagando a Evolução da carta (T1/T2) com um Núcleo do seu Baú, o gold fica guardado no bolso. E as **4 relíquias da Arena podem ser forjadas com materiais da bancada** — alternativa real à compra em gold. A Mesa ganhou uma seção **⚔️ Segredos da Arena** (só dicas de formato + estado) e o modal de Evolução da carta agora **mostra seus núcleos** e um atalho direto pra Mesa.

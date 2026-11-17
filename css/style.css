@@ -1333,6 +1333,7 @@ input[type="color"] { width: 58px; height: 38px; border: 1px solid var(--border-
 .tile-shop { background: linear-gradient(145deg, #f59e0b, #d97706); }
 .tile-inventory { background: linear-gradient(145deg, #a16207, #713f12); }
 .tile-refinery { background: linear-gradient(145deg, #64748b, #334155); }
+.tile-recipes { background: linear-gradient(145deg, #a16207, #713f12); }
 .tile-construction { background: linear-gradient(145deg, #fb923c, #c2410c); }
 .tile-work { background: linear-gradient(145deg, #34d399, #047857); }
 
@@ -2195,3 +2196,29 @@ button.chat-bubble-name:hover { color: #7dd3fc; text-decoration: underline; }
 @media (prefers-reduced-motion: reduce) {
     #arena-match::before, #arena-match::after { opacity: .5; }
 }
+
+/* ============ LIVRO DO ARTESÃO 📖 (v5.2.0) ============ */
+.recipes-hero { margin-bottom: 12px; }
+.recipes-hero-title { display: block; font-weight: 800; font-size: 14.5px; color: #fde68a; }
+.recipes-hero-sub { display: block; margin-top: 3px; font-size: 11.5px; color: var(--text-muted); line-height: 1.45; }
+.recipes-progress { height: 10px; border-radius: 999px; background: rgba(255,255,255,.08); border: 1px solid rgba(251,191,36,.25); overflow: hidden; margin-top: 10px; }
+.recipes-progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #f59e0b, #fde68a); transition: width .4s ease; }
+.recipes-progress-text { margin-top: 6px; font-size: 11px; font-weight: 800; letter-spacing: .04em; color: #fde68a; text-align: right; }
+.recipes-book { display: flex; flex-direction: column; gap: 16px; margin-bottom: 12px; }
+.recipe-section-blurb { margin: 2px 0 8px; }
+.recipe-cards { display: flex; flex-direction: column; gap: 8px; }
+.recipe-card { display: flex; align-items: center; gap: 11px; padding: 9px 11px; border-radius: 14px; border: 1px solid var(--border); background: var(--card-bg, rgba(255,255,255,.03)); }
+.recipe-card.known { border-color: rgba(251,191,36,.3); background: linear-gradient(120deg, rgba(251,191,36,.08), rgba(251,191,36,.02)); }
+.recipe-card.locked { border-style: dashed; opacity: .75; }
+.recipe-emoji { font-size: 27px; width: 34px; text-align: center; flex: 0 0 auto; }
+.recipe-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.recipe-name { font-size: 12.5px; font-weight: 800; }
+.recipe-hint { font-size: 10.5px; color: var(--text-muted); font-style: italic; line-height: 1.35; }
+.recipe-inputs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.recipe-input { font-size: 10px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.09); border-radius: 8px; padding: 2px 6px; white-space: nowrap; }
+.recipe-side { display: flex; flex-direction: column; align-items: center; gap: 5px; flex: 0 0 auto; }
+.recipe-grid-mini { display: grid; grid-template-columns: repeat(3, 26px); grid-template-rows: repeat(3, 26px); gap: 3px; }
+.recipe-cell { border-radius: 5px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 1; }
+.recipe-cell.filled { background: rgba(251,191,36,.14); border-color: rgba(251,191,36,.4); }
+.recipe-state { font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+.recipe-state.ok { color: #6ee7b7; }

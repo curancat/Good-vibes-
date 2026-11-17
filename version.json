@@ -1,4 +1,4 @@
 {
-  "version": "5.1.0",
-  "notes": "Mesa de Trabalho da Arena — relíquias e Núcleos de Evolução forjáveis na bancada 3x3: forje as 4 relíquias com materiais, evolua cartas gastando Núcleos do Baú (ou gold), novo app de segredos na Mesa e o modal de Evolução mostra seus núcleos"
+  "version": "5.2.0",
+  "notes": "Livro do Artesão — novo app 📖 com TODAS as receitas da Mesa de Trabalho organizadas por seção: Relíquias da Arena, Núcleos de Evolução, Artefatos do Refúgio e Refinaria. Cada página só revela a grade 3x3 da receita depois que você forja — descoberta sincronizada via Firestore, sem mudar as regras de segurança"
 }

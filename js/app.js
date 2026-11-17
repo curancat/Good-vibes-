@@ -434,6 +434,7 @@ const APPS = [
     { id: 'shop', label: 'Loja', icon: '🪙', tile: 'tile-shop' },
     { id: 'inventory', label: 'Inventário', icon: '🎒', tile: 'tile-inventory' },
     { id: 'refinery', label: 'Mesa de Trabalho', icon: '🛠️', tile: 'tile-refinery' },
+    { id: 'recipes', label: 'Livro do Artesão', icon: '📖', tile: 'tile-recipes' },
     { id: 'construction', label: 'Obras', icon: '🏗️', tile: 'tile-construction' },
     { id: 'work', label: 'Trabalho', icon: '💼', tile: 'tile-work' },
     { id: 'market', label: 'Mercado', icon: '🛒', tile: 'tile-market' },
@@ -493,6 +494,7 @@ function openApp(appId, pushHistory = true) {
     if (appId === 'shop') { void fetchMarket().then(renderShopItems); }
     if (appId === 'arena') { refreshArenaUI(); startArenaPolling(); }
     if (appId === 'market') refreshMarket();
+    if (appId === 'recipes') renderRecipeBook();
     if (appId === 'work') renderBoard();
     if (appId === 'bank') refreshBank();
     const body = target.querySelector('.app-body');
@@ -1795,6 +1797,29 @@ const outputInfo = (id) => ECO?.MATERIAL_BY_ID?.[id] || ECO?.ARTIFACT_BY_ID?.[id
 const ARENA_CORE_IDS = { 1: 'core_evo', 2: 'core_primus' };
 const isArtifact = (id) => !!(ECO?.ARTIFACT_BY_ID?.[id]);
 
+/* ---------- Livro do Artesão: descoberta de receitas ---------- */
+// Migração única: quem já forjava antes do livro existir tem a descoberta
+// estimada pelo que tem hoje (artefatos, relíquias, baú). Depois disso,
+// só o REGISTRO DE CRAFT abre novas páginas.
+function seedKnownRecipesFromState(state) {
+    const seeded = new Set();
+    const arts = state?.artifacts || {};
+    const ownedRelics = new Set(state?.arenaRelics || []);
+    const inv = state?.inv || {};
+    for (const r of ECO?.RECIPES || []) {
+        if (ECO.ARTIFACT_BY_ID?.[r.out] && arts[r.out]) { seeded.add(r.id); continue; }
+        if (ECO.ARENA_RELIC_BY_ID?.[r.out] && ownedRelics.has(r.out)) { seeded.add(r.id); continue; }
+        if (ECO.MATERIAL_BY_ID?.[r.out] && (Number(inv[r.out]) || 0) > 0) seeded.add(r.id);
+    }
+    return [...seeded];
+}
+
+// Livro do Artesão: marca uma receita como catalogada (dono é o economyState).
+function withDiscovery(patch, recipeId) {
+    const known = Array.isArray(economyState?.knownRecipes) ? economyState.knownRecipes : [];
+    return known.includes(recipeId) ? patch : { ...patch, knownRecipes: [...known, recipeId] };
+}
+
 function normalizeEconomy(d = {}) {
     return {
         gold: typeof d.gold === 'number' ? d.gold : STARTER_GOLD,
@@ -1816,7 +1841,8 @@ function normalizeEconomy(d = {}) {
         arenaUpgrades: d.arenaUpgrades && typeof d.arenaUpgrades === 'object' ? { ...d.arenaUpgrades } : {},
         arenaEvo: d.arenaEvo && typeof d.arenaEvo === 'object' ? { ...d.arenaEvo } : {},
         arenaRelics: Array.isArray(d.arenaRelics) ? d.arenaRelics.filter((x) => typeof x === 'string') : [],
-        arenaRelicEquips: d.arenaRelicEquips && typeof d.arenaRelicEquips === 'object' ? { ...d.arenaRelicEquips } : {}
+        arenaRelicEquips: d.arenaRelicEquips && typeof d.arenaRelicEquips === 'object' ? { ...d.arenaRelicEquips } : {},
+        knownRecipes: Array.isArray(d.knownRecipes) ? d.knownRecipes.filter((x) => typeof x === 'string') : []
     };
 }
 
@@ -1865,6 +1891,12 @@ async function initEconomy() {
         }
         if (Object.keys(patch).length) await setDoc(ecoUserRef(), patch, { merge: true });
         economyState = normalizeEconomy({ ...data, ...patch });
+        // Livro do Artesão 📖: migração única das páginas já "forjadas"
+        if (!Array.isArray(data.knownRecipes) && ECO?.RECIPES) {
+            const seeded = seedKnownRecipesFromState(economyState);
+            economyState = { ...economyState, knownRecipes: seeded };
+            await setDoc(ecoUserRef(), { knownRecipes: seeded }, { merge: true });
+        }
     } catch (err) {
         console.warn('Economia indisponível (verifique as regras do Firestore):', err?.message);
         economyState = normalizeEconomy({});
@@ -2197,7 +2229,7 @@ async function craftNow() {
     if (relicOut) {
         const arenaRelics = [...(economyState.arenaRelics || []), relicOut.id];
         addLedger('craft', `Relíquia forjada: ${relicOut.name}`, 0);
-        await saveEconomy({ inv, arenaRelics });
+        await saveEconomy(withDiscovery({ inv, arenaRelics }, match.id));
         renderArenaRelicShop();
         if (arenaCardTreeOpenId) renderCardTreeModal();
         vibrate([12, 60, 12, 60, 18]);
@@ -2208,17 +2240,104 @@ async function craftNow() {
         const artifacts = { ...(economyState.artifacts || {}) };
         artifacts[artifact.id] = (artifacts[artifact.id] || 0) + 1;
         addLedger('craft', `Artefato ativado: ${artifact.name} (+${artifact.passive} gold/min)`, 0);
-        await saveEconomy({ inv, artifacts });
+        await saveEconomy(withDiscovery({ inv, artifacts }, match.id));
         vibrate([12, 60, 12, 60, 18]);
         showToast(`🧿 ${artifact.emoji} ${artifact.name} ativado! +${artifact.passive} gold/min para sempre`, 'success', 4500);
         return;
     }
     inv[match.out] = (inv[match.out] || 0) + match.qty;
     addLedger('craft', `Craft: ${outputInfo(match.out)?.name || match.out} ×${match.qty}`, 0);
-    await saveEconomy({ inv });
+    await saveEconomy(withDiscovery({ inv }, match.id));
     vibrate([12, 40, 12, 40, 18]);
     const out = outputInfo(match.out);
     showToast(`⚒️ ${out?.emoji || ''} ${out?.name || match.out} ×${match.qty} craftado!`, 'success');
+}
+
+/* ================= LIVRO DO ARTESÃO 📖 =================
+   Catálogo visual de TODAS as receitas da Mesa de Trabalho.
+   Página "aberta" só para o que o jogador já forjou — o formato
+   inteiro (grade 3x3 + materiais) aparece então. O que ainda não
+   foi forjado fica como dica/??? — o espírito de descoberta mora aqui. */
+const CORE_IDS = ARENA_CORE_IDS ? [ARENA_CORE_IDS[1], ARENA_CORE_IDS[2]] : ['core_evo', 'core_primus'];
+
+function knownRecipeSet() {
+    return new Set(Array.isArray(economyState?.knownRecipes) ? economyState.knownRecipes : []);
+}
+
+function recipeInputsHTML(r) {
+    const counts = {};
+    for (const row of r.shape) {
+        for (const ch of row) {
+            if (ch === '.' || ch === ' ') continue;
+            const id = r.key[ch];
+            counts[id] = (counts[id] || 0) + 1;
+        }
+    }
+    return Object.entries(counts).map(([id, qty]) => {
+        const m = ECO.MATERIAL_BY_ID?.[id];
+        return `<span class="recipe-input" title="${escapeHtml(m?.name || id)}">${m?.emoji || '📦'} ${escapeHtml(m?.name || id)} <b>×${qty}</b></span>`;
+    }).join('');
+}
+
+function recipeGridMiniHTML(r) {
+    const rows = r.shape.length;
+    const cols = Math.max(...r.shape.map((row) => row.length));
+    const oy = Math.floor((3 - rows) / 2), ox = Math.floor((3 - cols) / 2);
+    const cells = [];
+    for (let gy = 0; gy < 3; gy++) {
+        for (let gx = 0; gx < 3; gx++) {
+            const ry = gy - oy, cx = gx - ox;
+            const ch = (ry >= 0 && ry < rows && cx >= 0 && cx < cols) ? (r.shape[ry][cx] || '.') : '.';
+            const id = ch !== '.' ? r.key[ch] : null;
+            const m = id ? ECO.MATERIAL_BY_ID?.[id] : null;
+            cells.push(m
+                ? `<span class="recipe-cell filled" title="${escapeHtml(m.name)}">${m.emoji}</span>`
+                : '<span class="recipe-cell"></span>');
+        }
+    }
+    return `<div class="recipe-grid-mini" role="img" aria-label="Formato da receita">${cells.join('')}</div>`;
+}
+
+function recipeCardHTML(r, kind, isKnown) {
+    const out = outputInfo(r.out);
+    if (!isKnown) {
+        const locked = (kind === 'relic' || kind === 'artifact' || kind === 'core');
+        const hintSource = kind === 'relic' ? ECO.ARENA_RELIC_BY_ID?.[r.out]
+            : kind === 'artifact' ? ECO.ARTIFACT_BY_ID?.[r.out]
+            : kind === 'core' ? ECO.MATERIAL_BY_ID?.[r.out] : null;
+        const hint = hintSource?.hint;
+        const title = locked ? '???' : `${out?.emoji || ''} ${escapeHtml(out?.name || r.out)}`;
+        const icon = locked ? '🕳️' : (out?.emoji || '📦');
+        return `<div class="recipe-card locked"><span class="recipe-emoji">${icon}</span><div class="recipe-info"><span class="recipe-name">${title}</span><span class="recipe-hint">${hint ? escapeHtml(hint) : 'Forje esta receita na Mesa de Trabalho 🛠️'}</span></div><span class="recipe-state">🔒 não catalogada</span></div>`;
+    }
+    const meta = kind === 'artifact'
+        ? `+${ECO.ARTIFACT_BY_ID?.[r.out]?.passive || 0} gold/min`
+        : kind === 'relic' ? 'equipa na Árvore da carta'
+        : kind === 'core' ? 'moeda de Evolução ✦' : `rende ×${r.qty}`;
+    return `<div class="recipe-card known"><span class="recipe-emoji">${out?.emoji || '📦'}</span><div class="recipe-info"><span class="recipe-name">${escapeHtml(out?.name || r.out)}</span><span class="recipe-hint">${escapeHtml(meta)}</span><div class="recipe-inputs">${recipeInputsHTML(r)}</div></div><div class="recipe-side">${recipeGridMiniHTML(r)}<span class="recipe-state ok">✓ catalogada</span></div></div>`;
+}
+
+function renderRecipeBook() {
+    const wrap = $('#recipes-book');
+    if (!wrap || !ECO) return;
+    const known = knownRecipeSet();
+    const groups = [
+        { kind: 'relic', title: '⚔️ Relíquias da Arena', blurb: 'forjadas na bancada — ou compradas na loja, se você for ansioso', items: ECO.RECIPES.filter((r) => ECO.ARENA_RELIC_BY_ID?.[r.out]) },
+        { kind: 'core', title: '✦ Núcleos de Evolução', blurb: 'pagam a Evolução da carta sem gastar gold', items: ECO.RECIPES.filter((r) => CORE_IDS.includes(r.out)) },
+        { kind: 'artifact', title: '🧿 Artefatos do Refúgio', blurb: 'renda pequena, para sempre', items: ECO.RECIPES.filter((r) => ECO.ARTIFACT_BY_ID?.[r.out]) },
+        { kind: 'refinery', title: '🛠️ Refinaria & Bancada', blurb: 'os serviços de sempre da bancada', items: ECO.RECIPES.filter((r) => !ECO.ARTIFACT_BY_ID?.[r.out] && !ECO.ARENA_RELIC_BY_ID?.[r.out] && !CORE_IDS.includes(r.out)) },
+    ];
+    let total = 0, found = 0;
+    const sections = groups.map((g) => {
+        total += g.items.length;
+        const got = g.items.filter((r) => known.has(r.id)).length;
+        found += got;
+        return `<section class="recipe-section"><div class="recipe-section-head"><h3 class="eco-h3">${g.title} <span class="eco-h3-count">${got}/${g.items.length} catalogadas</span></h3><p class="card-sub recipe-section-blurb">${escapeHtml(g.blurb)}</p></div><div class="recipe-cards">${g.items.map((r) => recipeCardHTML(r, g.kind, known.has(r.id))).join('')}</div></section>`;
+    }).join('');
+    wrap.innerHTML = sections;
+    const pct = total ? Math.round((found / total) * 100) : 0;
+    const fill = $('#recipes-progress-fill'); if (fill) fill.style.width = `${pct}%`;
+    const txt = $('#recipes-progress-text'); if (txt) txt.textContent = `${found} de ${total} receitas catalogadas`;
 }
 
 /* Drag & drop por pointer events (funciona no celular) + fallback de toque */
@@ -2394,6 +2513,8 @@ function refreshEconomyUI() {
     renderCraftArea();
     renderConstruction();
     renderWork();
+    const book = $('#recipes-book');
+    if (book && book.childElementCount) renderRecipeBook();
 }
 
 function startEconomyTicker() {
@@ -6216,6 +6337,8 @@ document.addEventListener('click', async (e) => {
 
     const ctmWorkbench = t.closest?.('#ctm-workbench-btn');
     if (ctmWorkbench) { closeModal('arena-card-tree-modal'); openApp('refinery'); return; }
+    const recipesBench = t.closest?.('#recipes-go-bench');
+    if (recipesBench) { closeApp(); openApp('refinery'); return; }
 
     const acceptBtn = t.closest?.('[data-arena-accept]');
     if (acceptBtn) { openArenaBetModal({ type: 'accept', matchId: acceptBtn.dataset.arenaAccept }); return; }
@@ -6400,7 +6523,7 @@ setInterval(tickClock, 1000);
 /* ================= ATUALIZAÇÃO DO APP (NOVA VERSÃO) ================= */
 // ATENÇÃO: subir junto com version.json/sw.js em CADA release — se ficar pra
 // trás, o app acha que há atualização pra sempre e o aviso não some.
-const APP_VERSION = '5.1.0';
+const APP_VERSION = '5.2.0';
 const appVersionEl = $('#app-version');
 if (appVersionEl) appVersionEl.textContent = `Good Vibes 🌊 · O Refúgio · v${APP_VERSION}`;
 let swRegistration = null;
