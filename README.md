@@ -2,6 +2,14 @@
 
 Uma rede social privada entre amigos, agora com cara de **tela inicial de telefone**: cada menu é um aplicativo. Feita em HTML/CSS/JS puro (sem build), com Firebase (Auth + Firestore), instalável como **PWA** no celular.
 
+## ✨ v5.3.2 — Score honesto no Banco do Refúgio
+
+> **v5.3.2** — **Conta intocada não tem "pendência".** Quem cria a conta nasce com score 50 e via "🟡 Atenção: pendências", mesmo nunca tendo pego um empréstimo. Agora, se a conta **nunca teve nenhum empréstimo** e está no padrão 50, o Banco exibe **"✨ Score inicial"**. Fez o primeiro empréstimo? O rótulo volta a refletir o pagamento (pagou em dia sobe, atrasou cai).
+>
+> - Zero mudança na matemática: limite = score% × 3.000 gold, +12 pagando em dia, −18 atrasado (−30 com 60+ dias)
+> - Quem já tem/teve empréstimo vê os rótulos normais como sempre
+> - **Regras do Firestore NÃO mudam** (a query extra só lê os próprios empréstimos, que você já podia ler)
+
 ## 🚑 v5.3.1 — Hotfix: a Arena parava de gravar a jogada (undefined)
 
 > **v5.3.1** — **Corrigido o erro `Function Transaction.update() called with invalid data. Unsupported field value: undefined (found in document arena_matches/...)`.** Jogar uma carta de **Estrutura** (ou de **Terra** que gera residência) tinha o commit RECUSADO pelo Firestore — a jogada/ turno inteiro era perdido e sobrava só o aviso amarelo.

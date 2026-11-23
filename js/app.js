@@ -2950,6 +2950,7 @@ $('#gift-search')?.addEventListener('input', debounce((e) => searchGiftRecipient
    pessoa abre o app (coleção `gifts`). Trapaça pelo Console continua possível. */
 
 let activeLoan = null;        // empréstimo ativo do usuário (cache)
+let hadAnyLoan = null;        // a conta JÁ teve algum empréstimo? (null = não sei ainda)
 let boardFilter = 'open';     // 'open' | 'mine' | 'all'
 let boardDocs = [];           // última carga do quadro
 
@@ -2975,6 +2976,8 @@ const GARNISH_PCT = 0.7;             // penhora de 70% dos ganhos até quitar
 const GARNISH_TOTAL_DAYS = 60;       // 60+ dias: penhora de 100%
 const creditLimitFor = (score) => Math.floor((Math.max(0, Math.min(100, score ?? 50)) / 100) * 3000);
 const scoreLabel = (s) => s >= 80 ? '🟢 Excelente pagador' : s >= 55 ? '🔵 Em dia com a vida' : s >= 30 ? '🟡 Atenção: pendências' : '🔴 Nome sujo no banco';
+/* Conta intocada (50 padrão, zero empréstimos) não tem "pendência" nenhuma — chama de Score inicial */
+const bankScoreLabel = (s) => (s === 50 && hadAnyLoan === false) ? '✨ Score inicial' : scoreLabel(s);
 
 function loanTerms(loan) {
     const base = Math.max(0, (loan?.totalDue || 0) - (loan?.repaid || 0));
@@ -3096,10 +3099,13 @@ async function refreshBank(loadRemote = true) {
     const score = economyState.creditScore ?? 50;
     const scoreEl = $('#bank-score');
     if (scoreEl) {
-        scoreEl.textContent = `Score: ${score} · ${scoreLabel(score)}`;
+        scoreEl.textContent = `Score: ${score} · ${bankScoreLabel(score)}`;
         scoreEl.className = 'bank-score' + (score >= 80 ? ' great' : score < 30 ? ' bad' : '');
     }
     if (loadRemote) {
+        try { hadAnyLoan = !(await getDocs(query(collection(db, 'loans'), where('userId', '==', currentUser.uid), limit(1)))).empty; }
+        catch { hadAnyLoan = activeLoan ? true : null; } // sem saber, mostra a faixa normal
+        if (scoreEl) scoreEl.textContent = `Score: ${score} · ${bankScoreLabel(score)}`;
         try { activeLoan = await getActiveLoan(); } catch { activeLoan = null; }
         if (activeLoan && loanTerms(activeLoan).lateDays >= LOAN_SHAME_DAYS && !activeLoan.publicShame) {
             activeLoan.publicShame = true;
@@ -6554,7 +6560,7 @@ setInterval(tickClock, 1000);
 /* ================= ATUALIZAÇÃO DO APP (NOVA VERSÃO) ================= */
 // ATENÇÃO: subir junto com version.json/sw.js em CADA release — se ficar pra
 // trás, o app acha que há atualização pra sempre e o aviso não some.
-const APP_VERSION = '5.3.1';
+const APP_VERSION = '5.3.2';
 const appVersionEl = $('#app-version');
 if (appVersionEl) appVersionEl.textContent = `Good Vibes 🌊 · O Refúgio · v${APP_VERSION}`;
 let swRegistration = null;

@@ -1,4 +1,4 @@
 {
-  "version": "5.3.1",
-  "notes": "Correção crítica da Arena: jogar cartas de Estrutura/Terra falhava com 'Unsupported field value: undefined' e nada era salvo — o motor agora nunca envia campos undefined pro Firestore"
+  "version": "5.3.2",
+  "notes": "Banco do Refúgio: conta que nunca pegou empréstimo e está no score padrão 50 agora vê '✨ Score inicial' em vez de 'Atenção: pendências' — nada mudou nas regras de crédito"
 }
