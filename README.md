@@ -2,6 +2,23 @@
 
 Uma rede social privada entre amigos, agora com cara de **tela inicial de telefone**: cada menu é um aplicativo. Feita em HTML/CSS/JS puro (sem build), com Firebase (Auth + Firestore), instalável como **PWA** no celular.
 
+## 🌿 v5.3.3 — Drops: tudo no app agora tem fonte
+
+> **v5.3.3** — **Fim do "ingrediente impossível": as 6 coletas passaram a dropar os 17 materiais que não tinham fonte nenhuma** — incluindo as duas Semente de Abajeru (Jardim) e Argila (Tijolo), e tudo o que faltava para as Obras 🧿 (Candelabro de Aço, Rosário de Bronze, Coroa do Refúgio, Orbe Encantado).
+>
+> | Local | Ganhou |
+> |---|---|
+> | 🌲 Floresta | Carvão Vegetal (6%), Essência de Ar (3%) |
+> | ⛏️ Mina Velha | Minério de Estanho (4%), Minério de Ouro (2%), Pepita de Ouro (1%) |
+> | 🏖️ Rio & Praia | Argila (5%), Cristal do Mar (3%), Lágrima de Lua (2%), Poeira de Estrela (1%) |
+> | 🌼 Campo Florido | Semente de Abajeru (4%), Lã de Ovelha (4%) |
+> | ⛰️ Montanha | Quartzo (4%), Esmeralda (2%), Mecha de Raio (1%), Essência de Fogo (3%) |
+> | 🐸 Pântano | Essência de Terra (4%), Essência de Água (3%) |
+>
+> - Agora **nenhuma receita, obra ou construção depende exclusivamente do Mercado/presente** — tudo sai da coleta (raro ou não, mas possível). O Mercado segue valendo pra quem preferir pagar em vez de farmar
+> - Pesos equilibrados (locais seguem com ~100 pontos de peso cada) e a UI de coleta não muda (ela mostra só 4 emojis + "…")
+> - **Regras do Firestore NÃO mudam** (nenhuma leitura/escrita nova)
+
 ## ✨ v5.3.2 — Score honesto no Banco do Refúgio
 
 > **v5.3.2** — **Conta intocada não tem "pendência".** Quem cria a conta nasce com score 50 e via "🟡 Atenção: pendências", mesmo nunca tendo pego um empréstimo. Agora, se a conta **nunca teve nenhum empréstimo** e está no padrão 50, o Banco exibe **"✨ Score inicial"**. Fez o primeiro empréstimo? O rótulo volta a refletir o pagamento (pagou em dia sobe, atrasou cai).

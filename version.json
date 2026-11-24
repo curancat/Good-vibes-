@@ -1,4 +1,4 @@
 {
-  "version": "5.3.2",
-  "notes": "Banco do Refúgio: conta que nunca pegou empréstimo e está no score padrão 50 agora vê '✨ Score inicial' em vez de 'Atenção: pendências' — nada mudou nas regras de crédito"
+  "version": "5.3.3",
+  "notes": "Drops de coleta expandidos: agora TODA obra e receita do app tem fonte no jogo — Semente de Abajeru, Argila, minérios de ouro/estanho, essências e mais 15 itens raros"
 }

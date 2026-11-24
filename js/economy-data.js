@@ -255,12 +255,12 @@ const JOBS = [
 
 /* ---------- 6 PONTOS DE COLETA ---------- */
 const GATHER_LOCATIONS = [
-    { id: 'floresta', name: 'Floresta', emoji: '🌲', cdSeconds: 120, power: 1, drops: [ ['madeira_pinho', 30], ['madeira_carvalho', 22], ['fibra_vegetal', 25], ['pinha', 18], ['flor_silvestre', 12], ['mel', 4] ] },
-    { id: 'mina', name: 'Mina Velha', emoji: '⛏️', cdSeconds: 180, power: 0.75, drops: [ ['pedra_bruta', 30], ['minerio_carvao', 20], ['minerio_ferro', 14], ['minerio_cobre', 12], ['grafite', 6], ['minerio_prata', 4] ] },
-    { id: 'rio_praia', name: 'Rio & Praia', emoji: '🏖️', cdSeconds: 150, power: 0.9, drops: [ ['concha', 25], ['areia', 25], ['sal_marinho', 18], ['alga', 20], ['peixe_dourado', 8], ['perola', 2], ['ambar', 2] ] },
-    { id: 'campo', name: 'Campo Florido', emoji: '🌼', cdSeconds: 120, power: 1, drops: [ ['flor_silvestre', 25], ['erva_medicinal', 20], ['mel', 12], ['cogumelo_vermelho', 12], ['petala_de_lotus', 4], ['milho', 10] ] },
-    { id: 'montanha', name: 'Montanha', emoji: '⛰️', cdSeconds: 210, power: 0.65, drops: [ ['marmore', 8], ['granito', 18], ['calcario', 20], ['obsidiana', 6], ['jade', 2], ['cristal_runico', 1] ] },
-    { id: 'pantano', name: 'Pântano', emoji: '🐸', cdSeconds: 150, power: 0.85, drops: [ ['musgo', 28], ['cogumelo_vermelho', 15], ['erva_medicinal', 15], ['lagrima_de_sereia', 2], ['agua_marinha', 3] ] }
+    { id: 'floresta', name: 'Floresta', emoji: '🌲', cdSeconds: 120, power: 1, drops: [ ['madeira_pinho', 30], ['madeira_carvalho', 22], ['fibra_vegetal', 25], ['pinha', 18], ['flor_silvestre', 12], ['mel', 4], ['carvao_vegetal', 6], ['essencia_de_ar', 3] ] }, // Floresta: lenha queimada + brisa
+    { id: 'mina', name: 'Mina Velha', emoji: '⛏️', cdSeconds: 180, power: 0.75, drops: [ ['pedra_bruta', 30], ['minerio_carvao', 20], ['minerio_ferro', 14], ['minerio_cobre', 12], ['grafite', 6], ['minerio_prata', 4], ['minerio_estanho', 4], ['minerio_ouro', 2], ['pepita_ouro', 1] ] }, // Mina: estanho, ouro (raro) e pepita (muito raro)
+    { id: 'rio_praia', name: 'Rio & Praia', emoji: '🏖️', cdSeconds: 150, power: 0.9, drops: [ ['concha', 25], ['areia', 25], ['sal_marinho', 18], ['alga', 20], ['peixe_dourado', 8], ['perola', 2], ['ambar', 2], ['argila', 5], ['cristal_do_mar', 3], ['lagrima_de_lua', 2], ['poeira_de_estrela', 1] ] }, // Rio & Praia: barranco de argila e o céu estrelado sobre o mar
+    { id: 'campo', name: 'Campo Florido', emoji: '🌼', cdSeconds: 120, power: 1, drops: [ ['flor_silvestre', 25], ['erva_medicinal', 20], ['mel', 12], ['cogumelo_vermelho', 12], ['petala_de_lotus', 4], ['milho', 10], ['semente_de_abajeru', 4], ['la_de_ovelha', 4] ] }, // Campo Florido: sementes e pasto do rebanho
+    { id: 'montanha', name: 'Montanha', emoji: '⛰️', cdSeconds: 210, power: 0.65, drops: [ ['marmore', 8], ['granito', 18], ['calcario', 20], ['obsidiana', 6], ['jade', 2], ['cristal_runico', 1], ['quartzo', 4], ['esmeralda', 2], ['mecha_de_raio', 1], ['essencia_de_fogo', 3] ] }, // Montanha: cristais, gemas e o coração do trovão
+    { id: 'pantano', name: 'Pântano', emoji: '🐸', cdSeconds: 150, power: 0.85, drops: [ ['musgo', 28], ['cogumelo_vermelho', 15], ['erva_medicinal', 15], ['lagrima_de_sereia', 2], ['agua_marinha', 3], ['essencia_de_terra', 4], ['essencia_de_agua', 3] ] } // Pântano: essências da terra e da água
 ];
 
 /* ---------- 1.000 COSMÉTICOS (10 categorias × 20 temas × 5 raridades) ---------- */
